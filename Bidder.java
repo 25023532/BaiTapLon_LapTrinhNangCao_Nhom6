@@ -16,6 +16,7 @@ public class Bidder extends User implements Observer {
 
     @Override
     public void update(Bid bid) {
-        System.out.println(username + " sees new bid: " + bid.getAmount());
+        System.out.println("[NOTIFY] " + username + " sees new bid: " + bid.getAmount()
+                + " from " + bid.getBidderId());
     }
 }
