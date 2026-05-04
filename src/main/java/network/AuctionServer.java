@@ -1,4 +1,4 @@
-package com.nhom6.auctionsystem_nhom6.network;
+package network;
 
 import java.io.IOException;
 import java.net.ServerSocket;

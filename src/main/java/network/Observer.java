@@ -1,5 +1,4 @@
-package com.nhom6.auctionsystem_nhom6.network;
-
+package network;
 public interface Observer {
     void update(Object message);
 }
