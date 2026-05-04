@@ -1,7 +1,7 @@
 package org.example.user;
 
-import org.example.model.Bid;
-import org.example.observer.Observer;
+import org.example.auction.Bid;
+import org.example.auction.Observer;
 
 public class Bidder extends User implements Observer {
 
