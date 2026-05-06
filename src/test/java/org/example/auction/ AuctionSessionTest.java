@@ -25,7 +25,6 @@ class AuctionSessionTest {
         session.start();
     }
 
-    // ══ Bid hợp lệ ══════════════════════════════════════════
 
     @Test
     @DisplayName("Đặt giá hợp lệ — nên được chấp nhận")
@@ -43,7 +42,6 @@ class AuctionSessionTest {
         assertEquals(expected, session.placeBid(bid));
     }
 
-    // ══ Bid không hợp lệ ════════════════════════════════════
 
     @Test
     @DisplayName("Đặt giá thấp hơn tối thiểu — nên throw InvalidBidException")

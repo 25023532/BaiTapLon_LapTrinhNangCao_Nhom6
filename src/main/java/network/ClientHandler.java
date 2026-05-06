@@ -1,42 +1,33 @@
 package network;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.Socket;
 
-public class ClientHandler implements Runnable, Observer {
+public class ClientHandler implements Runnable {
     private Socket socket;
-    private ObjectOutputStream out;
-    private ObjectInputStream in;
 
     public ClientHandler(Socket socket) {
         this.socket = socket;
-        try {
-            this.out = new ObjectOutputStream(socket.getOutputStream());
-            this.in = new ObjectInputStream(socket.getInputStream());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    @Override
-    public void update(Object message) {
-        try {
-            out.writeObject(message);
-            out.flush();
-        } catch (IOException e) {
-            System.out.println("Không thể gửi tin tới client.");
-        }
     }
 
     @Override
     public void run() {
-        try {
-            while (true) {
-                Object data = in.readObject();
-                AuctionServer.notifyAllObservers("Giá mới là: " + data);
+        try (BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+            String inputLine;
+            // Đọc dữ liệu từ khách hàng gửi lên
+            while ((inputLine = in.readLine()) != null) {
+                System.out.println("Server nhận được: " + inputLine + " từ " + socket.getRemoteSocketAddress());
             }
-        } catch (Exception e) {
-            AuctionServer.removeObserver(this);
+        } catch (IOException e) {
+            System.out.println("Một khách hàng đã ngắt kết nối.");
+        } finally {
+            try {
+                socket.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 }
