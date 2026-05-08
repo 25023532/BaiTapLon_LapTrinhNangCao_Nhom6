@@ -1,34 +1,37 @@
 package org.example.exception;
 
 /**
- * Ném khi xác thực thất bại:
- * - Sai username / password
+ * Ném ra khi xác thực người dùng thất bại:
+ * - Sai tên đăng nhập / mật khẩu
  * - Tài khoản không tồn tại
  * - Không có quyền thực hiện hành động
  */
-public class AuthenticationException extends RuntimeException {
+public class AuthenticationException extends Exception {
 
-    public enum Reason {
-        INVALID_CREDENTIALS,   // Sai username/password
-        USER_NOT_FOUND,        // Tài khoản không tồn tại
-        UNAUTHORIZED_ROLE      // Không đủ quyền
+    private String username;
+
+    public AuthenticationException(String message) {
+        super(message);
     }
 
-    private final Reason reason;
-
-    public AuthenticationException(Reason reason) {
-        super(switch (reason) {
-            case INVALID_CREDENTIALS -> "Sai username hoặc password.";
-            case USER_NOT_FOUND      -> "Tài khoản không tồn tại.";
-            case UNAUTHORIZED_ROLE   -> "Bạn không có quyền thực hiện hành động này.";
-        });
-        this.reason = reason;
+    public AuthenticationException(String message, String username) {
+        super(message);
+        this.username = username;
     }
 
-    public AuthenticationException(Reason reason, String detail) {
-        super(detail);
-        this.reason = reason;
+    public AuthenticationException(String message, Throwable cause) {
+        super(message, cause);
     }
 
-    public Reason getReason() { return reason; }
+    public String getUsername() {
+        return username;
+    }
+
+    @Override
+    public String toString() {
+        return "AuthenticationException{" +
+                "username='" + username + '\'' +
+                ", message='" + getMessage() + '\'' +
+                '}';
+    }
 }
