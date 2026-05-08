@@ -1,23 +1,34 @@
 package org.example.exception;
 
 /**
- * Ném khi cố đặt giá vào phiên không ở trạng thái RUNNING:
- * - Phiên đã FINISHED / PAID / CANCELED
- * - Phiên chưa bắt đầu (OPEN)
- * - Phiên đã hết giờ
+ * Ném ra khi người dùng cố đặt giá vào một phiên đấu giá đã kết thúc
  */
-public class AuctionClosedException extends RuntimeException {
+public class AuctionClosedException extends Exception {
 
-    private final String sessionId;
-    private final String currentStatus;
+    private String sessionId;
 
-    public AuctionClosedException(String sessionId, String currentStatus) {
-        super("Phiên đấu giá '%s' không thể nhận bid. Trạng thái hiện tại: %s"
-                .formatted(sessionId, currentStatus));
-        this.sessionId     = sessionId;
-        this.currentStatus = currentStatus;
+    public AuctionClosedException(String message) {
+        super(message);
     }
 
-    public String getSessionId()     { return sessionId; }
-    public String getCurrentStatus() { return currentStatus; }
+    public AuctionClosedException(String message, String sessionId) {
+        super(message);
+        this.sessionId = sessionId;
+    }
+
+    public AuctionClosedException(String message, Throwable cause) {
+        super(message, cause);
+    }
+
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    @Override
+    public String toString() {
+        return "AuctionClosedException{" +
+                "sessionId='" + sessionId + '\'' +
+                ", message='" + getMessage() + '\'' +
+                '}';
+    }
 }
