@@ -29,11 +29,10 @@ public class AuctionManager {
         return instance;
     }
 
-    public void addSession(AuctionSession session) {
+    public void addSession(AuctionSession session) throws DataException {
         if (session == null)
             throw new DataException("session", "Không được null");
 
-        // ✅ Fix: getId() → getSessionId()
         if (sessions.containsKey(session.getSessionId()))
             throw new DataException("sessionId",
                     "Phiên đã tồn tại: " + session.getSessionId());
@@ -42,7 +41,7 @@ public class AuctionManager {
         System.out.println("[AuctionManager] Thêm phiên: " + session.getSessionId());
     }
 
-    public AuctionSession getSession(String id) {
+    public AuctionSession getSession(String id) throws DataException {
         AuctionSession s = sessions.get(id);
         if (s == null)
             throw new DataException("sessionId", "Không tìm thấy: " + id);
