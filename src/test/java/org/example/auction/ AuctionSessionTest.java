@@ -1,185 +1,232 @@
-package org.example.auction;
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
 
-import org.example.exception.AuctionClosedException;
-import org.example.exception.InvalidBidException;
-import org.junit.jupiter.api.*;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
+<BorderPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.nhom6.auctionsystem_nhom6.MainController"
+            styleClass="main-root">
 
-import java.time.LocalDateTime;
+    <!-- ══ SIDEBAR ══ -->
+    <left>
+        <VBox styleClass="sidebar" spacing="0">
+            <!-- Logo -->
+            <HBox styleClass="sidebar-logo" spacing="10" alignment="CENTER_LEFT">
+                <padding><Insets top="20" right="16" bottom="20" left="16"/></padding>
+                <Label text="⬡" styleClass="logo-icon"/>
+                <VBox>
+                    <Label text="AuctionSys" styleClass="logo-name"/>
+                    <Label text="Hệ thống đấu giá" styleClass="logo-sub"/>
+                </VBox>
+            </HBox>
 
-import static org.junit.jupiter.api.Assertions.*;
+            <!-- Nav -->
+            <VBox styleClass="sidebar-nav" spacing="2">
+                <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
+                <Button text="⊞  Tổng quan"        maxWidth="Infinity" styleClass="nav-btn,nav-active"/>
+                <Button text="☰  Danh sách phiên"   maxWidth="Infinity" styleClass="nav-btn"/>
+                <Button text="⚡  Đấu giá trực tiếp" maxWidth="Infinity" styleClass="nav-btn"/>
+                <Button text="📦  Quản lý sản phẩm" maxWidth="Infinity" styleClass="nav-btn"/>
+                <Button text="🛒  Đơn hàng của tôi" maxWidth="Infinity" styleClass="nav-btn"/>
+                <Button text="💳  Ví &amp; Giao dịch" maxWidth="Infinity" styleClass="nav-btn"/>
+                <Button text="★  Đánh giá"          maxWidth="Infinity" styleClass="nav-btn"/>
+                <Button text="?  Trợ giúp"           maxWidth="Infinity" styleClass="nav-btn"/>
+            </VBox>
 
-@DisplayName("AuctionSession Tests")
-class AuctionSessionTest {
+            <!-- Categories -->
+            <VBox styleClass="sidebar-cats" spacing="2">
+                <padding><Insets top="8" right="8" bottom="8" left="16"/></padding>
+                <Label text="DANH MỤC" styleClass="cat-title"/>
+                <Button text="🖥️  Điện tử"    maxWidth="Infinity" styleClass="cat-btn"/>
+                <Button text="📷  Máy ảnh"    maxWidth="Infinity" styleClass="cat-btn"/>
+                <Button text="💻  Laptop"     maxWidth="Infinity" styleClass="cat-btn"/>
+                <Button text="📱  Điện thoại" maxWidth="Infinity" styleClass="cat-btn"/>
+                <Button text="⌚  Đồng hồ"   maxWidth="Infinity" styleClass="cat-btn"/>
+                <Button text="🚗  Xe cộ"     maxWidth="Infinity" styleClass="cat-btn"/>
+            </VBox>
 
-    private AuctionSession session;
+            <!-- ✅ Đã XÓA upgrade-box "Trở thành ProRole" -->
+            <Region VBox.vgrow="ALWAYS"/>
+        </VBox>
+    </left>
 
-    @BeforeEach
-    void setUp() {
+    <!-- ══ HEADER ══ -->
+    <top>
+        <HBox styleClass="header" spacing="12" alignment="CENTER_LEFT">
+            <padding><Insets top="0" right="20" bottom="0" left="20"/></padding>
+            <TextField fx:id="searchField" promptText="Tìm kiếm sản phẩm, người bán..."
+                       HBox.hgrow="ALWAYS" styleClass="search-field"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button text="🔔" styleClass="icon-btn"/>
+            <Button text="✉"  styleClass="icon-btn"/>
 
-        session = new AuctionSession(
-                "S001",
-                "MacBook Pro",
-                1000.0,
-                50.0,
-                LocalDateTime.now().plusHours(2)
-        );
+            <Separator orientation="VERTICAL"/>
+            <VBox alignment="CENTER_RIGHT">
+                <Label fx:id="userNameLabel" styleClass="header-username"/>
+                <Label fx:id="userRoleLabel" styleClass="header-role"/>
+            </VBox>
+            <VBox alignment="CENTER_RIGHT">
+                <Label text="Ví số dư (VNĐ)" styleClass="wallet-label"/>
+                <Label fx:id="walletLabel"    styleClass="wallet-amount"/>
+            </VBox>
+            <Button text="Đăng xuất" onAction="#handleLogout" styleClass="btn-logout"/>
+        </HBox>
+    </top>
 
-        session.start();
-    }
+    <!-- ══ CONTENT ══ -->
+    <center>
+        <!-- StackPane để chat panel nổi lên trên content -->
+        <StackPane>
 
-    // ===== Valid Bid =====
+            <!-- Main content -->
+            <HBox spacing="16" style="-fx-background-color: #0f172a;">
+                <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
 
-    @Test
-    @DisplayName("Đặt giá hợp lệ — nên được chấp nhận")
-    void placeBid_ValidAmount_ShouldAccept() throws Exception {
+                <VBox spacing="16" HBox.hgrow="ALWAYS">
 
-        Bid bid = new Bid("B001", "bidder1", 1100.0);
+                    <!-- Auction Card -->
+                    <HBox styleClass="auction-card" spacing="24">
+                        <padding><Insets top="24" right="24" bottom="24" left="24"/></padding>
 
-        assertTrue(session.placeBid(bid));
+                        <VBox styleClass="product-image-box" alignment="CENTER" minWidth="220">
+                            <Label text="⬡" styleClass="product-image-icon"/>
+                            <Label fx:id="statusLabel" styleClass="status-badge"/>
+                        </VBox>
 
-        assertEquals(1100.0, session.getCurrentPrice());
-    }
+                        <VBox spacing="12" HBox.hgrow="ALWAYS">
+                            <HBox alignment="CENTER_LEFT" spacing="12">
+                                <Label fx:id="productTitleLabel" styleClass="product-title"/>
+                            </HBox>
+                            <Label fx:id="productDescLabel" styleClass="product-desc" wrapText="true"/>
 
-    @ParameterizedTest
-    @CsvSource({
-            "1050, true",
-            "1500, true",
-            "2000, true"
-    })
-    @DisplayName("Các mức giá hợp lệ khác nhau")
-    void placeBid_VariousValidAmounts(
-            double amount,
-            boolean expected
-    ) throws Exception {
+                            <HBox spacing="24">
+                                <VBox styleClass="price-cell">
+                                    <Label text="Giá khởi điểm" styleClass="price-label"/>
+                                    <Label fx:id="startPriceLabel" styleClass="price-value"/>
+                                </VBox>
+                                <VBox styleClass="price-cell price-current">
+                                    <Label text="Giá hiện tại" styleClass="price-label"/>
+                                    <Label fx:id="currentPriceLabel" styleClass="price-current-value"/>
+                                </VBox>
+                                <VBox styleClass="price-cell">
+                                    <Label text="Bước giá tối thiểu" styleClass="price-label"/>
+                                    <Label fx:id="minStepLabel" styleClass="price-value"/>
+                                </VBox>
+                                <VBox styleClass="price-cell">
+                                    <Label text="Kết thúc lúc" styleClass="price-label"/>
+                                    <Label fx:id="endTimeLabel" styleClass="price-value"/>
+                                </VBox>
+                            </HBox>
 
-        Bid bid = new Bid("B001", "bidder1", amount);
+                            <HBox alignment="CENTER_LEFT" spacing="24">
+                                <VBox>
+                                    <Label text="THỜI GIAN CÒN LẠI" styleClass="countdown-label"/>
+                                    <HBox spacing="4" alignment="CENTER_LEFT">
+                                        <VBox alignment="CENTER">
+                                            <Label fx:id="hoursLabel" text="02" styleClass="countdown-num"/>
+                                            <Label text="GIỜ" styleClass="countdown-unit"/>
+                                        </VBox>
+                                        <Label text=":" styleClass="countdown-sep"/>
+                                        <VBox alignment="CENTER">
+                                            <Label fx:id="minsLabel" text="15" styleClass="countdown-num"/>
+                                            <Label text="PHÚT" styleClass="countdown-unit"/>
+                                        </VBox>
+                                        <Label text=":" styleClass="countdown-sep"/>
+                                        <VBox alignment="CENTER">
+                                            <Label fx:id="secsLabel" text="45" styleClass="countdown-num"/>
+                                            <Label text="GIÂY" styleClass="countdown-unit"/>
+                                        </VBox>
+                                    </HBox>
+                                </VBox>
+                                <Button text="ĐẶT GIÁ NGAY!" onAction="#handlePlaceBid"
+                                        styleClass="btn-bid"/>
+                            </HBox>
+                        </VBox>
+                    </HBox>
 
-        assertEquals(expected, session.placeBid(bid));
-    }
+                    <!-- Bid History + Seller Info -->
+                    <HBox spacing="16">
+                        <VBox styleClass="info-card" HBox.hgrow="ALWAYS" spacing="8">
+                            <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+                            <Label text="Lịch sử bid" styleClass="card-title"/>
+                            <Separator/>
+                            <ScrollPane fitToWidth="true" prefHeight="200" styleClass="bid-scroll">
+                                <VBox fx:id="bidHistoryBox" spacing="6"/>
+                            </ScrollPane>
+                            <Hyperlink text="Xem tất cả lịch sử →" styleClass="see-all-link"/>
+                        </VBox>
 
-    // ===== Invalid Bid =====
+                        <VBox styleClass="info-card" minWidth="260" spacing="8">
+                            <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+                            <Label text="Thông tin người bán" styleClass="card-title"/>
+                            <Separator/>
+                            <HBox spacing="10" alignment="CENTER_LEFT">
+                                <Label text="SL" styleClass="seller-avatar"/>
+                                <VBox>
+                                    <Label text="SellerLong" styleClass="seller-name"/>
+                                    <Label text="Seller · 24 phiên" styleClass="seller-role"/>
+                                </VBox>
+                            </HBox>
+                            <Label text="📍 Hà Nội, Việt Nam"       styleClass="seller-meta"/>
+                            <Label text="⭐ 4.8/5 (124 đánh giá)"   styleClass="seller-meta"/>
+                            <Label text="✅ Đã xác minh danh tính"  styleClass="seller-verified"/>
+                            <HBox spacing="16">
+                                <VBox alignment="CENTER" HBox.hgrow="ALWAYS">
+                                    <Label text="98%"    styleClass="stat-num"/>
+                                    <Label text="Tỉ lệ thắng" styleClass="stat-label"/>
+                                </VBox>
+                                <VBox alignment="CENTER" HBox.hgrow="ALWAYS">
+                                    <Label text="156"  styleClass="stat-num"/>
+                                    <Label text="Đã bán"    styleClass="stat-label"/>
+                                </VBox>
+                                <VBox alignment="CENTER" HBox.hgrow="ALWAYS">
+                                    <Label text="06/2022" styleClass="stat-num"/>
+                                    <Label text="Tham gia"  styleClass="stat-label"/>
+                                </VBox>
+                            </HBox>
+                        </VBox>
+                    </HBox>
+                </VBox>
+            </HBox>
 
-    @Test
-    @DisplayName("Đặt giá thấp hơn tối thiểu — nên throw InvalidBidException")
-    void placeBid_BelowMinimum_ShouldThrow() {
+            <!-- ✅ Nút chat FAB góc dưới phải -->
+            <Button text="💬" onAction="#handleToggleChat"
+                    styleClass="btn-chat-fab"
+                    StackPane.alignment="BOTTOM_RIGHT">
+                <StackPane.margin><Insets bottom="24" right="24"/></StackPane.margin>
+            </Button>
 
-        Bid bid = new Bid("B002", "bidder2", 900.0);
+            <!-- ✅ Chat panel nổi – ẩn mặc định -->
+            <VBox fx:id="chatPanel" styleClass="chat-panel" spacing="0"
+                  prefWidth="340" maxWidth="340" maxHeight="480"
+                  StackPane.alignment="BOTTOM_RIGHT" visible="false" managed="false">
+                <StackPane.margin><Insets bottom="88" right="16"/></StackPane.margin>
 
-        InvalidBidException ex = assertThrows(
-                InvalidBidException.class,
-                () -> session.placeBid(bid)
-        );
+                <HBox styleClass="chat-header" alignment="CENTER_LEFT" spacing="8">
+                    <padding><Insets top="12" right="16" bottom="12" left="16"/></padding>
+                    <Label text="💬 CHAT TRỰC TUYẾN" styleClass="chat-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label text="● Online 52" styleClass="chat-online"/>
+                    <!-- Nút đóng chat -->
+                    <Button text="✕" onAction="#handleToggleChat" styleClass="btn-close-chat"/>
+                </HBox>
 
-        assertEquals(900.0, ex.getAttemptedAmount());
+                <ScrollPane fx:id="chatScrollPane" fitToWidth="true" VBox.vgrow="ALWAYS"
+                            prefHeight="360" styleClass="chat-scroll">
+                    <VBox fx:id="chatMessagesBox" spacing="8">
+                        <padding><Insets top="12" right="12" bottom="12" left="12"/></padding>
+                    </VBox>
+                </ScrollPane>
 
-        assertEquals(1050.0, ex.getMinimumRequired());
-    }
+                <HBox styleClass="chat-input-row" spacing="8" alignment="CENTER">
+                    <padding><Insets top="8" right="12" bottom="8" left="12"/></padding>
+                    <TextField fx:id="chatInput" promptText="Nhập tin nhắn..."
+                               HBox.hgrow="ALWAYS" styleClass="chat-input"
+                               onAction="#handleSendChat"/>
+                    <Button text="➤" onAction="#handleSendChat" styleClass="btn-send"/>
+                </HBox>
+            </VBox>
 
-    @Test
-    @DisplayName("Đặt giá bằng currentPrice — nên throw InvalidBidException")
-    void placeBid_ExactCurrentPrice_ShouldThrow() {
-
-        Bid bid = new Bid("B003", "bidder3", 1000.0);
-
-        assertThrows(
-                InvalidBidException.class,
-                () -> session.placeBid(bid)
-        );
-    }
-
-    // ===== Closed Session =====
-
-    @Test
-    @DisplayName("Đặt giá khi phiên FINISHED")
-    void placeBid_AfterFinish_ShouldThrow() throws Exception {
-
-        session.placeBid(
-                new Bid("B004", "bidder4", 1200.0)
-        );
-
-        session.finish();
-
-        AuctionClosedException ex = assertThrows(
-                AuctionClosedException.class,
-                () -> session.placeBid(
-                        new Bid("B005", "bidder5", 1500.0)
-                )
-        );
-
-        assertEquals("S001", ex.getSessionId());
-
-        assertEquals("FINISHED", ex.getCurrentStatus());
-    }
-
-    @Test
-    @DisplayName("Đặt giá khi phiên CANCELED")
-    void placeBid_AfterCancel_ShouldThrow() {
-
-        session.cancel();
-
-        assertThrows(
-                AuctionClosedException.class,
-                () -> session.placeBid(
-                        new Bid("B006", "bidder6", 1200.0)
-                )
-        );
-    }
-
-    // ===== Finish Session =====
-
-    @Test
-    @DisplayName("Kết thúc có bid → FINISHED")
-    void finish_WithBids_ShouldBeFinished() throws Exception {
-
-        session.placeBid(
-                new Bid("B007", "bidder7", 1200.0)
-        );
-
-        session.finish();
-
-        assertEquals(
-                AuctionStatus.FINISHED,
-                session.getStatus()
-        );
-    }
-
-    @Test
-    @DisplayName("Kết thúc không có bid → CANCELED")
-    void finish_NoBids_ShouldBeCanceled() {
-
-        session.finish();
-
-        assertEquals(
-                AuctionStatus.CANCELED,
-                session.getStatus()
-        );
-    }
-
-    // ===== Full Flow =====
-
-    @Test
-    @DisplayName("OPEN → RUNNING → FINISHED → PAID")
-    void stateTransition_FullFlow_ShouldSucceed()
-            throws Exception {
-
-        session.placeBid(
-                new Bid("B008", "bidder8", 1500.0)
-        );
-
-        session.finish();
-
-        assertEquals(
-                AuctionStatus.FINISHED,
-                session.getStatus()
-        );
-
-        session.markPaid();
-
-        assertEquals(
-                AuctionStatus.PAID,
-                session.getStatus()
-        );
-    }
-}
+        </StackPane>
+    </center>
+</BorderPane>
