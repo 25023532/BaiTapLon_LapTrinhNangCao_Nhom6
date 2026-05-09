@@ -59,11 +59,10 @@
                        HBox.hgrow="ALWAYS" styleClass="search-field"/>
             <Region HBox.hgrow="ALWAYS"/>
             <Button text="🔔" styleClass="icon-btn"/>
-            <Button text="✉"  styleClass="icon-btn"/>
 
             <Separator orientation="VERTICAL"/>
             <VBox alignment="CENTER_RIGHT">
-                <Label text="Nạp tiền (VNĐ)" styleClass="wallet-label"/>
+                <Label text="Số dư (VNĐ)" styleClass="wallet-label"/>
                 <Label fx:id="walletLabel" styleClass="wallet-amount"/>
             </VBox>
             <Separator orientation="VERTICAL"/>
