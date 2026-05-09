@@ -181,3 +181,11 @@
 .btn-chat-fab:hover {
     -fx-background-color: #1d4ed8;
 }
+
+/* ══════════════════════════════════════════════════════════ */
+/* Fix StackPane trong center không che nền                 */
+/* ══════════════════════════════════════════════════════════ */
+
+.stack-pane {
+    -fx-background-color: transparent;
+}
