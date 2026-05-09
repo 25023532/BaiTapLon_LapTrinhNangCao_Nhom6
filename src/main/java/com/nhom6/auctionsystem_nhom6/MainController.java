@@ -168,7 +168,8 @@ public class MainController {
     // ── Profile Menu Handlers ─────────────────────────────────
     @FXML
     private void handleProfile() {
-        showAlert("Hồ sơ", "Tính năng hồ sơ đang phát triển.");
+        try { HelloApplication.showProfileView(); }
+        catch (Exception e) { e.printStackTrace(); }
     }
 
     @FXML
