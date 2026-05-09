@@ -20,29 +20,30 @@ import java.util.UUID;
 public class MainController {
 
     // ── Header ────────────────────────────────────────────────
-    @FXML private Label  userNameLabel;
-    @FXML private Label  userRoleLabel;
-    @FXML private Label  walletLabel;
+    @FXML private Label     userNameLabel;
+    @FXML private Label     userRoleLabel;
+    @FXML private Label     walletLabel;
     @FXML private TextField searchField;
 
     // ── Auction Card ──────────────────────────────────────────
-    @FXML private Label  productTitleLabel;
-    @FXML private Label  productDescLabel;
-    @FXML private Label  startPriceLabel;
-    @FXML private Label  currentPriceLabel;
-    @FXML private Label  minStepLabel;
-    @FXML private Label  endTimeLabel;
-    @FXML private Label  statusLabel;
+    @FXML private Label productTitleLabel;
+    @FXML private Label productDescLabel;
+    @FXML private Label startPriceLabel;
+    @FXML private Label currentPriceLabel;
+    @FXML private Label minStepLabel;
+    @FXML private Label endTimeLabel;
+    @FXML private Label statusLabel;
 
     // ── Countdown ─────────────────────────────────────────────
-    @FXML private Label  hoursLabel;
-    @FXML private Label  minsLabel;
-    @FXML private Label  secsLabel;
+    @FXML private Label hoursLabel;
+    @FXML private Label minsLabel;
+    @FXML private Label secsLabel;
 
     // ── Bid History ───────────────────────────────────────────
-    @FXML private VBox   bidHistoryBox;
+    @FXML private VBox bidHistoryBox;
 
     // ── Chat ──────────────────────────────────────────────────
+    @FXML private VBox      chatPanel;       // ✅ panel nổi
     @FXML private VBox      chatMessagesBox;
     @FXML private TextField chatInput;
     @FXML private ScrollPane chatScrollPane;
@@ -56,39 +57,50 @@ public class MainController {
         User user = AppContext.getCurrentUser();
         session   = AppContext.getActiveSession();
 
-        // Header
         userNameLabel.setText(user.getUsername());
         userRoleLabel.setText(user.getRole());
-        walletLabel.setText("0 ₫");   // wallet chưa có trong User cũ
+        walletLabel.setText("0 ₫");
 
-        // Auction info
         loadAuctionInfo();
-
-        // Bid history
         refreshBidHistory();
-
-        // Countdown
         startCountdown();
 
-        // Chat mẫu
+        // Chat mẫu – chỉ load sẵn, không hiển thị cho đến khi bấm nút
         addChatMessage("SellerLong", "Sản phẩm còn bảo hành chính hãng.", true);
         addChatMessage("bidder07",   "Bước giá tiếp theo là bao nhiêu?", false);
         addChatMessage("SellerLong", "Bước giá tối thiểu là 500,000 VNĐ.", true);
     }
 
+    // ── Toggle Chat ───────────────────────────────────────────
+    @FXML
+    private void handleToggleChat() {
+        boolean nowVisible = !chatPanel.isVisible();
+        chatPanel.setVisible(nowVisible);
+        chatPanel.setManaged(nowVisible);
+
+        // Cuộn xuống cuối khi mở
+        if (nowVisible) {
+            Platform.runLater(() -> chatScrollPane.setVvalue(1.0));
+        }
+    }
+
+    // ── Auction Info ──────────────────────────────────────────
     private void loadAuctionInfo() {
         productTitleLabel.setText(session.getItemName());
         productDescLabel.setText("Laptop cao cấp – Mới 100%, còn nguyên seal. Bảo hành 12 tháng.");
         startPriceLabel.setText(formatVND(session.getStartingPrice()));
         currentPriceLabel.setText(formatVND(session.getCurrentPrice()));
         minStepLabel.setText(formatVND(session.getMinBidStep()));
-        endTimeLabel.setText(session.getEndTime().format(DateTimeFormatter.ofPattern("HH:mm:ss dd/MM")));
+        endTimeLabel.setText(session.getEndTime()
+                .format(DateTimeFormatter.ofPattern("HH:mm:ss dd/MM")));
         statusLabel.setText("● " + session.getStatus().name());
         statusLabel.getStyleClass().setAll("status-badge", "status-running");
     }
 
+    // ── Countdown ─────────────────────────────────────────────
     private void startCountdown() {
-        countdownTimer = new Timeline(new KeyFrame(Duration.seconds(1), e -> updateCountdown()));
+        countdownTimer = new Timeline(
+                new KeyFrame(Duration.seconds(1), e -> updateCountdown()));
         countdownTimer.setCycleCount(Timeline.INDEFINITE);
         countdownTimer.play();
     }
@@ -97,19 +109,19 @@ public class MainController {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime end = session.getEndTime();
         if (now.isAfter(end)) {
-            hoursLabel.setText("00"); minsLabel.setText("00"); secsLabel.setText("00");
+            hoursLabel.setText("00");
+            minsLabel.setText("00");
+            secsLabel.setText("00");
             countdownTimer.stop();
             return;
         }
-        long totalSecs = java.time.Duration.between(now, end).getSeconds();
-        long h = totalSecs / 3600;
-        long m = (totalSecs % 3600) / 60;
-        long s = totalSecs % 60;
-        hoursLabel.setText(String.format("%02d", h));
-        minsLabel.setText(String.format("%02d", m));
-        secsLabel.setText(String.format("%02d", s));
+        long total = java.time.Duration.between(now, end).getSeconds();
+        hoursLabel.setText(String.format("%02d", total / 3600));
+        minsLabel.setText(String.format("%02d",  (total % 3600) / 60));
+        secsLabel.setText(String.format("%02d",  total % 60));
     }
 
+    // ── Place Bid ─────────────────────────────────────────────
     @FXML
     private void handlePlaceBid() {
         User user = AppContext.getCurrentUser();
@@ -119,13 +131,13 @@ public class MainController {
             session.placeBid(bid);
             currentPriceLabel.setText(formatVND(session.getCurrentPrice()));
             refreshBidHistory();
-            addChatMessage("System", user.getUsername() + " đã đặt giá " + formatVND(newPrice), false);
+            addChatMessage("System",
+                    user.getUsername() + " đã đặt giá " + formatVND(newPrice), false);
 
-            // Gửi lệnh BID lên server
             ServerConnection conn = ServerConnection.getInstance();
-            if (conn.isConnected()) {
+            if (conn.isConnected())
                 conn.send("BID:" + user.getUsername() + ":" + newPrice);
-            }
+
         } catch (InvalidBidException e) {
             showAlert("Bid không hợp lệ", e.getMessage());
         } catch (AuctionClosedException e) {
@@ -133,6 +145,7 @@ public class MainController {
         }
     }
 
+    // ── Send Chat ─────────────────────────────────────────────
     @FXML
     private void handleSendChat() {
         String msg = chatInput.getText().trim();
@@ -141,13 +154,12 @@ public class MainController {
         addChatMessage(user.getUsername(), msg, "SELLER".equals(user.getRole()));
         chatInput.clear();
 
-        // Gửi lệnh CHAT lên server
         ServerConnection conn = ServerConnection.getInstance();
-        if (conn.isConnected()) {
+        if (conn.isConnected())
             conn.send("CHAT:" + user.getUsername() + ":" + msg);
-        }
     }
 
+    // ── Logout ────────────────────────────────────────────────
     @FXML
     private void handleLogout() {
         if (countdownTimer != null) countdownTimer.stop();
@@ -156,6 +168,7 @@ public class MainController {
         catch (Exception e) { e.printStackTrace(); }
     }
 
+    // ── Helpers ───────────────────────────────────────────────
     private void refreshBidHistory() {
         bidHistoryBox.getChildren().clear();
         var history = session.getBidHistory();
@@ -165,7 +178,7 @@ public class MainController {
             row.getStyleClass().add("bid-row");
             if (i == history.size() - 1) row.getStyleClass().add("bid-row-top");
 
-            Label name   = new Label((i == history.size()-1 ? "👑 " : "") + b.getBidderId());
+            Label name   = new Label((i == history.size() - 1 ? "👑 " : "") + b.getBidderId());
             Label amount = new Label(formatVND(b.getAmount()));
             Label time   = new Label(b.getTimestamp().format(TIME_FMT));
             amount.getStyleClass().add("bid-amount");
@@ -186,8 +199,6 @@ public class MainController {
         msgLabel.getStyleClass().add("chat-message");
         bubble.getChildren().addAll(nameLabel, msgLabel);
         chatMessagesBox.getChildren().add(bubble);
-
-        // Auto scroll xuống
         Platform.runLater(() -> chatScrollPane.setVvalue(1.0));
     }
 
