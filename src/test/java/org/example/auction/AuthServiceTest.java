@@ -2,6 +2,8 @@ package org.example.auction;
 
 import org.example.service.AuthService;
 import org.example.user.User;
+import org.example.user.Admin;
+import org.example.user.Bidder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -19,16 +21,15 @@ public class AuthServiceTest {
     // ── Test đăng nhập thành công ────────────────────────
     @Test
     void testLogin_Success() {
-        authService.register(new User("admin", "admin123", "ADMIN"));
+        authService.register(new Admin("1", "admin", "admin123"));
         User result = authService.login("admin", "admin123");
         assertNotNull(result);
         System.out.println("✔ Test đăng nhập thành công: " + result.getUsername());
     }
 
-    // ── Test đăng nhập sai mật khẩu ─────────────────────
     @Test
     void testLogin_WrongPassword() {
-        authService.register(new User("admin", "admin123", "ADMIN"));
+        authService.register(new Admin("1", "admin", "admin123"));
         User result = authService.login("admin", "wrongpass");
         assertNull(result);
         System.out.println("✔ Test sai mật khẩu: trả về null");
@@ -61,21 +62,19 @@ public class AuthServiceTest {
     // ── Test đăng ký thành công ──────────────────────────
     @Test
     void testRegister_Success() {
-        authService.register(new User("newuser", "pass123", "USER"));
+        authService.register(new Bidder("1", "newuser", "pass123"));
         assertTrue(authService.isRegistered("newuser"));
         System.out.println("✔ Test đăng ký thành công");
     }
 
-    // ── Test đăng ký tài khoản đã tồn tại ───────────────
     @Test
     void testRegister_UserAlreadyExists() {
-        authService.register(new User("newuser", "pass123", "USER"));
+        authService.register(new Bidder("1", "newuser", "pass123"));
         assertThrows(IllegalStateException.class,
-                () -> authService.register(new User("newuser", "pass456", "USER")));
+                () -> authService.register(new Bidder("2", "newuser", "pass456")));
         System.out.println("✔ Test tài khoản đã tồn tại: ném IllegalStateException");
     }
 
-    // ── Test đăng ký user null ────────────────────────────
     @Test
     void testRegister_NullUser() {
         assertThrows(IllegalArgumentException.class,
@@ -83,10 +82,9 @@ public class AuthServiceTest {
         System.out.println("✔ Test register null: ném IllegalArgumentException");
     }
 
-    // ── Test kiểm tra username đã đăng ký ────────────────
     @Test
     void testIsRegistered_True() {
-        authService.register(new User("admin", "admin123", "ADMIN"));
+        authService.register(new Admin("1", "admin", "admin123"));
         assertTrue(authService.isRegistered("admin"));
         System.out.println("✔ Test isRegistered = true");
     }
@@ -97,16 +95,14 @@ public class AuthServiceTest {
         System.out.println("✔ Test isRegistered = false");
     }
 
-    // ── Test xóa tài khoản thành công ────────────────────
     @Test
     void testUnregister_Success() {
-        authService.register(new User("tempuser", "pass123", "USER"));
+        authService.register(new Bidder("1", "tempuser", "pass123"));
         authService.unregister("tempuser");
         assertFalse(authService.isRegistered("tempuser"));
         System.out.println("✔ Test xóa tài khoản thành công");
     }
 
-    // ── Test xóa tài khoản không tồn tại ─────────────────
     @Test
     void testUnregister_NotFound() {
         assertThrows(IllegalArgumentException.class,
@@ -114,11 +110,10 @@ public class AuthServiceTest {
         System.out.println("✔ Test xóa tài khoản không tồn tại: ném IllegalArgumentException");
     }
 
-    // ── Test lấy danh sách tất cả users ──────────────────
     @Test
     void testGetAllUsers() {
-        authService.register(new User("user1", "pass1", "USER"));
-        authService.register(new User("user2", "pass2", "USER"));
+        authService.register(new Bidder("1", "user1", "pass123"));
+        authService.register(new Bidder("2", "user2", "pass456"));
         assertTrue(authService.getAllUsers().size() >= 2);
         System.out.println("✔ Test getAllUsers: " + authService.getAllUsers().size() + " users");
     }
