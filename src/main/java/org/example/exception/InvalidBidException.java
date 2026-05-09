@@ -1,42 +1,58 @@
 package org.example.exception;
 
 /**
- * Ném ra khi giá đặt không hợp lệ (thấp hơn mức tối thiểu).
+ * Ném ra khi giá đặt không hợp lệ:
+ * - Thấp hơn mức tối thiểu
+ * - Giá trị âm hoặc bằng 0
  */
 public class InvalidBidException extends Exception {
 
-    private final double attemptedAmount;   // test dùng getAttemptedAmount()
-    private final double minimumRequired;   // test dùng getMinimumRequired()
+    private double attemptedAmount;
+    private double minimumRequired;
+
+    // ===== Constructor cơ bản =====
 
     public InvalidBidException(String message) {
         super(message);
-        this.attemptedAmount = 0;
-        this.minimumRequired = 0;
     }
 
-    public InvalidBidException(String message, double attemptedAmount, double minimumRequired) {
+    // ===== Constructor đầy đủ =====
+
+    public InvalidBidException(
+            String message,
+            double attemptedAmount,
+            double minimumRequired
+    ) {
         super(message);
+
         this.attemptedAmount = attemptedAmount;
         this.minimumRequired = minimumRequired;
     }
 
+    // ===== Constructor có cause =====
+
     public InvalidBidException(String message, Throwable cause) {
         super(message, cause);
-        this.attemptedAmount = 0;
-        this.minimumRequired = 0;
     }
 
-    public double getAttemptedAmount()  { return attemptedAmount; }
-    public double getMinimumRequired()  { return minimumRequired; }
+    // ===== Getter =====
 
-    // Giữ tên cũ để không break code khác
-    public double getAttemptedBid()     { return attemptedAmount; }
-    public double getCurrentHighestBid(){ return minimumRequired; }
+    public double getAttemptedAmount() {
+        return attemptedAmount;
+    }
+
+    public double getMinimumRequired() {
+        return minimumRequired;
+    }
+
+    // ===== toString =====
 
     @Override
     public String toString() {
-        return "InvalidBidException{attempted=" + attemptedAmount
-                + ", minimum=" + minimumRequired
-                + ", message='" + getMessage() + "'}";
+        return "InvalidBidException{" +
+                "attemptedAmount=" + attemptedAmount +
+                ", minimumRequired=" + minimumRequired +
+                ", message='" + getMessage() + '\'' +
+                '}';
     }
 }
