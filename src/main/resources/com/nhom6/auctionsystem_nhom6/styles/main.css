@@ -396,6 +396,68 @@
 
 .btn-close-chat:hover { -fx-background-color: #334155; }
 
+/* ── Profile Menu Button ─────────────────────────────────── */
+.profile-menu-btn {
+    -fx-background-color: transparent;
+    -fx-border-color: #334155;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 4 10 4 10;
+    -fx-cursor: hand;
+}
+
+.profile-menu-btn:hover {
+    -fx-background-color: #334155;
+}
+
+.profile-menu-btn .arrow-button {
+    -fx-background-color: transparent;
+}
+
+.profile-menu-btn .arrow {
+    -fx-background-color: #94a3b8;
+}
+
+.profile-avatar {
+    -fx-background-color: #2563eb;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+    -fx-min-width: 34px;
+    -fx-min-height: 34px;
+    -fx-max-width: 34px;
+    -fx-max-height: 34px;
+    -fx-background-radius: 50%;
+    -fx-alignment: CENTER;
+}
+
+.context-menu {
+    -fx-background-color: #1e293b;
+    -fx-border-color: #334155;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 4 0 4 0;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 12, 0, 0, 4);
+}
+
+.menu-item {
+    -fx-background-color: transparent;
+    -fx-padding: 8 16 8 16;
+}
+
+.menu-item .label {
+    -fx-text-fill: #e2e8f0;
+    -fx-font-size: 13px;
+}
+
+.menu-item:hover {
+    -fx-background-color: #334155;
+}
+
+.menu-item:hover .label {
+    -fx-text-fill: #f1f5f9;
+}
+
 /* ── FAB Chat Button ─────────────────────────────────────── */
 .btn-chat-fab {
     -fx-background-color: #2563eb;
