@@ -8,14 +8,15 @@
             fx:controller="com.nhom6.auctionsystem_nhom6.MainController"
             styleClass="main-root">
 
-    <!-- ================= SIDEBAR ================= -->
+    <!-- ================= LEFT SIDEBAR ================= -->
     <left>
-        <VBox styleClass="sidebar" spacing="0">
+
+        <VBox spacing="0" styleClass="sidebar">
 
             <!-- Logo -->
-            <HBox styleClass="sidebar-logo"
-                   spacing="10"
-                   alignment="CENTER_LEFT">
+            <HBox spacing="10"
+                   alignment="CENTER_LEFT"
+                   styleClass="sidebar-logo">
 
                 <padding>
                     <Insets top="20" right="16" bottom="20" left="16"/>
@@ -30,10 +31,10 @@
             </HBox>
 
             <!-- Navigation -->
-            <VBox styleClass="sidebar-nav" spacing="2">
+            <VBox spacing="4">
 
                 <padding>
-                    <Insets top="8" right="8" bottom="8" left="8"/>
+                    <Insets top="10" right="8" bottom="10" left="8"/>
                 </padding>
 
                 <Button text="⊞ Tổng quan"
@@ -59,34 +60,19 @@
                 <Button text="💳 Ví &amp; Giao dịch"
                         maxWidth="Infinity"
                         styleClass="nav-btn"/>
-
-                <Button text="★ Đánh giá"
-                        maxWidth="Infinity"
-                        styleClass="nav-btn"/>
-
-                <Button text="? Trợ giúp"
-                        maxWidth="Infinity"
-                        styleClass="nav-btn"/>
             </VBox>
 
             <!-- Categories -->
-            <VBox styleClass="sidebar-cats" spacing="2">
+            <VBox spacing="4">
 
                 <padding>
                     <Insets top="8" right="8" bottom="8" left="16"/>
                 </padding>
 
-                <Label text="DANH MỤC" styleClass="cat-title"/>
+                <Label text="DANH MỤC"
+                       styleClass="cat-title"/>
 
                 <Button text="🖥️ Điện tử"
-                        maxWidth="Infinity"
-                        styleClass="cat-btn"/>
-
-                <Button text="📷 Máy ảnh"
-                        maxWidth="Infinity"
-                        styleClass="cat-btn"/>
-
-                <Button text="💻 Laptop"
                         maxWidth="Infinity"
                         styleClass="cat-btn"/>
 
@@ -94,11 +80,11 @@
                         maxWidth="Infinity"
                         styleClass="cat-btn"/>
 
-                <Button text="⌚ Đồng hồ"
+                <Button text="💻 Laptop"
                         maxWidth="Infinity"
                         styleClass="cat-btn"/>
 
-                <Button text="🚗 Xe cộ"
+                <Button text="⌚ Đồng hồ"
                         maxWidth="Infinity"
                         styleClass="cat-btn"/>
             </VBox>
@@ -106,34 +92,42 @@
             <Region VBox.vgrow="ALWAYS"/>
 
         </VBox>
+
     </left>
 
     <!-- ================= HEADER ================= -->
     <top>
-        <HBox styleClass="header"
-               spacing="12"
-               alignment="CENTER_LEFT">
+
+        <HBox spacing="12"
+               alignment="CENTER_LEFT"
+               styleClass="header">
 
             <padding>
-                <Insets top="0" right="20" bottom="0" left="20"/>
+                <Insets top="10" right="20" bottom="10" left="20"/>
             </padding>
 
+            <!-- Search -->
             <TextField fx:id="searchField"
-                       promptText="Tìm kiếm sản phẩm, người bán..."
+                       promptText="Tìm kiếm sản phẩm..."
                        HBox.hgrow="ALWAYS"
                        styleClass="search-field"/>
 
             <Region HBox.hgrow="ALWAYS"/>
 
-            <Button text="🔔" styleClass="icon-btn"/>
+            <!-- Notification -->
+            <Button text="🔔"
+                    styleClass="icon-btn"/>
 
             <Separator orientation="VERTICAL"/>
 
+            <!-- Wallet -->
             <VBox alignment="CENTER_RIGHT">
-                <Label text="Số dư (VNĐ)"
+
+                <Label text="Số dư"
                        styleClass="wallet-label"/>
 
                 <Label fx:id="walletLabel"
+                       text="0 VNĐ"
                        styleClass="wallet-amount"/>
             </VBox>
 
@@ -144,24 +138,30 @@
                         styleClass="profile-menu-btn">
 
                 <graphic>
-                    <HBox spacing="8" alignment="CENTER">
+
+                    <HBox spacing="8"
+                           alignment="CENTER">
 
                         <Label fx:id="userAvatarLabel"
+                               text="A"
                                styleClass="profile-avatar"/>
 
                         <VBox alignment="CENTER_LEFT">
 
                             <Label fx:id="userNameLabel"
+                                   text="Admin"
                                    styleClass="header-username"/>
 
                             <Label fx:id="userRoleLabel"
+                                   text="Administrator"
                                    styleClass="header-role"/>
-
                         </VBox>
                     </HBox>
+
                 </graphic>
 
                 <items>
+
                     <MenuItem text="👤 Hồ sơ"
                               onAction="#handleProfile"/>
 
@@ -175,9 +175,13 @@
 
                     <MenuItem text="🚪 Đăng xuất"
                               onAction="#handleLogout"/>
+
                 </items>
+
             </MenuButton>
+
         </HBox>
+
     </top>
 
     <!-- ================= CENTER ================= -->
@@ -185,88 +189,147 @@
 
         <StackPane>
 
-            <HBox spacing="16"
-                  style="-fx-background-color: #0f172a;">
+            <VBox spacing="16"
+                   style="-fx-background-color: #0f172a;">
 
                 <padding>
                     <Insets top="16" right="16" bottom="16" left="16"/>
                 </padding>
 
-                <VBox spacing="16"
-                       HBox.hgrow="ALWAYS">
+                <!-- Auction Card -->
+                <HBox spacing="24"
+                       styleClass="auction-card">
 
-                    <!-- Auction Card -->
-                    <HBox styleClass="auction-card"
-                           spacing="24">
+                    <padding>
+                        <Insets top="24" right="24" bottom="24" left="24"/>
+                    </padding>
 
-                        <padding>
-                            <Insets top="24" right="24" bottom="24" left="24"/>
-                        </padding>
+                    <!-- Product Image -->
+                    <VBox alignment="CENTER"
+                           minWidth="220"
+                           styleClass="product-image-box">
 
-                        <VBox styleClass="product-image-box"
-                               alignment="CENTER"
-                               minWidth="220">
+                        <Label text="⬡"
+                               styleClass="product-image-icon"/>
 
-                            <Label text="⬡"
-                                   styleClass="product-image-icon"/>
+                        <Label fx:id="statusLabel"
+                               text="RUNNING"
+                               styleClass="status-badge"/>
+                    </VBox>
 
-                            <Label fx:id="statusLabel"
-                                   styleClass="status-badge"/>
+                    <!-- Product Info -->
+                    <VBox spacing="12"
+                           HBox.hgrow="ALWAYS">
+
+                        <Label fx:id="productTitleLabel"
+                               text="Phiên đấu giá"
+                               styleClass="product-title"/>
+
+                        <Label fx:id="productDescLabel"
+                               text="Chưa có sản phẩm."
+                               wrapText="true"
+                               styleClass="product-desc"/>
+
+                        <!-- Prices -->
+                        <HBox spacing="24">
+
+                            <VBox>
+                                <Label text="Giá khởi điểm"
+                                       styleClass="price-label"/>
+
+                                <Label fx:id="startPriceLabel"
+                                       text="0 VNĐ"
+                                       styleClass="price-value"/>
+                            </VBox>
+
+                            <VBox>
+                                <Label text="Giá hiện tại"
+                                       styleClass="price-label"/>
+
+                                <Label fx:id="currentPriceLabel"
+                                       text="0 VNĐ"
+                                       styleClass="price-current-value"/>
+                            </VBox>
+
+                            <VBox>
+                                <Label text="Bước giá"
+                                       styleClass="price-label"/>
+
+                                <Label fx:id="minStepLabel"
+                                       text="0 VNĐ"
+                                       styleClass="price-value"/>
+                            </VBox>
+                        </HBox>
+
+                        <!-- Countdown -->
+                        <HBox spacing="10"
+                               alignment="CENTER_LEFT">
+
+                            <Label fx:id="hoursLabel"
+                                   text="00"
+                                   styleClass="countdown-num"/>
+
+                            <Label text=":"
+                                   styleClass="countdown-sep"/>
+
+                            <Label fx:id="minsLabel"
+                                   text="00"
+                                   styleClass="countdown-num"/>
+
+                            <Label text=":"
+                                   styleClass="countdown-sep"/>
+
+                            <Label fx:id="secsLabel"
+                                   text="00"
+                                   styleClass="countdown-num"/>
+                        </HBox>
+
+                        <!-- Bid Button -->
+                        <Button text="ĐẶT GIÁ NGAY!"
+                                onAction="#handlePlaceBid"
+                                styleClass="btn-bid"/>
+
+                    </VBox>
+
+                </HBox>
+
+                <!-- Bid History -->
+                <VBox spacing="8"
+                       styleClass="info-card">
+
+                    <padding>
+                        <Insets top="16" right="16" bottom="16" left="16"/>
+                    </padding>
+
+                    <Label text="Lịch sử bid"
+                           styleClass="card-title"/>
+
+                    <Separator/>
+
+                    <ScrollPane fitToWidth="true"
+                                prefHeight="220"
+                                styleClass="bid-scroll">
+
+                        <VBox fx:id="bidHistoryBox"
+                               spacing="6">
                         </VBox>
 
-                        <VBox spacing="12"
-                               HBox.hgrow="ALWAYS">
+                    </ScrollPane>
 
-                            <Label fx:id="productTitleLabel"
-                                   styleClass="product-title"/>
-
-                            <Label fx:id="productDescLabel"
-                                   wrapText="true"
-                                   styleClass="product-desc"/>
-
-                            <Button text="ĐẶT GIÁ NGAY!"
-                                    onAction="#handlePlaceBid"
-                                    styleClass="btn-bid"/>
-                        </VBox>
-                    </HBox>
-
-                    <!-- Bid History -->
-                    <HBox spacing="16">
-
-                        <VBox styleClass="info-card"
-                               spacing="8"
-                               HBox.hgrow="ALWAYS">
-
-                            <padding>
-                                <Insets top="16" right="16" bottom="16" left="16"/>
-                            </padding>
-
-                            <Label text="Lịch sử bid"
-                                   styleClass="card-title"/>
-
-                            <Separator/>
-
-                            <ScrollPane fitToWidth="true"
-                                        prefHeight="200"
-                                        styleClass="bid-scroll">
-
-                                <VBox fx:id="bidHistoryBox"
-                                       spacing="6"/>
-                            </ScrollPane>
-                        </VBox>
-                    </HBox>
                 </VBox>
-            </HBox>
 
-            <!-- Chat FAB -->
+            </VBox>
+
+            <!-- Floating Chat Button -->
             <Button text="💬"
-                    onAction="#handleToggleChat"
                     styleClass="btn-chat-fab"
+                    onAction="#handleToggleChat"
                     StackPane.alignment="BOTTOM_RIGHT">
 
                 <StackPane.margin>
                     <Insets bottom="24" right="24"/>
                 </StackPane.margin>
+
             </Button>
 
         </StackPane>
