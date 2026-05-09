@@ -1,402 +1,5 @@
-/* ══ AuctionSys – Main Stylesheet ══════════════════════════ */
-
-* { -fx-font-family: "Segoe UI", "Arial", sans-serif; }
-
-/* ── Root & Background ──────────────────────────────────── */
-.main-root  { -fx-background-color: #0f172a; }
-.login-root { -fx-background-color: #0f172a; }
-
-/* Fix StackPane trong center không che nền */
-.stack-pane { -fx-background-color: transparent; }
-
-/* ── Sidebar ────────────────────────────────────────────── */
-.sidebar {
-    -fx-background-color: #1e293b;
-    -fx-min-width: 220px;
-    -fx-max-width: 220px;
-    -fx-pref-width: 220px;
-    -fx-border-color: #334155;
-    -fx-border-width: 0 1 0 0;
-}
-
-.sidebar-logo { -fx-background-color: #1e293b; }
-
-.logo-icon {
-    -fx-font-size: 28px;
-    -fx-text-fill: #f59e0b;
-}
-
-.logo-name {
-    -fx-font-size: 16px;
-    -fx-font-weight: bold;
-    -fx-text-fill: #f1f5f9;
-}
-
-.logo-sub {
-    -fx-font-size: 10px;
-    -fx-text-fill: #94a3b8;
-}
-
-.nav-btn, .cat-btn {
-    -fx-background-color: transparent;
-    -fx-text-fill: #cbd5e1;
-    -fx-alignment: CENTER_LEFT;
-    -fx-padding: 8 12 8 12;
-    -fx-font-size: 13px;
-    -fx-cursor: hand;
-    -fx-background-radius: 6;
-}
-
-.nav-btn:hover, .cat-btn:hover {
-    -fx-background-color: #334155;
-    -fx-text-fill: #f1f5f9;
-}
-
-.nav-active {
-    -fx-background-color: #334155 !important;
-    -fx-text-fill: #f1f5f9 !important;
-}
-
-.cat-title {
-    -fx-text-fill: #64748b;
-    -fx-font-size: 10px;
-    -fx-font-weight: bold;
-    -fx-padding: 8 0 4 0;
-}
-
-/* ── Header ─────────────────────────────────────────────── */
-.header {
-    -fx-background-color: #1e293b;
-    -fx-border-color: #334155;
-    -fx-border-width: 0 0 1 0;
-    -fx-min-height: 56px;
-    -fx-pref-height: 56px;
-}
-
-.header-username {
-    -fx-text-fill: #f1f5f9;
-    -fx-font-weight: bold;
-    -fx-font-size: 13px;
-}
-
-.header-role {
-    -fx-text-fill: #94a3b8;
-    -fx-font-size: 11px;
-}
-
-.wallet-label {
-    -fx-text-fill: #94a3b8;
-    -fx-font-size: 10px;
-}
-
-.wallet-amount {
-    -fx-text-fill: #f1f5f9;
-    -fx-font-weight: bold;
-    -fx-font-size: 13px;
-}
-
-.search-field {
-    -fx-background-color: #0f172a;
-    -fx-text-fill: #f1f5f9;
-    -fx-prompt-text-fill: #475569;
-    -fx-border-color: #334155;
-    -fx-border-radius: 6;
-    -fx-background-radius: 6;
-    -fx-padding: 6 12 6 12;
-}
-
-.icon-btn {
-    -fx-background-color: transparent;
-    -fx-text-fill: #94a3b8;
-    -fx-font-size: 16px;
-    -fx-cursor: hand;
-    -fx-padding: 6 10 6 10;
-    -fx-background-radius: 6;
-}
-
-.icon-btn:hover { -fx-background-color: #334155; }
-
-.btn-logout {
-    -fx-background-color: #334155;
-    -fx-text-fill: #f1f5f9;
-    -fx-background-radius: 6;
-    -fx-cursor: hand;
-    -fx-padding: 6 14 6 14;
-}
-
-.btn-logout:hover { -fx-background-color: #ef4444; }
-
-/* ── Auction Card ────────────────────────────────────────── */
-.auction-card {
-    -fx-background-color: #1e293b;
-    -fx-background-radius: 12;
-    -fx-border-color: #334155;
-    -fx-border-radius: 12;
-    -fx-border-width: 1;
-}
-
-.product-image-box {
-    -fx-background-color: #0f172a;
-    -fx-background-radius: 10;
-    -fx-min-height: 160px;
-}
-
-.product-image-icon {
-    -fx-font-size: 48px;
-    -fx-text-fill: #2563eb;
-}
-
-.product-title {
-    -fx-text-fill: #f1f5f9;
-    -fx-font-size: 18px;
-    -fx-font-weight: bold;
-}
-
-.product-desc {
-    -fx-text-fill: #94a3b8;
-    -fx-font-size: 12px;
-}
-
-.status-badge {
-    -fx-background-radius: 20;
-    -fx-padding: 4 12 4 12;
-    -fx-font-size: 11px;
-    -fx-font-weight: bold;
-}
-
-.status-running {
-    -fx-background-color: #064e3b;
-    -fx-text-fill: #10b981;
-}
-
-/* ── Price Cells ─────────────────────────────────────────── */
-.price-label {
-    -fx-text-fill: #94a3b8;
-    -fx-font-size: 11px;
-}
-
-.price-value {
-    -fx-text-fill: #f1f5f9;
-    -fx-font-size: 14px;
-    -fx-font-weight: bold;
-}
-
-.price-current-value {
-    -fx-text-fill: #2563eb;
-    -fx-font-size: 16px;
-    -fx-font-weight: bold;
-}
-
-/* ── Countdown ───────────────────────────────────────────── */
-.countdown-label {
-    -fx-text-fill: #94a3b8;
-    -fx-font-size: 10px;
-    -fx-font-weight: bold;
-}
-
-.countdown-num {
-    -fx-text-fill: #f1f5f9;
-    -fx-font-size: 28px;
-    -fx-font-weight: bold;
-}
-
-.countdown-unit {
-    -fx-text-fill: #64748b;
-    -fx-font-size: 9px;
-}
-
-.countdown-sep {
-    -fx-text-fill: #f1f5f9;
-    -fx-font-size: 24px;
-    -fx-font-weight: bold;
-    -fx-padding: 0 0 8 0;
-}
-
-/* ── Bid Button ──────────────────────────────────────────── */
-.btn-bid {
-    -fx-background-color: #2563eb;
-    -fx-text-fill: white;
-    -fx-font-weight: bold;
-    -fx-font-size: 14px;
-    -fx-padding: 12 28 12 28;
-    -fx-background-radius: 8;
-    -fx-cursor: hand;
-}
-
-.btn-bid:hover { -fx-background-color: #1d4ed8; }
-
-/* ── Info Cards ──────────────────────────────────────────── */
-.info-card {
-    -fx-background-color: #1e293b;
-    -fx-background-radius: 12;
-    -fx-border-color: #334155;
-    -fx-border-radius: 12;
-    -fx-border-width: 1;
-}
-
-.card-title {
-    -fx-text-fill: #f1f5f9;
-    -fx-font-weight: bold;
-    -fx-font-size: 14px;
-}
-
-/* ── Bid History ─────────────────────────────────────────── */
-.bid-scroll {
-    -fx-background-color: transparent;
-    -fx-background: transparent;
-    -fx-border-color: transparent;
-}
-
-.bid-row {
-    -fx-background-color: #0f172a;
-    -fx-background-radius: 6;
-    -fx-padding: 8 10 8 10;
-}
-
-.bid-row-top { -fx-background-color: #1e3a5f; }
-
-.bid-amount {
-    -fx-text-fill: #10b981;
-    -fx-font-weight: bold;
-}
-
-.bid-time { -fx-text-fill: #64748b; }
-
-.see-all-link {
-    -fx-text-fill: #2563eb;
-    -fx-border-color: transparent;
-}
-
-/* ── Seller Info ─────────────────────────────────────────── */
-.seller-avatar {
-    -fx-background-color: #2563eb;
-    -fx-text-fill: white;
-    -fx-font-weight: bold;
-    -fx-min-width: 42px;
-    -fx-min-height: 42px;
-    -fx-max-width: 42px;
-    -fx-max-height: 42px;
-    -fx-background-radius: 50%;
-    -fx-alignment: CENTER;
-}
-
-.seller-name {
-    -fx-text-fill: #f1f5f9;
-    -fx-font-weight: bold;
-    -fx-font-size: 14px;
-}
-
-.seller-role  { -fx-text-fill: #94a3b8; -fx-font-size: 11px; }
-.seller-meta  { -fx-text-fill: #94a3b8; -fx-font-size: 12px; }
-
-.seller-verified {
-    -fx-text-fill: #10b981;
-    -fx-font-size: 12px;
-}
-
-.stat-num {
-    -fx-text-fill: #f1f5f9;
-    -fx-font-weight: bold;
-    -fx-font-size: 16px;
-}
-
-.stat-label {
-    -fx-text-fill: #64748b;
-    -fx-font-size: 10px;
-}
-
-/* ── Chat Panel ──────────────────────────────────────────── */
-.chat-panel {
-    -fx-background-color: #1e293b;
-    -fx-background-radius: 12;
-    -fx-border-color: #334155;
-    -fx-border-radius: 12;
-    -fx-border-width: 1;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 16, 0, 0, 4);
-}
-
-.chat-header {
-    -fx-background-color: #0f172a;
-    -fx-background-radius: 12 12 0 0;
-}
-
-.chat-title {
-    -fx-text-fill: #f1f5f9;
-    -fx-font-weight: bold;
-    -fx-font-size: 13px;
-}
-
-.chat-online {
-    -fx-text-fill: #10b981;
-    -fx-font-size: 11px;
-}
-
-.chat-scroll {
-    -fx-background-color: transparent;
-    -fx-background: #1e293b;
-    -fx-border-color: transparent;
-}
-
-.chat-bubble-seller {
-    -fx-background-color: #1e3a5f;
-    -fx-background-radius: 8;
-    -fx-padding: 8 10 8 10;
-    -fx-max-width: 260px;
-}
-
-.chat-bubble-buyer {
-    -fx-background-color: #1e293b;
-    -fx-background-radius: 8;
-    -fx-padding: 8 10 8 10;
-    -fx-border-color: #334155;
-    -fx-border-radius: 8;
-    -fx-border-width: 1;
-    -fx-max-width: 260px;
-}
-
-.chat-sender {
-    -fx-text-fill: #2563eb;
-    -fx-font-weight: bold;
-    -fx-font-size: 11px;
-}
-
-.chat-message {
-    -fx-text-fill: #e2e8f0;
-    -fx-font-size: 12px;
-}
-
-.chat-input-row { -fx-background-color: #0f172a; }
-
-.chat-input {
-    -fx-background-color: #1e293b;
-    -fx-text-fill: #f1f5f9;
-    -fx-prompt-text-fill: #475569;
-    -fx-border-color: #334155;
-    -fx-border-radius: 6;
-    -fx-background-radius: 6;
-    -fx-padding: 6 10 6 10;
-}
-
-.btn-send {
-    -fx-background-color: #2563eb;
-    -fx-text-fill: white;
-    -fx-background-radius: 6;
-    -fx-cursor: hand;
-    -fx-padding: 6 12 6 12;
-}
-
-.btn-close-chat {
-    -fx-background-color: transparent;
-    -fx-text-fill: #94a3b8;
-    -fx-cursor: hand;
-    -fx-font-size: 13px;
-    -fx-padding: 2 6 2 6;
-    -fx-background-radius: 4;
-}
-
-.btn-close-chat:hover { -fx-background-color: #334155; }
-
 /* ── Profile Menu Button ─────────────────────────────────── */
+
 .profile-menu-btn {
     -fx-background-color: transparent;
     -fx-border-color: #334155;
@@ -418,169 +21,124 @@
     -fx-background-color: #94a3b8;
 }
 
+/* ── Avatar nhỏ ở header ─────────────────────────────────── */
+
 .profile-avatar {
     -fx-background-color: #2563eb;
     -fx-text-fill: white;
     -fx-font-weight: bold;
     -fx-font-size: 13px;
+
     -fx-min-width: 34px;
     -fx-min-height: 34px;
+
     -fx-max-width: 34px;
     -fx-max-height: 34px;
-    -fx-background-radius: 50%;
+
+    -fx-background-radius: 999;
     -fx-alignment: CENTER;
 }
+
+/* ── Avatar lớn trong profile page ───────────────────────── */
+
+.profile-avatar-large {
+    -fx-background-color: #2563eb;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 22px;
+
+    -fx-min-width: 64px;
+    -fx-min-height: 64px;
+
+    -fx-max-width: 64px;
+    -fx-max-height: 64px;
+
+    -fx-background-radius: 999;
+    -fx-alignment: CENTER;
+}
+
+/* ── Ảnh avatar thật ─────────────────────────────────────── */
+
+.profile-avatar-image {
+    -fx-background-radius: 999;
+    -fx-border-radius: 999;
+}
+
+/* ── Nút đổi avatar ──────────────────────────────────────── */
+
+.btn-change-avatar {
+    -fx-background-color: #334155;
+    -fx-text-fill: #f1f5f9;
+
+    -fx-background-radius: 6;
+
+    -fx-cursor: hand;
+
+    -fx-padding: 6 14 6 14;
+
+    -fx-font-size: 12px;
+}
+
+.btn-change-avatar:hover {
+    -fx-background-color: #475569;
+}
+
+/* ── Overlay khi hover avatar ────────────────────────────── */
+
+.avatar-overlay {
+    -fx-background-color: rgba(0,0,0,0.5);
+
+    -fx-background-radius: 999;
+
+    -fx-cursor: hand;
+
+    -fx-min-width: 80px;
+    -fx-min-height: 80px;
+
+    -fx-alignment: CENTER;
+}
+
+.avatar-overlay-icon {
+    -fx-text-fill: white;
+    -fx-font-size: 18px;
+}
+
+.avatar-overlay-text {
+    -fx-text-fill: white;
+    -fx-font-size: 10px;
+}
+
+/* ── ScrollPane cho profile ──────────────────────────────── */
+
+.profile-scroll {
+    -fx-background-color: #0f172a;
+    -fx-background: #0f172a;
+    -fx-border-color: transparent;
+}
+
+/* Xóa nền trắng viewport của ScrollPane */
+
+.profile-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+/* ── Context Menu ────────────────────────────────────────── */
 
 .context-menu {
     -fx-background-color: #1e293b;
     -fx-border-color: #334155;
+
     -fx-border-radius: 8;
     -fx-background-radius: 8;
+
     -fx-padding: 4 0 4 0;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 12, 0, 0, 4);
-}
 
-.menu-item {
-    -fx-background-color: transparent;
-    -fx-padding: 8 16 8 16;
-}
-
-.menu-item .label {
-    -fx-text-fill: #e2e8f0;
-    -fx-font-size: 13px;
-}
-
-.menu-item:hover {
-    -fx-background-color: #334155;
-}
-
-.menu-item:hover .label {
-    -fx-text-fill: #f1f5f9;
-}
-
-/* ── FAB Chat Button ─────────────────────────────────────── */
-.btn-chat-fab {
-    -fx-background-color: #2563eb;
-    -fx-text-fill: white;
-    -fx-font-size: 20px;
-    -fx-min-width: 52px;
-    -fx-min-height: 52px;
-    -fx-max-width: 52px;
-    -fx-max-height: 52px;
-    -fx-background-radius: 50%;
-    -fx-cursor: hand;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 4);
-}
-
-.btn-chat-fab:hover { -fx-background-color: #1d4ed8; }
-
-/* ── Login Screen ────────────────────────────────────────── */
-.login-card {
-    -fx-background-color: #1e293b;
-    -fx-background-radius: 16;
-    -fx-border-color: #334155;
-    -fx-border-radius: 16;
-    -fx-border-width: 1;
-}
-
-/* ✅ Tất cả Label bên trong login-card đều sáng */
-.login-card .label {
-    -fx-text-fill: #f1f5f9;
-    -fx-font-size: 13px;
-}
-
-.login-logo {
-    -fx-text-fill: #f1f5f9;
-    -fx-font-size: 22px;
-    -fx-font-weight: bold;
-}
-
-.login-title {
-    -fx-text-fill: #f1f5f9;
-    -fx-font-size: 20px;
-    -fx-font-weight: bold;
-    -fx-padding: 0 0 8 0;
-}
-
-.login-subtitle {
-    -fx-text-fill: #cbd5e1;
-    -fx-font-size: 13px;
-}
-
-.login-input {
-    -fx-background-color: #0f172a;
-    -fx-text-fill: #f1f5f9;
-    -fx-prompt-text-fill: #475569;
-    -fx-border-color: #334155;
-    -fx-border-radius: 8;
-    -fx-background-radius: 8;
-    -fx-padding: 8 12 8 12;
-    -fx-font-size: 13px;
-}
-
-.login-input:focused {
-    -fx-border-color: #2563eb;
-}
-
-.login-error {
-    -fx-text-fill: #ef4444;
-    -fx-font-size: 12px;
-}
-
-.login-hint {
-    -fx-text-fill: #64748b;
-    -fx-font-size: 11px;
-    -fx-padding: 4 0 0 0;
-}
-
-.form-label {
-    -fx-text-fill: #f1f5f9;
-    -fx-font-size: 13px;
-    -fx-font-weight: bold;
-}
-
-.form-field {
-    -fx-background-color: #0f172a;
-    -fx-text-fill: #f1f5f9;
-    -fx-prompt-text-fill: #475569;
-    -fx-border-color: #334155;
-    -fx-border-radius: 8;
-    -fx-background-radius: 8;
-    -fx-padding: 8 12 8 12;
-    -fx-font-size: 13px;
-}
-
-.form-field:focused { -fx-border-color: #2563eb; }
-
-.error-label   { -fx-text-fill: #ef4444; -fx-font-size: 12px; }
-.success-label { -fx-text-fill: #10b981; -fx-font-size: 12px; }
-
-/* ── Buttons ─────────────────────────────────────────────── */
-.btn-primary {
-    -fx-background-color: #2563eb;
-    -fx-text-fill: white;
-    -fx-font-weight: bold;
-    -fx-font-size: 14px;
-    -fx-padding: 10 0 10 0;
-    -fx-background-radius: 8;
-    -fx-cursor: hand;
-}
-
-.btn-primary:hover { -fx-background-color: #1d4ed8; }
-
-.btn-secondary {
-    -fx-background-color: #334155;
-    -fx-text-fill: #f1f5f9;
-    -fx-font-size: 14px;
-    -fx-padding: 10 0 10 0;
-    -fx-background-radius: 8;
-    -fx-cursor: hand;
-}
-
-.btn-secondary:hover { -fx-background-color: #475569; }
-
-/* ── Separator ───────────────────────────────────────────── */
-.separator *.line {
-    -fx-background-color: #334155;
-    -fx-border-color: #334155;
+    -fx-effect: dropshadow(
+        gaussian,
+        rgba(0,0,0,0.4),
+        12,
+        0,
+        0,
+        4
+    );
 }
