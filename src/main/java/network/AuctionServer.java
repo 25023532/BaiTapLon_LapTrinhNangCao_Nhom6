@@ -9,9 +9,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class AuctionServer {
+
     private static final int PORT = 1234;
-    private static ExecutorService threadPool = Executors.newFixedThreadPool(10);
-    private static List<ClientHandler> observers = new CopyOnWriteArrayList<>();
+    private static final ExecutorService threadPool = Executors.newFixedThreadPool(10);
+    private static final List<ClientHandler> observers = new CopyOnWriteArrayList<>();
 
     public static void main(String[] args) {
         try (ServerSocket serverSocket = new ServerSocket(PORT)) {
@@ -20,7 +21,8 @@ public class AuctionServer {
 
             while (true) {
                 Socket clientSocket = serverSocket.accept();
-                System.out.println("Có thiết bị mới kết nối: " + clientSocket.getRemoteSocketAddress());
+                System.out.println("Có thiết bị mới kết nối: "
+                        + clientSocket.getRemoteSocketAddress());
 
                 ClientHandler handler = new ClientHandler(clientSocket);
                 observers.add(handler);
@@ -36,7 +38,7 @@ public class AuctionServer {
         System.out.println("Broadcast: " + message);
         for (ClientHandler handler : observers) {
             if (handler != exclude) {
-                handler.sendMessage(message);
+                handler.sendMessage(message); // ✅ method này có trong ClientHandler bên dưới
             }
         }
     }
