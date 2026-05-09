@@ -1,248 +1,469 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
+
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.SeparatorMenuItem?>
+
+<?import javafx.scene.control.*?>
+
+<?import javafx.scene.layout.*?>
 
 <BorderPane xmlns:fx="http://javafx.com/fxml"
-            fx:controller="com.nhom6.auctionsystem_nhom6.MainController"
-            styleClass="main-root">
+         fx:controller="com.nhom6.auctionsystem_nhom6.MainController"
+         styleClass="main-root">
 
-    <!-- ══ SIDEBAR ══ -->
-    <left>
-        <VBox styleClass="sidebar" spacing="0">
-            <!-- Logo -->
-            <HBox styleClass="sidebar-logo" spacing="10" alignment="CENTER_LEFT">
-                <padding><Insets top="20" right="16" bottom="20" left="16"/></padding>
-                <Label text="⬡" styleClass="logo-icon"/>
-                <VBox>
-                    <Label text="AuctionSys" styleClass="logo-name"/>
-                    <Label text="Hệ thống đấu giá" styleClass="logo-sub"/>
-                </VBox>
-            </HBox>
+```
+<!-- ================= SIDEBAR ================= -->
+<left>
+    <VBox styleClass="sidebar" spacing="0">
 
-            <!-- Nav -->
-            <VBox styleClass="sidebar-nav" spacing="2">
-                <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
-                <Button text="⊞  Tổng quan"        maxWidth="Infinity" styleClass="nav-btn,nav-active"/>
-                <Button text="☰  Danh sách phiên"   maxWidth="Infinity" styleClass="nav-btn"/>
-                <Button text="⚡  Đấu giá trực tiếp" maxWidth="Infinity" styleClass="nav-btn"/>
-                <Button text="📦  Quản lý sản phẩm" maxWidth="Infinity" styleClass="nav-btn"/>
-                <Button text="🛒  Đơn hàng của tôi" maxWidth="Infinity" styleClass="nav-btn"/>
-                <Button text="💳  Ví &amp; Giao dịch" maxWidth="Infinity" styleClass="nav-btn"/>
-                <Button text="★  Đánh giá"          maxWidth="Infinity" styleClass="nav-btn"/>
-                <Button text="?  Trợ giúp"           maxWidth="Infinity" styleClass="nav-btn"/>
+        <!-- Logo -->
+        <HBox styleClass="sidebar-logo"
+               spacing="10"
+               alignment="CENTER_LEFT">
+
+            <padding>
+                <Insets top="20" right="16" bottom="20" left="16"/>
+            </padding>
+
+            <Label text="⬡" styleClass="logo-icon"/>
+
+            <VBox>
+                <Label text="AuctionSys" styleClass="logo-name"/>
+                <Label text="Hệ thống đấu giá" styleClass="logo-sub"/>
             </VBox>
-
-            <!-- Categories -->
-            <VBox styleClass="sidebar-cats" spacing="2">
-                <padding><Insets top="8" right="8" bottom="8" left="16"/></padding>
-                <Label text="DANH MỤC" styleClass="cat-title"/>
-                <Button text="🖥️  Điện tử"    maxWidth="Infinity" styleClass="cat-btn"/>
-                <Button text="📷  Máy ảnh"    maxWidth="Infinity" styleClass="cat-btn"/>
-                <Button text="💻  Laptop"     maxWidth="Infinity" styleClass="cat-btn"/>
-                <Button text="📱  Điện thoại" maxWidth="Infinity" styleClass="cat-btn"/>
-                <Button text="⌚  Đồng hồ"   maxWidth="Infinity" styleClass="cat-btn"/>
-                <Button text="🚗  Xe cộ"     maxWidth="Infinity" styleClass="cat-btn"/>
-            </VBox>
-
-            <!-- ✅ Đã XÓA upgrade-box "Trở thành ProRole" -->
-            <Region VBox.vgrow="ALWAYS"/>
-        </VBox>
-    </left>
-
-    <!-- ══ HEADER ══ -->
-    <top>
-        <HBox styleClass="header" spacing="12" alignment="CENTER_LEFT">
-            <padding><Insets top="0" right="20" bottom="0" left="20"/></padding>
-            <TextField fx:id="searchField" promptText="Tìm kiếm sản phẩm, người bán..."
-                       HBox.hgrow="ALWAYS" styleClass="search-field"/>
-            <Region HBox.hgrow="ALWAYS"/>
-            <Button text="🔔" styleClass="icon-btn"/>
-
-            <Separator orientation="VERTICAL"/>
-            <VBox alignment="CENTER_RIGHT">
-                <Label text="Số dư (VNĐ)" styleClass="wallet-label"/>
-                <Label fx:id="walletLabel" styleClass="wallet-amount"/>
-            </VBox>
-            <Separator orientation="VERTICAL"/>
-
-            <!-- Profile dropdown -->
-            <MenuButton fx:id="profileMenuBtn" styleClass="profile-menu-btn">
-                <graphic>
-                    <HBox spacing="8" alignment="CENTER">
-                        <Label fx:id="userAvatarLabel" styleClass="profile-avatar"/>
-                        <VBox alignment="CENTER_LEFT">
-                            <Label fx:id="userNameLabel" styleClass="header-username"/>
-                            <Label fx:id="userRoleLabel" styleClass="header-role"/>
-                        </VBox>
-                    </HBox>
-                </graphic>
-                <items>
-                    <MenuItem text="👤  Hồ sơ"     onAction="#handleProfile"/>
-                    <MenuItem text="📋  Lịch sử"   onAction="#handleHistory"/>
-                    <MenuItem text="🛒  Đơn hàng"  onAction="#handleOrders"/>
-                    <SeparatorMenuItem/>
-                    <MenuItem text="🚪  Đăng xuất" onAction="#handleLogout"/>
-                </items>
-            </MenuButton>
         </HBox>
-    </top>
 
-    <!-- ══ CONTENT ══ -->
-    <center>
-        <!-- StackPane để chat panel nổi lên trên content -->
-        <StackPane>
+        <!-- Navigation -->
+        <VBox styleClass="sidebar-nav" spacing="2">
 
-            <!-- Main content -->
-            <HBox spacing="16" style="-fx-background-color: #0f172a;">
-                <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+            <padding>
+                <Insets top="8" right="8" bottom="8" left="8"/>
+            </padding>
 
-                <VBox spacing="16" HBox.hgrow="ALWAYS">
+            <Button text="⊞  Tổng quan"
+                    maxWidth="Infinity"
+                    styleClass="nav-btn nav-active"/>
 
-                    <!-- Auction Card -->
-                    <HBox styleClass="auction-card" spacing="24">
-                        <padding><Insets top="24" right="24" bottom="24" left="24"/></padding>
+            <Button text="☰  Danh sách phiên"
+                    maxWidth="Infinity"
+                    styleClass="nav-btn"/>
 
-                        <VBox styleClass="product-image-box" alignment="CENTER" minWidth="220">
-                            <Label text="⬡" styleClass="product-image-icon"/>
-                            <Label fx:id="statusLabel" styleClass="status-badge"/>
-                        </VBox>
+            <Button text="⚡  Đấu giá trực tiếp"
+                    maxWidth="Infinity"
+                    styleClass="nav-btn"/>
 
-                        <VBox spacing="12" HBox.hgrow="ALWAYS">
-                            <HBox alignment="CENTER_LEFT" spacing="12">
-                                <Label fx:id="productTitleLabel" styleClass="product-title"/>
-                            </HBox>
-                            <Label fx:id="productDescLabel" styleClass="product-desc" wrapText="true"/>
+            <Button text="📦  Quản lý sản phẩm"
+                    maxWidth="Infinity"
+                    styleClass="nav-btn"/>
 
-                            <HBox spacing="24">
-                                <VBox styleClass="price-cell">
-                                    <Label text="Giá khởi điểm" styleClass="price-label"/>
-                                    <Label fx:id="startPriceLabel" styleClass="price-value"/>
-                                </VBox>
-                                <VBox styleClass="price-cell price-current">
-                                    <Label text="Giá hiện tại" styleClass="price-label"/>
-                                    <Label fx:id="currentPriceLabel" styleClass="price-current-value"/>
-                                </VBox>
-                                <VBox styleClass="price-cell">
-                                    <Label text="Bước giá tối thiểu" styleClass="price-label"/>
-                                    <Label fx:id="minStepLabel" styleClass="price-value"/>
-                                </VBox>
-                                <VBox styleClass="price-cell">
-                                    <Label text="Kết thúc lúc" styleClass="price-label"/>
-                                    <Label fx:id="endTimeLabel" styleClass="price-value"/>
-                                </VBox>
-                            </HBox>
+            <Button text="🛒  Đơn hàng của tôi"
+                    maxWidth="Infinity"
+                    styleClass="nav-btn"/>
 
-                            <HBox alignment="CENTER_LEFT" spacing="24">
-                                <VBox>
-                                    <Label text="THỜI GIAN CÒN LẠI" styleClass="countdown-label"/>
-                                    <HBox spacing="4" alignment="CENTER_LEFT">
-                                        <VBox alignment="CENTER">
-                                            <Label fx:id="hoursLabel" text="02" styleClass="countdown-num"/>
-                                            <Label text="GIỜ" styleClass="countdown-unit"/>
-                                        </VBox>
-                                        <Label text=":" styleClass="countdown-sep"/>
-                                        <VBox alignment="CENTER">
-                                            <Label fx:id="minsLabel" text="15" styleClass="countdown-num"/>
-                                            <Label text="PHÚT" styleClass="countdown-unit"/>
-                                        </VBox>
-                                        <Label text=":" styleClass="countdown-sep"/>
-                                        <VBox alignment="CENTER">
-                                            <Label fx:id="secsLabel" text="45" styleClass="countdown-num"/>
-                                            <Label text="GIÂY" styleClass="countdown-unit"/>
-                                        </VBox>
-                                    </HBox>
-                                </VBox>
-                                <Button text="ĐẶT GIÁ NGAY!" onAction="#handlePlaceBid"
-                                        styleClass="btn-bid"/>
-                            </HBox>
-                        </VBox>
-                    </HBox>
+            <Button text="💳  Ví &amp; Giao dịch"
+                    maxWidth="Infinity"
+                    styleClass="nav-btn"/>
 
-                    <!-- Bid History + Seller Info -->
-                    <HBox spacing="16">
-                        <VBox styleClass="info-card" HBox.hgrow="ALWAYS" spacing="8">
-                            <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
-                            <Label text="Lịch sử bid" styleClass="card-title"/>
-                            <Separator/>
-                            <ScrollPane fitToWidth="true" prefHeight="200" styleClass="bid-scroll">
-                                <VBox fx:id="bidHistoryBox" spacing="6"/>
-                            </ScrollPane>
-                            <Hyperlink text="Xem tất cả lịch sử →" styleClass="see-all-link"/>
-                        </VBox>
+            <Button text="★  Đánh giá"
+                    maxWidth="Infinity"
+                    styleClass="nav-btn"/>
 
-                        <VBox styleClass="info-card" minWidth="260" spacing="8">
-                            <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
-                            <Label text="Thông tin người bán" styleClass="card-title"/>
-                            <Separator/>
-                            <HBox spacing="10" alignment="CENTER_LEFT">
-                                <Label text="SL" styleClass="seller-avatar"/>
-                                <VBox>
-                                    <Label text="SellerLong" styleClass="seller-name"/>
-                                    <Label text="Seller · 24 phiên" styleClass="seller-role"/>
-                                </VBox>
-                            </HBox>
-                            <Label text="📍 Hà Nội, Việt Nam"       styleClass="seller-meta"/>
-                            <Label text="⭐ 4.8/5 (124 đánh giá)"   styleClass="seller-meta"/>
-                            <Label text="✅ Đã xác minh danh tính"  styleClass="seller-verified"/>
-                            <HBox spacing="16">
-                                <VBox alignment="CENTER" HBox.hgrow="ALWAYS">
-                                    <Label text="98%"    styleClass="stat-num"/>
-                                    <Label text="Tỉ lệ thắng" styleClass="stat-label"/>
-                                </VBox>
-                                <VBox alignment="CENTER" HBox.hgrow="ALWAYS">
-                                    <Label text="156"  styleClass="stat-num"/>
-                                    <Label text="Đã bán"    styleClass="stat-label"/>
-                                </VBox>
-                                <VBox alignment="CENTER" HBox.hgrow="ALWAYS">
-                                    <Label text="06/2022" styleClass="stat-num"/>
-                                    <Label text="Tham gia"  styleClass="stat-label"/>
-                                </VBox>
-                            </HBox>
-                        </VBox>
-                    </HBox>
-                </VBox>
-            </HBox>
+            <Button text="❓  Trợ giúp"
+                    maxWidth="Infinity"
+                    styleClass="nav-btn"/>
+        </VBox>
 
-            <!-- ✅ Nút chat FAB góc dưới phải -->
-            <Button text="💬" onAction="#handleToggleChat"
-                    styleClass="btn-chat-fab"
-                    StackPane.alignment="BOTTOM_RIGHT">
-                <StackPane.margin><Insets bottom="24" right="24"/></StackPane.margin>
-            </Button>
+        <!-- Categories -->
+        <VBox styleClass="sidebar-cats" spacing="2">
 
-            <!-- ✅ Chat panel nổi – ẩn mặc định -->
-            <VBox fx:id="chatPanel" styleClass="chat-panel" spacing="0"
-                  prefWidth="340" maxWidth="340" maxHeight="480"
-                  StackPane.alignment="BOTTOM_RIGHT" visible="false" managed="false">
-                <StackPane.margin><Insets bottom="88" right="16"/></StackPane.margin>
+            <padding>
+                <Insets top="8" right="8" bottom="8" left="16"/>
+            </padding>
 
-                <HBox styleClass="chat-header" alignment="CENTER_LEFT" spacing="8">
-                    <padding><Insets top="12" right="16" bottom="12" left="16"/></padding>
-                    <Label text="💬 CHAT TRỰC TUYẾN" styleClass="chat-title"/>
-                    <Region HBox.hgrow="ALWAYS"/>
-                    <Label text="● Online 52" styleClass="chat-online"/>
-                    <!-- Nút đóng chat -->
-                    <Button text="✕" onAction="#handleToggleChat" styleClass="btn-close-chat"/>
+            <Label text="DANH MỤC" styleClass="cat-title"/>
+
+            <Button text="🖥️  Điện tử"
+                    maxWidth="Infinity"
+                    styleClass="cat-btn"/>
+
+            <Button text="📷  Máy ảnh"
+                    maxWidth="Infinity"
+                    styleClass="cat-btn"/>
+
+            <Button text="💻  Laptop"
+                    maxWidth="Infinity"
+                    styleClass="cat-btn"/>
+
+            <Button text="📱  Điện thoại"
+                    maxWidth="Infinity"
+                    styleClass="cat-btn"/>
+
+            <Button text="⌚  Đồng hồ"
+                    maxWidth="Infinity"
+                    styleClass="cat-btn"/>
+
+            <Button text="🚗  Xe cộ"
+                    maxWidth="Infinity"
+                    styleClass="cat-btn"/>
+        </VBox>
+
+        <Region VBox.vgrow="ALWAYS"/>
+    </VBox>
+</left>
+
+<!-- ================= HEADER ================= -->
+<top>
+    <HBox styleClass="header"
+           spacing="12"
+           alignment="CENTER_LEFT">
+
+        <padding>
+            <Insets top="0" right="20" bottom="0" left="20"/>
+        </padding>
+
+        <TextField fx:id="searchField"
+                   promptText="Tìm kiếm sản phẩm, người bán..."
+                   HBox.hgrow="ALWAYS"
+                   styleClass="search-field"/>
+
+        <Region HBox.hgrow="ALWAYS"/>
+
+        <Button text="🔔" styleClass="icon-btn"/>
+
+        <Separator orientation="VERTICAL"/>
+
+        <VBox alignment="CENTER_RIGHT">
+            <Label text="Số dư (VNĐ)" styleClass="wallet-label"/>
+            <Label fx:id="walletLabel" styleClass="wallet-amount"/>
+        </VBox>
+
+        <Separator orientation="VERTICAL"/>
+
+        <!-- Profile Menu -->
+        <MenuButton fx:id="profileMenuBtn"
+                    styleClass="profile-menu-btn">
+
+            <graphic>
+                <HBox spacing="8" alignment="CENTER">
+
+                    <Label fx:id="userAvatarLabel"
+                           styleClass="profile-avatar"/>
+
+                    <VBox alignment="CENTER_LEFT">
+                        <Label fx:id="userNameLabel"
+                               styleClass="header-username"/>
+
+                        <Label fx:id="userRoleLabel"
+                               styleClass="header-role"/>
+                    </VBox>
+                </HBox>
+            </graphic>
+
+            <items>
+                <MenuItem text="👤  Hồ sơ"
+                          onAction="#handleProfile"/>
+
+                <MenuItem text="📋  Lịch sử"
+                          onAction="#handleHistory"/>
+
+                <MenuItem text="🛒  Đơn hàng"
+                          onAction="#handleOrders"/>
+
+                <SeparatorMenuItem/>
+
+                <MenuItem text="🚪  Đăng xuất"
+                          onAction="#handleLogout"/>
+            </items>
+        </MenuButton>
+    </HBox>
+</top>
+
+<!-- ================= MAIN CONTENT ================= -->
+<center>
+    <StackPane>
+
+        <!-- Main Layout -->
+        <HBox spacing="16"
+               style="-fx-background-color: #0f172a;">
+
+            <padding>
+                <Insets top="16" right="16" bottom="16" left="16"/>
+            </padding>
+
+            <VBox spacing="16" HBox.hgrow="ALWAYS">
+
+                <!-- Auction Card -->
+                <HBox styleClass="auction-card" spacing="24">
+
+                    <padding>
+                        <Insets top="24" right="24" bottom="24" left="24"/>
+                    </padding>
+
+                    <!-- Product Image -->
+                    <VBox styleClass="product-image-box"
+                           alignment="CENTER"
+                           minWidth="220">
+
+                        <Label text="⬡"
+                               styleClass="product-image-icon"/>
+
+                        <Label fx:id="statusLabel"
+                               styleClass="status-badge"/>
+                    </VBox>
+
+                    <!-- Product Info -->
+                    <VBox spacing="12" HBox.hgrow="ALWAYS">
+
+                        <HBox alignment="CENTER_LEFT" spacing="12">
+                            <Label fx:id="productTitleLabel"
+                                   text="Chưa có phiên đấu giá"
+                                   styleClass="product-title"/>
+                        </HBox>
+
+                        <Label fx:id="productDescLabel"
+                               text="Hiện tại chưa có dữ liệu phiên đấu giá hoạt động."
+                               wrapText="true"
+                               styleClass="product-desc"/>
+
+                        <!-- Price Info -->
+                        <HBox spacing="24">
+
+                            <VBox>
+                                <Label text="Giá khởi điểm"
+                                       styleClass="price-label"/>
+
+                                <Label fx:id="startPriceLabel"
+                                       text="--"
+                                       styleClass="price-value"/>
+                            </VBox>
+
+                            <VBox>
+                                <Label text="Giá hiện tại"
+                                       styleClass="price-label"/>
+
+                                <Label fx:id="currentPriceLabel"
+                                       text="--"
+                                       styleClass="price-current-value"/>
+                            </VBox>
+
+                            <VBox>
+                                <Label text="Bước giá tối thiểu"
+                                       styleClass="price-label"/>
+
+                                <Label fx:id="minStepLabel"
+                                       text="--"
+                                       styleClass="price-value"/>
+                            </VBox>
+
+                            <VBox>
+                                <Label text="Kết thúc lúc"
+                                       styleClass="price-label"/>
+
+                                <Label fx:id="endTimeLabel"
+                                       text="--"
+                                       styleClass="price-value"/>
+                            </VBox>
+                        </HBox>
+
+                        <!-- Countdown -->
+                        <HBox alignment="CENTER_LEFT" spacing="24">
+
+                            <VBox>
+                                <Label text="THỜI GIAN CÒN LẠI"
+                                       styleClass="countdown-label"/>
+
+                                <HBox spacing="4" alignment="CENTER_LEFT">
+
+                                    <VBox alignment="CENTER">
+                                        <Label fx:id="hoursLabel"
+                                               text="00"
+                                               styleClass="countdown-num"/>
+
+                                        <Label text="GIỜ"
+                                               styleClass="countdown-unit"/>
+                                    </VBox>
+
+                                    <Label text=":" styleClass="countdown-sep"/>
+
+                                    <VBox alignment="CENTER">
+                                        <Label fx:id="minsLabel"
+                                               text="00"
+                                               styleClass="countdown-num"/>
+
+                                        <Label text="PHÚT"
+                                               styleClass="countdown-unit"/>
+                                    </VBox>
+
+                                    <Label text=":" styleClass="countdown-sep"/>
+
+                                    <VBox alignment="CENTER">
+                                        <Label fx:id="secsLabel"
+                                               text="00"
+                                               styleClass="countdown-num"/>
+
+                                        <Label text="GIÂY"
+                                               styleClass="countdown-unit"/>
+                                    </VBox>
+                                </HBox>
+                            </VBox>
+
+                            <Button text="ĐẶT GIÁ NGAY!"
+                                    onAction="#handlePlaceBid"
+                                    styleClass="btn-bid"/>
+                        </HBox>
+                    </VBox>
                 </HBox>
 
-                <ScrollPane fx:id="chatScrollPane" fitToWidth="true" VBox.vgrow="ALWAYS"
-                            prefHeight="360" styleClass="chat-scroll">
-                    <VBox fx:id="chatMessagesBox" spacing="8">
-                        <padding><Insets top="12" right="12" bottom="12" left="12"/></padding>
-                    </VBox>
-                </ScrollPane>
+                <!-- History + Seller -->
+                <HBox spacing="16">
 
-                <HBox styleClass="chat-input-row" spacing="8" alignment="CENTER">
-                    <padding><Insets top="8" right="12" bottom="8" left="12"/></padding>
-                    <TextField fx:id="chatInput" promptText="Nhập tin nhắn..."
-                               HBox.hgrow="ALWAYS" styleClass="chat-input"
-                               onAction="#handleSendChat"/>
-                    <Button text="➤" onAction="#handleSendChat" styleClass="btn-send"/>
+                    <!-- Bid History -->
+                    <VBox styleClass="info-card"
+                           spacing="8"
+                           HBox.hgrow="ALWAYS">
+
+                        <padding>
+                            <Insets top="16" right="16" bottom="16" left="16"/>
+                        </padding>
+
+                        <Label text="Lịch sử bid"
+                               styleClass="card-title"/>
+
+                        <Separator/>
+
+                        <ScrollPane fitToWidth="true"
+                                    prefHeight="200"
+                                    styleClass="bid-scroll">
+
+                            <VBox fx:id="bidHistoryBox" spacing="6"/>
+                        </ScrollPane>
+
+                        <Hyperlink text="Xem tất cả lịch sử →"
+                                   styleClass="see-all-link"/>
+                    </VBox>
+
+                    <!-- Seller Info -->
+                    <VBox styleClass="info-card"
+                           minWidth="260"
+                           spacing="8">
+
+                        <padding>
+                            <Insets top="16" right="16" bottom="16" left="16"/>
+                        </padding>
+
+                        <Label text="Thông tin người bán"
+                               styleClass="card-title"/>
+
+                        <Separator/>
+
+                        <HBox spacing="10" alignment="CENTER_LEFT">
+                            <Label text="SL" styleClass="seller-avatar"/>
+
+                            <VBox>
+                                <Label text="SellerLong"
+                                       styleClass="seller-name"/>
+
+                                <Label text="Seller · 24 phiên"
+                                       styleClass="seller-role"/>
+                            </VBox>
+                        </HBox>
+
+                        <Label text="📍 Hà Nội, Việt Nam"
+                               styleClass="seller-meta"/>
+
+                        <Label text="⭐ 4.8/5 (124 đánh giá)"
+                               styleClass="seller-meta"/>
+
+                        <Label text="✅ Đã xác minh danh tính"
+                               styleClass="seller-verified"/>
+                    </VBox>
                 </HBox>
             </VBox>
+        </HBox>
 
-        </StackPane>
-    </center>
+        <!-- Floating Chat Button -->
+        <Button text="💬"
+                onAction="#handleToggleChat"
+                styleClass="btn-chat-fab"
+                StackPane.alignment="BOTTOM_RIGHT">
+
+            <StackPane.margin>
+                <Insets bottom="24" right="24"/>
+            </StackPane.margin>
+        </Button>
+
+        <!-- Chat Panel -->
+        <VBox fx:id="chatPanel"
+               styleClass="chat-panel"
+               spacing="0"
+               prefWidth="340"
+               maxWidth="340"
+               maxHeight="480"
+               visible="false"
+               managed="false"
+               StackPane.alignment="BOTTOM_RIGHT">
+
+            <StackPane.margin>
+                <Insets bottom="88" right="16"/>
+            </StackPane.margin>
+
+            <!-- Chat Header -->
+            <HBox styleClass="chat-header"
+                   alignment="CENTER_LEFT"
+                   spacing="8">
+
+                <padding>
+                    <Insets top="12" right="16" bottom="12" left="16"/>
+                </padding>
+
+                <Label text="💬 CHAT TRỰC TUYẾN"
+                       styleClass="chat-title"/>
+
+                <Region HBox.hgrow="ALWAYS"/>
+
+                <Label text="● Online 52"
+                       styleClass="chat-online"/>
+
+                <Button text="✕"
+                        onAction="#handleToggleChat"
+                        styleClass="btn-close-chat"/>
+            </HBox>
+
+            <!-- Chat Messages -->
+            <ScrollPane fx:id="chatScrollPane"
+                        fitToWidth="true"
+                        prefHeight="360"
+                        VBox.vgrow="ALWAYS"
+                        styleClass="chat-scroll">
+
+                <VBox fx:id="chatMessagesBox" spacing="8">
+                    <padding>
+                        <Insets top="12" right="12" bottom="12" left="12"/>
+                    </padding>
+                </VBox>
+            </ScrollPane>
+
+            <!-- Chat Input -->
+            <HBox styleClass="chat-input-row"
+                   spacing="8"
+                   alignment="CENTER">
+
+                <padding>
+                    <Insets top="8" right="12" bottom="8" left="12"/>
+                </padding>
+
+                <TextField fx:id="chatInput"
+                           promptText="Nhập tin nhắn..."
+                           onAction="#handleSendChat"
+                           HBox.hgrow="ALWAYS"
+                           styleClass="chat-input"/>
+
+                <Button text="➤"
+                        onAction="#handleSendChat"
+                        styleClass="btn-send"/>
+            </HBox>
+        </VBox>
+    </StackPane>
+</center>
+```
+
 </BorderPane>
