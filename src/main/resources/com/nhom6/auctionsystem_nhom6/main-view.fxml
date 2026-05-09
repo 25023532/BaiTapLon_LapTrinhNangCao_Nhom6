@@ -2,6 +2,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.Insets?>
+<?import javafx.scene.control.SeparatorMenuItem?>
 
 <BorderPane xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.nhom6.auctionsystem_nhom6.MainController"
@@ -62,14 +63,30 @@
 
             <Separator orientation="VERTICAL"/>
             <VBox alignment="CENTER_RIGHT">
-                <Label fx:id="userNameLabel" styleClass="header-username"/>
-                <Label fx:id="userRoleLabel" styleClass="header-role"/>
+                <Label text="Nạp tiền (VNĐ)" styleClass="wallet-label"/>
+                <Label fx:id="walletLabel" styleClass="wallet-amount"/>
             </VBox>
-            <VBox alignment="CENTER_RIGHT">
-                <Label text="Ví số dư (VNĐ)" styleClass="wallet-label"/>
-                <Label fx:id="walletLabel"    styleClass="wallet-amount"/>
-            </VBox>
-            <Button text="Đăng xuất" onAction="#handleLogout" styleClass="btn-logout"/>
+            <Separator orientation="VERTICAL"/>
+
+            <!-- Profile dropdown -->
+            <MenuButton fx:id="profileMenuBtn" styleClass="profile-menu-btn">
+                <graphic>
+                    <HBox spacing="8" alignment="CENTER">
+                        <Label fx:id="userAvatarLabel" styleClass="profile-avatar"/>
+                        <VBox alignment="CENTER_LEFT">
+                            <Label fx:id="userNameLabel" styleClass="header-username"/>
+                            <Label fx:id="userRoleLabel" styleClass="header-role"/>
+                        </VBox>
+                    </HBox>
+                </graphic>
+                <items>
+                    <MenuItem text="👤  Hồ sơ"     onAction="#handleProfile"/>
+                    <MenuItem text="📋  Lịch sử"   onAction="#handleHistory"/>
+                    <MenuItem text="🛒  Đơn hàng"  onAction="#handleOrders"/>
+                    <SeparatorMenuItem/>
+                    <MenuItem text="🚪  Đăng xuất" onAction="#handleLogout"/>
+                </items>
+            </MenuButton>
         </HBox>
     </top>
 
@@ -78,8 +95,8 @@
         <!-- StackPane để chat panel nổi lên trên content -->
         <StackPane>
 
-            <!-- Main content (không còn HBox chia đôi với chat) -->
-            <HBox spacing="16">
+            <!-- Main content -->
+            <HBox spacing="16" style="-fx-background-color: #0f172a;">
                 <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
 
                 <VBox spacing="16" HBox.hgrow="ALWAYS">
@@ -189,18 +206,18 @@
                 </VBox>
             </HBox>
 
-            <!-- ✅ Nút chat cố định góc dưới phải -->
+            <!-- ✅ Nút chat FAB góc dưới phải -->
             <Button text="💬" onAction="#handleToggleChat"
                     styleClass="btn-chat-fab"
                     StackPane.alignment="BOTTOM_RIGHT">
                 <StackPane.margin><Insets bottom="24" right="24"/></StackPane.margin>
             </Button>
 
-            <!-- ✅ Chat panel nổi (overlay) – ẩn mặc định, hiện khi bấm nút -->
+            <!-- ✅ Chat panel nổi – ẩn mặc định -->
             <VBox fx:id="chatPanel" styleClass="chat-panel" spacing="0"
-                  maxWidth="340" maxHeight="480"
+                  prefWidth="340" maxWidth="340" maxHeight="480"
                   StackPane.alignment="BOTTOM_RIGHT" visible="false" managed="false">
-                <padding><Insets top="0" right="16" bottom="80" left="0"/></padding>
+                <StackPane.margin><Insets bottom="88" right="16"/></StackPane.margin>
 
                 <HBox styleClass="chat-header" alignment="CENTER_LEFT" spacing="8">
                     <padding><Insets top="12" right="16" bottom="12" left="16"/></padding>
