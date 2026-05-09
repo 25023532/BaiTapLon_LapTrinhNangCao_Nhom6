@@ -20,10 +20,11 @@ import java.util.UUID;
 public class MainController {
 
     // ── Header ────────────────────────────────────────────────
-    @FXML private Label     userNameLabel;
-    @FXML private Label     userRoleLabel;
-    @FXML private Label     walletLabel;
-    @FXML private TextField searchField;
+    @FXML private Label      userNameLabel;
+    @FXML private Label      userRoleLabel;
+    @FXML private Label      userAvatarLabel;
+    @FXML private Label      walletLabel;
+    @FXML private TextField  searchField;
 
     // ── Auction Card ──────────────────────────────────────────
     @FXML private Label productTitleLabel;
@@ -59,6 +60,11 @@ public class MainController {
 
         userNameLabel.setText(user.getUsername());
         userRoleLabel.setText(user.getRole());
+        // Avatar: lấy 2 ký tự đầu của username viết hoa
+        String av = user.getUsername().length() >= 2
+                ? user.getUsername().substring(0, 2).toUpperCase()
+                : user.getUsername().toUpperCase();
+        userAvatarLabel.setText(av);
         walletLabel.setText("0 ₫");
 
         loadAuctionInfo();
@@ -157,6 +163,22 @@ public class MainController {
         ServerConnection conn = ServerConnection.getInstance();
         if (conn.isConnected())
             conn.send("CHAT:" + user.getUsername() + ":" + msg);
+    }
+
+    // ── Profile Menu Handlers ─────────────────────────────────
+    @FXML
+    private void handleProfile() {
+        showAlert("Hồ sơ", "Tính năng hồ sơ đang phát triển.");
+    }
+
+    @FXML
+    private void handleHistory() {
+        showAlert("Lịch sử", "Tính năng lịch sử đang phát triển.");
+    }
+
+    @FXML
+    private void handleOrders() {
+        showAlert("Đơn hàng", "Tính năng đơn hàng đang phát triển.");
     }
 
     // ── Logout ────────────────────────────────────────────────
