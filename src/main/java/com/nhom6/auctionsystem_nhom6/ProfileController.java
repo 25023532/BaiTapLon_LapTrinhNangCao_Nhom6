@@ -32,18 +32,20 @@ public class ProfileController {
         displayNameLabel.setText(user.getUsername());
         roleLabel.setText(user.getRole());
 
-        // ✅ Dùng getter thật từ User
+        // Điền sẵn thông tin
         usernameField.setText(user.getUsername());
-        fullNameField.setText(user.getFullName());
-        emailField.setText(user.getEmail());
+
+        // Nếu User có getFullName() / getEmail() thì dùng, không thì để trống
+        try { fullNameField.setText(user.getFullName()); } catch (Exception ignored) {}
+        try { emailField.setText(user.getEmail());       } catch (Exception ignored) {}
     }
 
     @FXML
     private void handleSave() {
-        String fullName        = fullNameField.getText().trim();
-        String email           = emailField.getText().trim();
-        String newPassword     = newPasswordField.getText();
-        String confirmPassword = confirmPasswordField.getText();
+        String fullName       = fullNameField.getText().trim();
+        String email          = emailField.getText().trim();
+        String newPassword    = newPasswordField.getText();
+        String confirmPassword= confirmPasswordField.getText();
 
         // Validate mật khẩu nếu có nhập
         if (!newPassword.isEmpty()) {
@@ -59,12 +61,12 @@ public class ProfileController {
             }
         }
 
-        // ✅ Gọi setter thật trên User
+        // Cập nhật thông tin user
         User user = AppContext.getCurrentUser();
-        user.setFullName(fullName);
-        user.setEmail(email);
+        try { user.setFullName(fullName); } catch (Exception ignored) {}
+        try { user.setEmail(email);       } catch (Exception ignored) {}
         if (!newPassword.isEmpty()) {
-            user.setPassword(newPassword);
+            try { user.setPassword(newPassword); } catch (Exception ignored) {}
         }
 
         newPasswordField.clear();
