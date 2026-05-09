@@ -5,11 +5,12 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 
 public abstract class User {
+
     protected String id;
     protected String username;
     protected String email;
     protected String fullName;
-    private String hashedPassword;
+    private   String hashedPassword;
 
     // ── Constructor thông thường (đăng ký mới) ───────────────
     public User(String id, String username, String password) {
@@ -21,8 +22,8 @@ public abstract class User {
         validate(id, username, password);
         this.id             = id;
         this.username       = username;
-        this.email          = email != null ? email : "";
-        this.fullName       = fullName != null ? fullName : "";
+        this.email          = email     != null ? email     : "";
+        this.fullName       = fullName  != null ? fullName  : "";
         this.hashedPassword = hashPassword(password);
     }
 
@@ -32,8 +33,8 @@ public abstract class User {
         this.id             = id;
         this.username       = username;
         this.hashedPassword = hashedPassword;
-        this.email          = email != null ? email : "";
-        this.fullName       = fullName != null ? fullName : "";
+        this.email          = email     != null ? email     : "";
+        this.fullName       = fullName  != null ? fullName  : "";
     }
 
     // ── Validation ────────────────────────────────────────────
@@ -70,12 +71,30 @@ public abstract class User {
     public String getUsername()       { return username; }
     public String getEmail()          { return email; }
     public String getFullName()       { return fullName; }
-    public String getHashedPassword() { return hashedPassword; }  // dùng khi lưu file
+    public String getHashedPassword() { return hashedPassword; }
 
     public abstract String getRole();
 
+    // ── Setters ✅ ────────────────────────────────────────────
+    public void setFullName(String fullName) {
+        this.fullName = fullName != null ? fullName.trim() : "";
+    }
+
+    public void setEmail(String email) {
+        this.email = email != null ? email.trim() : "";
+    }
+
+    public void setPassword(String newPassword) {
+        if (newPassword == null || newPassword.isBlank())
+            throw new IllegalArgumentException("Mật khẩu không được để trống");
+        if (newPassword.length() < 6)
+            throw new IllegalArgumentException("Mật khẩu phải có ít nhất 6 ký tự");
+        this.hashedPassword = hashPassword(newPassword);
+    }
+
     @Override
     public String toString() {
-        return String.format("User{id='%s', username='%s', role='%s'}", id, username, getRole());
+        return String.format("User{id='%s', username='%s', role='%s'}",
+                id, username, getRole());
     }
 }
