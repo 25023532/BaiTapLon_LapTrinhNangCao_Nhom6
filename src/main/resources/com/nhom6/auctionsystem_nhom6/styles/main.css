@@ -421,20 +421,59 @@
     -fx-border-width: 1;
 }
 
-.login-title {
+/* ✅ Tất cả Label bên trong login-card đều sáng */
+.login-card .label {
+    -fx-text-fill: #f1f5f9;
+    -fx-font-size: 13px;
+}
+
+.login-logo {
     -fx-text-fill: #f1f5f9;
     -fx-font-size: 22px;
     -fx-font-weight: bold;
 }
 
+.login-title {
+    -fx-text-fill: #f1f5f9;
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-padding: 0 0 8 0;
+}
+
 .login-subtitle {
-    -fx-text-fill: #94a3b8;
+    -fx-text-fill: #cbd5e1;
     -fx-font-size: 13px;
 }
 
-.form-label {
-    -fx-text-fill: #cbd5e1;
+.login-input {
+    -fx-background-color: #0f172a;
+    -fx-text-fill: #f1f5f9;
+    -fx-prompt-text-fill: #475569;
+    -fx-border-color: #334155;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 8 12 8 12;
+    -fx-font-size: 13px;
+}
+
+.login-input:focused {
+    -fx-border-color: #2563eb;
+}
+
+.login-error {
+    -fx-text-fill: #ef4444;
     -fx-font-size: 12px;
+}
+
+.login-hint {
+    -fx-text-fill: #64748b;
+    -fx-font-size: 11px;
+    -fx-padding: 4 0 0 0;
+}
+
+.form-label {
+    -fx-text-fill: #f1f5f9;
+    -fx-font-size: 13px;
     -fx-font-weight: bold;
 }
 
@@ -449,19 +488,10 @@
     -fx-font-size: 13px;
 }
 
-.form-field:focused {
-    -fx-border-color: #2563eb;
-}
+.form-field:focused { -fx-border-color: #2563eb; }
 
-.error-label {
-    -fx-text-fill: #ef4444;
-    -fx-font-size: 12px;
-}
-
-.success-label {
-    -fx-text-fill: #10b981;
-    -fx-font-size: 12px;
-}
+.error-label   { -fx-text-fill: #ef4444; -fx-font-size: 12px; }
+.success-label { -fx-text-fill: #10b981; -fx-font-size: 12px; }
 
 /* ── Buttons ─────────────────────────────────────────────── */
 .btn-primary {
