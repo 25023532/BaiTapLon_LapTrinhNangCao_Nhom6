@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.nhom6.auctionsystem_nhom6.LoginController"
+            styleClass="login-root">
+
+    <center>
+        <VBox alignment="CENTER" spacing="16" maxWidth="380">
+            <padding><Insets top="60" right="40" bottom="60" left="40"/></padding>
+
+            <!-- Logo -->
+            <Label text="AuctionSys" styleClass="login-logo"/>
+            <Label text="Hệ thống Đấu giá Trực tuyến" styleClass="login-subtitle"/>
+
+            <!-- Form -->
+            <VBox spacing="10" styleClass="login-card">
+                <padding><Insets top="32" right="32" bottom="32" left="32"/></padding>
+
+                <Label text="Đăng nhập" styleClass="login-title"/>
+
+                <Label text="Tên đăng nhập"/>
+                <TextField fx:id="usernameField" promptText="Nhập tên đăng nhập..."
+                           styleClass="login-input"/>
+
+                <Label text="Mật khẩu"/>
+                <PasswordField fx:id="passwordField" promptText="Nhập mật khẩu..."
+                               styleClass="login-input"/>
+
+                <Label fx:id="errorLabel" styleClass="login-error" visible="false"
+                       wrapText="true"/>
+
+                <Button text="Đăng nhập" onAction="#handleLogin"
+                        maxWidth="Infinity" styleClass="btn-primary"/>
+
+                <Separator/>
+
+                <Button text="Tạo tài khoản mới" onAction="#handleRegister"
+                        maxWidth="Infinity" styleClass="btn-secondary"/>
+
+                <!-- Hint tài khoản mẫu -->
+                <Label text="Demo: admin/admin123 · bidder07/bidder123"
+                       styleClass="login-hint" wrapText="true"/>
+            </VBox>
+        </VBox>
+    </center>
+</BorderPane>

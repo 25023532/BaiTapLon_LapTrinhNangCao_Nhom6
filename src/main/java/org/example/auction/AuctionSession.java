@@ -1,5 +1,6 @@
 package org.example.auction;
-
+import org.example.exception.AuctionClosedException;
+import org.example.exception.InvalidBidException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -10,7 +11,7 @@ public class AuctionSession {
     private final String sessionId;
     private final String itemName;
     private final double startingPrice;
-    private final double minBidStep;       
+    private final double minBidStep;
     private final LocalDateTime endTime;
 
     private AuctionStatus status;
@@ -19,7 +20,6 @@ public class AuctionSession {
 
     private final List<Bid> bidHistory = new ArrayList<>();
     private final List<Observer> observers = new ArrayList<>();
-
     private final ReentrantLock lock = new ReentrantLock();
 
     public AuctionSession(String sessionId, String itemName,
@@ -32,8 +32,8 @@ public class AuctionSession {
         if (endTime == null || endTime.isBefore(LocalDateTime.now()))
             throw new IllegalArgumentException("Thời gian kết thúc không hợp lệ");
 
-        this.sessionId    = sessionId;
-        this.itemName     = itemName;
+        this.sessionId     = sessionId;
+        this.itemName      = itemName;
         this.startingPrice = startingPrice;
         this.currentPrice  = startingPrice;
         this.minBidStep    = minBidStep;
@@ -41,102 +41,97 @@ public class AuctionSession {
         this.status        = AuctionStatus.OPEN;
     }
 
-
-    public void addObserver(Observer observer) {
-        observers.add(observer);
-    }
-
-    public void removeObserver(Observer observer) {
-        observers.remove(observer);
-    }
+    // ── Observer ─────────────────────────────────────────────
+    public void addObserver(Observer observer)    { observers.add(observer); }
+    public void removeObserver(Observer observer) { observers.remove(observer); }
 
     private void notifyObservers(Bid bid) {
-        for (Observer o : observers) {
-            o.update(bid);
-        }
+        for (Observer o : observers) o.update(bid);
     }
 
-
+    // ── State transitions ─────────────────────────────────────
     public void start() {
         lock.lock();
         try {
-            if (status != AuctionStatus.OPEN) {
+            if (status != AuctionStatus.OPEN)
                 throw new IllegalStateException("Chỉ có thể bắt đầu phiên ở trạng thái OPEN");
-            }
             status = AuctionStatus.RUNNING;
             System.out.println("Phiên đấu giá [" + sessionId + "] đã bắt đầu.");
-        } finally {
-            lock.unlock();
-        }
+        } finally { lock.unlock(); }
     }
-
 
     public void finish() {
         lock.lock();
         try {
-            if (status != AuctionStatus.RUNNING) {
+            if (status != AuctionStatus.RUNNING)
                 throw new IllegalStateException("Chỉ có thể kết thúc phiên đang RUNNING");
-            }
-            status = AuctionStatus.FINISHED;
-
             if (highestBid != null) {
+                status = AuctionStatus.FINISHED;
                 System.out.printf("Phiên [%s] kết thúc. Người thắng: %s với giá %.2f%n",
                         sessionId, highestBid.getBidderId(), highestBid.getAmount());
             } else {
-
                 status = AuctionStatus.CANCELED;
                 System.out.println("Phiên [" + sessionId + "] bị hủy do không có bid nào.");
             }
-        } finally {
-            lock.unlock();
-        }
+        } finally { lock.unlock(); }
     }
 
     public void markPaid() {
         lock.lock();
         try {
-            if (status != AuctionStatus.FINISHED) {
+            if (status != AuctionStatus.FINISHED)
                 throw new IllegalStateException("Chỉ có thể thanh toán khi phiên FINISHED");
-            }
             status = AuctionStatus.PAID;
             System.out.println("Phiên [" + sessionId + "] đã được thanh toán.");
-        } finally {
-            lock.unlock();
-        }
+        } finally { lock.unlock(); }
     }
 
     public void cancel() {
         lock.lock();
         try {
-            if (status == AuctionStatus.PAID) {
+            if (status == AuctionStatus.PAID)
                 throw new IllegalStateException("Không thể hủy phiên đã thanh toán");
-            }
             status = AuctionStatus.CANCELED;
             System.out.println("Phiên [" + sessionId + "] đã bị hủy thủ công.");
-        } finally {
-            lock.unlock();
-        }
+        } finally { lock.unlock(); }
     }
 
-
-    public boolean placeBid(Bid bid) {
+    // ── placeBid — throw exception thay vì return false ───────
+    /**
+     * Đặt giá vào phiên đấu giá.
+     * @throws AuctionClosedException nếu phiên không ở trạng thái RUNNING
+     * @throws InvalidBidException    nếu số tiền thấp hơn mức tối thiểu
+     */
+    public boolean placeBid(Bid bid) throws AuctionClosedException, InvalidBidException {
         lock.lock();
         try {
-
+            // Kiểm tra trạng thái phiên
             if (status != AuctionStatus.RUNNING) {
-                System.out.println("Phiên không ở trạng thái RUNNING.");
-                return false;
+                throw new AuctionClosedException(
+                        "Phiên [" + sessionId + "] không ở trạng thái RUNNING",
+                        sessionId,
+                        status.name()
+                );
             }
 
+            // Kiểm tra hết giờ
             if (LocalDateTime.now().isAfter(endTime)) {
                 finish();
-                return false;
+                throw new AuctionClosedException(
+                        "Phiên [" + sessionId + "] đã hết thời gian",
+                        sessionId,
+                        status.name()
+                );
             }
 
-            if (bid.getAmount() < currentPrice + minBidStep) {
-                System.out.printf("Bid không hợp lệ: %.2f phải >= %.2f%n",
-                        bid.getAmount(), currentPrice + minBidStep);
-                return false;
+            // Kiểm tra số tiền hợp lệ
+            double minRequired = currentPrice + minBidStep;
+            if (bid.getAmount() < minRequired) {
+                throw new InvalidBidException(
+                        String.format("Bid %.2f không hợp lệ, phải >= %.2f", bid.getAmount(), minRequired),
+                        bid.getAmount(),
+                        minRequired
+                );
             }
 
             currentPrice = bid.getAmount();
@@ -149,16 +144,17 @@ public class AuctionSession {
             notifyObservers(bid);
             return true;
 
-        } finally {
-            lock.unlock();
-        }
+        } finally { lock.unlock(); }
     }
 
-    public String getSessionId()     { return sessionId; }
-    public String getItemName()      { return itemName; }
-    public double getCurrentPrice()  { return currentPrice; }
-    public AuctionStatus getStatus() { return status; }
-    public Bid getHighestBid()       { return highestBid; }
-    public List<Bid> getBidHistory() { return new ArrayList<>(bidHistory); }
-    public LocalDateTime getEndTime(){ return endTime; }
+    // ── Getters ───────────────────────────────────────────────
+    public String getSessionId()      { return sessionId; }
+    public String getItemName()       { return itemName; }
+    public double getStartingPrice()  { return startingPrice; }
+    public double getCurrentPrice()   { return currentPrice; }
+    public double getMinBidStep()     { return minBidStep; }
+    public AuctionStatus getStatus()  { return status; }
+    public Bid getHighestBid()        { return highestBid; }
+    public List<Bid> getBidHistory()  { return new ArrayList<>(bidHistory); }
+    public LocalDateTime getEndTime() { return endTime; }
 }

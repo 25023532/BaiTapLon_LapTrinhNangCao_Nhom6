@@ -1,0 +1,50 @@
+[
+  {
+    "id": "A001",
+    "username": "admin",
+    "hashedPassword": "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9",
+    "role": "ADMIN",
+    "email": "",
+    "fullName": ""
+  },
+  {
+    "id": "S001",
+    "username": "sellerlong",
+    "hashedPassword": "2a76110d06bcc4fd437337b984131cfa82db9f792e3e2340acef9f3066b264e0",
+    "role": "SELLER",
+    "email": "",
+    "fullName": ""
+  },
+  {
+    "id": "B001",
+    "username": "bidder07",
+    "hashedPassword": "82999bdb3f4b56da65302fd98520194d65003a942c19a6fe30ecdc61bbdd42dd",
+    "role": "BIDDER",
+    "email": "",
+    "fullName": ""
+  },
+  {
+    "id": "B002",
+    "username": "bidder03",
+    "hashedPassword": "82999bdb3f4b56da65302fd98520194d65003a942c19a6fe30ecdc61bbdd42dd",
+    "role": "BIDDER",
+    "email": "",
+    "fullName": ""
+  },
+  {
+    "id": "B003",
+    "username": "bidder01",
+    "hashedPassword": "82999bdb3f4b56da65302fd98520194d65003a942c19a6fe30ecdc61bbdd42dd",
+    "role": "BIDDER",
+    "email": "",
+    "fullName": ""
+  },
+  {
+    "id": "6F3247A9",
+    "username": "haiphong",
+    "hashedPassword": "89d6977592c7ebaeeb7eb2dc7480ad7ee99e98c6c8c05b0dd0edbab1a432f43c",
+    "role": "BIDDER",
+    "email": "linhphongmin@gmail.com",
+    "fullName": "Nguyen Huy Hai Phong"
+  }
+]

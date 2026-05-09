@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.nhom6.auctionsystem_nhom6.RegisterController"
+            styleClass="login-root">
+    <center>
+        <VBox alignment="CENTER" spacing="16" maxWidth="420">
+            <padding><Insets top="40" right="40" bottom="40" left="40"/></padding>
+
+            <Label text="AuctionSys" styleClass="login-logo"/>
+            <Label text="Tạo tài khoản mới" styleClass="login-subtitle"/>
+
+            <VBox spacing="10" styleClass="login-card">
+                <padding><Insets top="28" right="28" bottom="28" left="28"/></padding>
+
+                <Label text="Đăng ký" styleClass="login-title"/>
+
+                <!-- Username -->
+                <Label text="* Tên đăng nhập" styleClass="field-label"/>
+                <TextField fx:id="usernameField" promptText="Tối thiểu 4 ký tự..."
+                           styleClass="login-input"/>
+
+                <!-- Full Name -->
+                <Label text="Họ và tên" styleClass="field-label"/>
+                <TextField fx:id="fullNameField" promptText="Nguyễn Văn A..."
+                           styleClass="login-input"/>
+
+                <!-- Email -->
+                <Label text="Email" styleClass="field-label"/>
+                <TextField fx:id="emailField" promptText="example@email.com"
+                           styleClass="login-input"/>
+
+                <!-- Role -->
+                <Label text="* Vai trò" styleClass="field-label"/>
+                <ComboBox fx:id="roleBox" maxWidth="Infinity" styleClass="login-input"/>
+
+                <!-- Password -->
+                <Label text="* Mật khẩu" styleClass="field-label"/>
+                <PasswordField fx:id="passwordField" promptText="Tối thiểu 6 ký tự..."
+                               styleClass="login-input"/>
+
+                <!-- Confirm -->
+                <Label text="* Xác nhận mật khẩu" styleClass="field-label"/>
+                <PasswordField fx:id="confirmField" promptText="Nhập lại mật khẩu..."
+                               styleClass="login-input"/>
+
+                <!-- Messages -->
+                <Label fx:id="errorLabel"   styleClass="login-error"   wrapText="true" visible="false"/>
+                <Label fx:id="successLabel" styleClass="login-success" wrapText="true" visible="false"/>
+
+                <!-- Buttons -->
+                <Button text="Tạo tài khoản" onAction="#handleRegister"
+                        maxWidth="Infinity" styleClass="btn-primary"/>
+                <Button text="← Quay lại đăng nhập" onAction="#handleBackToLogin"
+                        maxWidth="Infinity" styleClass="btn-secondary"/>
+
+                <Label text="* Bắt buộc điền" styleClass="login-hint"/>
+            </VBox>
+        </VBox>
+    </center>
+</BorderPane>

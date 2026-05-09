@@ -6,8 +6,16 @@ public class Seller extends User {
         super(id, username, password);
     }
 
-    @Override
-    public String getRole() {
-        return "SELLER";
+    public Seller(String id, String username, String password,
+                  String email, String fullName) {
+        super(id, username, password, email, fullName);
     }
+
+    // Constructor load từ file
+    public Seller(String id, String username, String hashedPassword,
+                  String email, String fullName, boolean alreadyHashed) {
+        super(id, username, hashedPassword, email, fullName, alreadyHashed);
+    }
+
+    @Override public String getRole() { return "SELLER"; }
 }

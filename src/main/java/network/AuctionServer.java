@@ -19,19 +19,31 @@ public class AuctionServer {
             System.out.println("Đang chờ người tham gia...");
 
             while (true) {
-                // Chấp nhận kết nối mới
                 Socket clientSocket = serverSocket.accept();
                 System.out.println("Có thiết bị mới kết nối: " + clientSocket.getRemoteSocketAddress());
 
-                // Tạo một bộ xử lý riêng cho khách hàng này
                 ClientHandler handler = new ClientHandler(clientSocket);
                 observers.add(handler);
-
-                // Chạy handler trong một luồng riêng
                 threadPool.execute(handler);
             }
         } catch (IOException e) {
             System.err.println("Lỗi Server: " + e.getMessage());
         }
+    }
+
+    /** Gửi tin nhắn đến tất cả client (trừ sender nếu muốn bỏ qua) */
+    public static void broadcast(String message, ClientHandler exclude) {
+        System.out.println("Broadcast: " + message);
+        for (ClientHandler handler : observers) {
+            if (handler != exclude) {
+                handler.sendMessage(message);
+            }
+        }
+    }
+
+    /** Xóa client khỏi danh sách khi ngắt kết nối */
+    public static void removeObserver(ClientHandler handler) {
+        observers.remove(handler);
+        System.out.println("Client đã bị xóa khỏi danh sách. Còn lại: " + observers.size());
     }
 }
