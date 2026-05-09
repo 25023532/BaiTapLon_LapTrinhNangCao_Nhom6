@@ -1,7 +1,5 @@
 package com.nhom6.auctionsystem_nhom6;
 
-import javafx.scene.image.Image;
-
 import org.example.auction.AuctionSession;
 import org.example.service.AuthService;
 import org.example.user.Admin;
@@ -9,25 +7,29 @@ import org.example.user.Bidder;
 import org.example.user.Seller;
 import org.example.user.User;
 
-/**
- * AppContext – giữ trạng thái toàn ứng dụng
- * (user đang đăng nhập, service, avatar, session...)
- */
+import java.time.LocalDateTime;
+
 public class AppContext {
 
-    // ===== USER ĐANG ĐĂNG NHẬP =====
+    // =========================================
+    // GLOBAL APP STATE
+    // =========================================
+
     private static User currentUser;
 
-    // ===== AUTH SERVICE =====
     private static final AuthService authService = new AuthService();
 
-    // ===== PHIÊN ĐẤU GIÁ HIỆN TẠI =====
     private static AuctionSession activeSession;
 
-    // ===== AVATAR NGƯỜI DÙNG =====
-    private static Image avatarImage;
+    // ✅ Avatar toàn ứng dụng
+    private static javafx.scene.image.Image avatarImage;
+
+    // =========================================
+    // STATIC INIT
+    // =========================================
 
     static {
+
         // Tạo dữ liệu mẫu
         seedData();
 
@@ -35,93 +37,138 @@ public class AppContext {
         connectToServer();
     }
 
-    // ======================================================
+    // =========================================
     // SERVER CONNECTION
-    // ======================================================
+    // =========================================
 
     private static void connectToServer() {
 
-        ServerConnection conn = ServerConnection.getInstance();
+        try {
 
-        boolean ok = conn.connect();
+            ServerConnection conn = ServerConnection.getInstance();
 
-        if (ok) {
+            boolean connected = conn.connect();
+
+            if (connected) {
+
+                System.out.println(
+                        "AppContext: Kết nối server thành công."
+                );
+
+            } else {
+
+                System.out.println(
+                        "AppContext: Chạy offline (không kết nối được server)."
+                );
+            }
+
+        } catch (Exception e) {
+
             System.out.println(
-                    "AppContext: Kết nối server thành công."
+                    "AppContext: Lỗi khi kết nối server."
             );
-        } else {
-            System.out.println(
-                    "AppContext: Chạy offline."
-            );
+
+            e.printStackTrace();
         }
     }
 
-    // ======================================================
-    // SEED DATA
-    // ======================================================
+    // =========================================
+    // SAMPLE DATA
+    // =========================================
 
     private static void seedData() {
 
-        // ===== ADMIN =====
-        if (!authService.isRegistered("admin")) {
-            authService.register(
-                    new Admin(
-                            "A001",
-                            "admin",
-                            "admin123"
-                    )
-            );
-        }
+        try {
 
-        // ===== SELLER =====
-        if (!authService.isRegistered("sellerlong")) {
-            authService.register(
-                    new Seller(
-                            "S001",
-                            "sellerlong",
-                            "seller123"
-                    )
-            );
-        }
+            // ===== ADMIN =====
+            if (!authService.isRegistered("admin")) {
 
-        // ===== BIDDER =====
-        if (!authService.isRegistered("bidder07")) {
-            authService.register(
-                    new Bidder(
-                            "B001",
-                            "bidder07",
-                            "bidder123"
-                    )
-            );
-        }
+                authService.register(
+                        new Admin(
+                                "A001",
+                                "admin",
+                                "admin123"
+                        )
+                );
+            }
 
-        if (!authService.isRegistered("bidder03")) {
-            authService.register(
-                    new Bidder(
-                            "B002",
-                            "bidder03",
-                            "bidder123"
-                    )
-            );
-        }
+            // ===== SELLER =====
+            if (!authService.isRegistered("sellerlong")) {
 
-        if (!authService.isRegistered("bidder01")) {
-            authService.register(
-                    new Bidder(
-                            "B003",
-                            "bidder01",
-                            "bidder123"
-                    )
-            );
-        }
+                authService.register(
+                        new Seller(
+                                "S001",
+                                "sellerlong",
+                                "seller123"
+                        )
+                );
+            }
 
-        // ===== KHÔNG TẠO PHIÊN ĐẤU GIÁ MẪU =====
-        activeSession = null;
+            // ===== BIDDER =====
+            if (!authService.isRegistered("bidder07")) {
+
+                authService.register(
+                        new Bidder(
+                                "B001",
+                                "bidder07",
+                                "bidder123"
+                        )
+                );
+            }
+
+            if (!authService.isRegistered("bidder03")) {
+
+                authService.register(
+                        new Bidder(
+                                "B002",
+                                "bidder03",
+                                "bidder123"
+                        )
+                );
+            }
+
+            if (!authService.isRegistered("bidder01")) {
+
+                authService.register(
+                        new Bidder(
+                                "B003",
+                                "bidder01",
+                                "bidder123"
+                        )
+                );
+            }
+
+            // =====================================
+            // AUCTION SESSION DEMO
+            // =====================================
+
+            activeSession = new AuctionSession(
+                    "SESSION-001",
+                    "MacBook Pro M3 – 18GB RAM, 512GB SSD",
+                    22_000_000,
+                    500_000,
+                    LocalDateTime.now().plusHours(2)
+            );
+
+            activeSession.start();
+
+            System.out.println(
+                    "AppContext: Tạo dữ liệu mẫu thành công."
+            );
+
+        } catch (Exception e) {
+
+            System.out.println(
+                    "AppContext: Lỗi khi tạo dữ liệu mẫu."
+            );
+
+            e.printStackTrace();
+        }
     }
 
-    // ======================================================
-    // GETTER / SETTER
-    // ======================================================
+    // =========================================
+    // CURRENT USER
+    // =========================================
 
     public static User getCurrentUser() {
         return currentUser;
@@ -131,9 +178,17 @@ public class AppContext {
         currentUser = user;
     }
 
+    // =========================================
+    // AUTH SERVICE
+    // =========================================
+
     public static AuthService getAuthService() {
         return authService;
     }
+
+    // =========================================
+    // AUCTION SESSION
+    // =========================================
 
     public static AuctionSession getActiveSession() {
         return activeSession;
@@ -145,24 +200,32 @@ public class AppContext {
         activeSession = session;
     }
 
-    // ===== AVATAR =====
+    // =========================================
+    // AVATAR IMAGE
+    // =========================================
 
-    public static Image getAvatarImage() {
+    public static javafx.scene.image.Image getAvatarImage() {
         return avatarImage;
     }
 
-    public static void setAvatarImage(Image img) {
-        avatarImage = img;
+    public static void setAvatarImage(
+            javafx.scene.image.Image image
+    ) {
+        avatarImage = image;
     }
 
-    // ======================================================
+    // =========================================
     // LOGOUT
-    // ======================================================
+    // =========================================
 
     public static void logout() {
 
         currentUser = null;
 
         avatarImage = null;
+
+        System.out.println(
+                "AppContext: Đã đăng xuất."
+        );
     }
 }
