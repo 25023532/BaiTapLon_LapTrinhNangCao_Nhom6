@@ -30,20 +30,28 @@ public class AuctionManager {
     }
 
     public void addSession(AuctionSession session) {
-        if (session == null) throw new DataException("session", "Không được null");
-        if (sessions.containsKey(session.getId()))
-            throw new DataException("sessionId", "Phiên đã tồn tại: " + session.getId());
-        sessions.put(session.getId(), session);
-        System.out.println("[AuctionManager] Thêm phiên: " + session.getId());
+        if (session == null)
+            throw new DataException("session", "Không được null");
+
+        // ✅ Fix: getId() → getSessionId()
+        if (sessions.containsKey(session.getSessionId()))
+            throw new DataException("sessionId",
+                    "Phiên đã tồn tại: " + session.getSessionId());
+
+        sessions.put(session.getSessionId(), session);
+        System.out.println("[AuctionManager] Thêm phiên: " + session.getSessionId());
     }
 
     public AuctionSession getSession(String id) {
         AuctionSession s = sessions.get(id);
-        if (s == null) throw new DataException("sessionId", "Không tìm thấy: " + id);
+        if (s == null)
+            throw new DataException("sessionId", "Không tìm thấy: " + id);
         return s;
     }
 
-    public void removeSession(String id) { sessions.remove(id); }
+    public void removeSession(String id) {
+        sessions.remove(id);
+    }
 
     public Map<String, AuctionSession> getAllSessions() {
         return Collections.unmodifiableMap(sessions);
