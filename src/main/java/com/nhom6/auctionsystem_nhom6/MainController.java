@@ -334,6 +334,16 @@ public class MainController {
     }
 
     // =========================================================
+    // WALLET
+    // =========================================================
+
+    @FXML
+    private void handleWallet() {
+        try { HelloApplication.showWalletView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    // =========================================================
     // LOGOUT
     // =========================================================
 
