@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.nhom6.auctionsystem_nhom6.ProductManagementController"
+            styleClass="main-root">
+
+    <top>
+        <HBox styleClass="header" spacing="12" alignment="CENTER_LEFT">
+            <padding><Insets top="0" right="20" bottom="0" left="20"/></padding>
+            <Button text="← Quay lại" onAction="#handleBack" styleClass="btn-secondary"/>
+            <Label text="Quản lý sản phẩm" styleClass="header-username"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <ComboBox fx:id="statusFilter" promptText="Tất cả trạng thái"
+                      styleClass="filter-combo" onAction="#handleFilter" prefWidth="180"/>
+            <ComboBox fx:id="categoryFilter" promptText="Tất cả danh mục"
+                      styleClass="filter-combo" onAction="#handleFilter" prefWidth="160"/>
+            <TextField fx:id="searchField" promptText="Tìm sản phẩm..."
+                       prefWidth="200" styleClass="search-field"
+                       onKeyReleased="#handleSearch"/>
+            <Button text="＋  Thêm sản phẩm" onAction="#handleAdd"
+                    styleClass="btn-primary"/>
+        </HBox>
+    </top>
+
+    <center>
+        <VBox style="-fx-background-color: #0f172a;" spacing="16">
+            <padding><Insets top="20" right="24" bottom="24" left="24"/></padding>
+
+            <!-- Stats -->
+            <HBox spacing="12">
+                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" alignment="CENTER" spacing="4">
+                    <padding><Insets top="14" right="16" bottom="14" left="16"/></padding>
+                    <Label fx:id="totalProductsLabel" text="0" styleClass="stat-big-num"/>
+                    <Label text="Tổng sản phẩm" styleClass="stat-big-label"/>
+                </VBox>
+                <VBox styleClass="stat-card stat-card-success" HBox.hgrow="ALWAYS" alignment="CENTER" spacing="4">
+                    <padding><Insets top="14" right="16" bottom="14" left="16"/></padding>
+                    <Label fx:id="approvedLabel" text="0" styleClass="stat-big-num"/>
+                    <Label text="Đã duyệt" styleClass="stat-big-label"/>
+                </VBox>
+                <VBox styleClass="stat-card stat-card-warn" HBox.hgrow="ALWAYS" alignment="CENTER" spacing="4">
+                    <padding><Insets top="14" right="16" bottom="14" left="16"/></padding>
+                    <Label fx:id="pendingLabel" text="0" styleClass="stat-big-num"/>
+                    <Label text="Chờ duyệt" styleClass="stat-big-label"/>
+                </VBox>
+                <VBox styleClass="stat-card stat-card-info" HBox.hgrow="ALWAYS" alignment="CENTER" spacing="4">
+                    <padding><Insets top="14" right="16" bottom="14" left="16"/></padding>
+                    <Label fx:id="auctioningLabel" text="0" styleClass="stat-big-num"/>
+                    <Label text="Đang đấu giá" styleClass="stat-big-label"/>
+                </VBox>
+            </HBox>
+
+            <!-- Table header -->
+            <HBox styleClass="table-header-row" spacing="0">
+                <padding><Insets top="10" right="20" bottom="10" left="20"/></padding>
+                <Label text="Sản phẩm" styleClass="th-label" HBox.hgrow="ALWAYS"/>
+                <Label text="Danh mục"  styleClass="th-label" minWidth="110"/>
+                <Label text="Giá khởi điểm" styleClass="th-label" minWidth="140"/>
+                <Label text="Người bán" styleClass="th-label" minWidth="120"/>
+                <Label text="Trạng thái" styleClass="th-label" minWidth="120"/>
+                <Label text="Thao tác"  styleClass="th-label" minWidth="140"/>
+            </HBox>
+
+            <!-- List -->
+            <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" styleClass="bid-scroll">
+                <VBox fx:id="productListBox" spacing="6">
+                    <padding><Insets top="4" right="0" bottom="8" left="0"/></padding>
+                </VBox>
+            </ScrollPane>
+        </VBox>
+    </center>
+</BorderPane>
