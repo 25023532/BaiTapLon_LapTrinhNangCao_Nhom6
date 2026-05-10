@@ -17,55 +17,55 @@ import org.example.user.User;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
 import java.util.UUID;
 
 public class LiveAuctionController {
 
     // ── Header ────────────────────────────────────────────────
-    @FXML private Label    liveIndicator;
-    @FXML private Label    participantsLabel;
+    @FXML private Label      liveIndicator;
+    @FXML private Label      participantsLabel;
 
     // ── Left session list ─────────────────────────────────────
-    @FXML private VBox     liveSessionListBox;
-    @FXML private TextField liveSearchField;
+    @FXML private VBox       liveSessionListBox;
+    @FXML private TextField  liveSearchField;
 
     // ── Center auction card ───────────────────────────────────
-    @FXML private Label    liveTitleLabel;
-    @FXML private Label    liveDescLabel;
-    @FXML private Label    liveStatusLabel;
-    @FXML private Label    liveStartPrice;
-    @FXML private Label    liveCurrentPrice;
-    @FXML private Label    liveMinStep;
-    @FXML private Label    liveLeaderLabel;
-    @FXML private Label    liveHours;
-    @FXML private Label    liveMins;
-    @FXML private Label    liveSecs;
-    @FXML private TextField customBidField;
-    @FXML private Button   quickBid1Btn;
-    @FXML private Button   quickBid2Btn;
-    @FXML private Button   quickBid3Btn;
+    @FXML private Label      liveTitleLabel;
+    @FXML private Label      liveDescLabel;
+    @FXML private Label      liveStatusLabel;
+    @FXML private Label      liveStartPrice;
+    @FXML private Label      liveCurrentPrice;
+    @FXML private Label      liveMinStep;
+    @FXML private Label      liveLeaderLabel;
+    @FXML private Label      liveHours;
+    @FXML private Label      liveMins;
+    @FXML private Label      liveSecs;
+    @FXML private TextField  customBidField;
+    @FXML private Button     quickBid1Btn;
+    @FXML private Button     quickBid2Btn;
+    @FXML private Button     quickBid3Btn;
 
     // ── Bid history ───────────────────────────────────────────
-    @FXML private VBox     liveBidHistoryBox;
+    @FXML private VBox       liveBidHistoryBox;
     @FXML private ScrollPane bidScrollPane;
-    @FXML private Label    bidCountLabel;
+    @FXML private Label      bidCountLabel;
 
     // ── Chat ──────────────────────────────────────────────────
-    @FXML private VBox     liveChatBox;
-    @FXML private TextField liveChatInput;
+    @FXML private VBox       liveChatBox;
+    @FXML private TextField  liveChatInput;
     @FXML private ScrollPane liveChatScrollPane;
-    @FXML private Label    onlineLabel;
+    @FXML private Label      onlineLabel;
 
     private AuctionSession currentSession;
     private Timeline       countdownTimer;
     private Timeline       simulateTimer;
     private boolean        sessionSelected = false;
 
-    // ── Khai báo TIME_FMT duy nhất ────────────────────────────
+    // ── Khai báo TIME_FMT duy nhất (FIX: xóa bản trùng ở cuối) ──
     private static final DateTimeFormatter TIME_FMT =
             DateTimeFormatter.ofPattern("HH:mm:ss");
 
+    // ─────────────────────────────────────────────────────────
     @FXML
     public void initialize() {
         loadLiveSessionList();
@@ -73,29 +73,63 @@ public class LiveAuctionController {
 
         onlineLabel.setText("● " + (15 + (int)(Math.random() * 30)) + " online");
 
+        // Tự động chọn active session nếu có
         if (AppContext.getActiveSession() != null) {
             selectSession(AppContext.getActiveSession());
         }
     }
 
-    // ── Left panel: danh sách phiên live ─────────────────────
+    // ── Left panel: chỉ load dữ liệu thực, không có mẫu ─────
     private void loadLiveSessionList() {
         liveSessionListBox.getChildren().clear();
 
+        boolean hasAny = false;
+
+        // 1. Active session từ AppContext
         if (AppContext.getActiveSession() != null) {
             AuctionSession s = AppContext.getActiveSession();
-            liveSessionListBox.getChildren().add(buildSessionItem(
-                    s.getItemName(), "RUNNING", s.getCurrentPrice(), s));
+            liveSessionListBox.getChildren().add(
+                    buildSessionItem(s.getItemName(), "RUNNING", s.getCurrentPrice(), s));
+            hasAny = true;
         }
 
-        liveSessionListBox.getChildren().addAll(
-            buildSessionItemDemo("iPhone 15 Pro Max 256GB", "RUNNING", 27_500_000),
-            buildSessionItemDemo("Dell XPS 15 9530",        "RUNNING", 32_000_000),
-            buildSessionItemDemo("Sony Alpha A7 IV",        "UPCOMING", 40_000_000),
-            buildSessionItemDemo("Nikon Z6 III Body",       "UPCOMING", 35_000_000)
-        );
+        // 2. Sản phẩm ĐANG ĐẤU GIÁ / CHỜ DUYỆT của seller hiện tại
+        User user = AppContext.getCurrentUser();
+        if ("SELLER".equalsIgnoreCase(user.getRole())) {
+            for (AppContext.ProductRecord p : AppContext.getProducts(user.getUsername())) {
+                if ("ĐANG ĐẤU GIÁ".equals(p.status()) || "CHỜ DUYỆT".equals(p.status())) {
+                    String status = "ĐANG ĐẤU GIÁ".equals(p.status()) ? "RUNNING" : "UPCOMING";
+                    liveSessionListBox.getChildren().add(
+                            buildSessionItemFromProduct(p, status));
+                    hasAny = true;
+                }
+            }
+        }
+
+        // 3. Không có phiên nào → hiện thông báo trống
+        if (!hasAny) {
+            VBox emptyBox = new VBox(8);
+            emptyBox.setAlignment(Pos.CENTER);
+            emptyBox.setPadding(new Insets(30, 10, 30, 10));
+
+            Label icon = new Label("📭");
+            icon.setStyle("-fx-font-size: 32px;");
+
+            Label msg = new Label("Chưa có phiên nào.");
+            msg.setStyle("-fx-text-fill: #64748b; -fx-font-size: 12px; "
+                    + "-fx-font-weight: bold; -fx-wrap-text: true; "
+                    + "-fx-text-alignment: center;");
+
+            Label hint = new Label("Thêm sản phẩm để tạo phiên đấu giá.");
+            hint.setStyle("-fx-text-fill: #475569; -fx-font-size: 11px; "
+                    + "-fx-wrap-text: true; -fx-text-alignment: center;");
+
+            emptyBox.getChildren().addAll(icon, msg, hint);
+            liveSessionListBox.getChildren().add(emptyBox);
+        }
     }
 
+    // Card cho AuctionSession thực (click được để vào phiên)
     private VBox buildSessionItem(String name, String status,
                                    double currentPrice, AuctionSession session) {
         VBox card = new VBox(4);
@@ -126,14 +160,15 @@ public class LiveAuctionController {
         return card;
     }
 
-    private VBox buildSessionItemDemo(String name, String status, double price) {
+    // Card cho ProductRecord của seller (chưa có AuctionSession riêng)
+    private VBox buildSessionItemFromProduct(AppContext.ProductRecord p, String status) {
         VBox card = new VBox(4);
         card.setPadding(new Insets(10, 12, 10, 12));
         card.setStyle("-fx-background-color: #1e293b; -fx-background-radius: 8; "
-                + "-fx-border-color: #334155; -fx-border-radius: 8; -fx-border-width: 1; "
+                + "-fx-border-color: #2563eb; -fx-border-radius: 8; -fx-border-width: 1; "
                 + "-fx-cursor: hand;");
 
-        Label nameLabel = new Label(name);
+        Label nameLabel = new Label(p.name());
         nameLabel.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 12px; -fx-font-weight: bold;");
         nameLabel.setWrapText(true);
 
@@ -141,7 +176,7 @@ public class LiveAuctionController {
         Label statusL = new Label("RUNNING".equals(status) ? "🟢 LIVE" : "⏰ SẮP");
         statusL.setStyle("-fx-font-size: 11px; -fx-text-fill: "
                 + ("RUNNING".equals(status) ? "#10b981" : "#fbbf24") + ";");
-        Label priceL = new Label(formatVND(price));
+        Label priceL = new Label(formatVND(p.currentPrice()));
         priceL.setStyle("-fx-font-size: 11px; -fx-text-fill: #38bdf8;");
         meta.getChildren().addAll(statusL, priceL);
 
@@ -152,7 +187,8 @@ public class LiveAuctionController {
                 if (AppContext.getActiveSession() != null) {
                     selectSession(AppContext.getActiveSession());
                 } else {
-                    showAlert("Thông báo", "Vui lòng tham gia từ màn hình chính để tải phiên.");
+                    showAlert("Thông báo",
+                            "Vui lòng tham gia từ màn hình chính để tải phiên.");
                 }
             });
         }
@@ -197,8 +233,7 @@ public class LiveAuctionController {
 
         var history = session.getBidHistory();
         if (!history.isEmpty()) {
-            var topBid = history.get(history.size() - 1);
-            liveLeaderLabel.setText("👑 " + topBid.getBidderId());
+            liveLeaderLabel.setText("👑 " + history.get(history.size() - 1).getBidderId());
         }
 
         refreshBidHistory();
@@ -227,7 +262,9 @@ public class LiveAuctionController {
             LocalDateTime now = LocalDateTime.now();
             LocalDateTime end = currentSession.getEndTime();
             if (now.isAfter(end)) {
-                liveHours.setText("00"); liveMins.setText("00"); liveSecs.setText("00");
+                liveHours.setText("00");
+                liveMins.setText("00");
+                liveSecs.setText("00");
                 liveStatusLabel.setText("● KẾT THÚC");
                 countdownTimer.stop();
                 simulateTimer.stop();
@@ -248,10 +285,9 @@ public class LiveAuctionController {
         simulateTimer = new Timeline(new KeyFrame(
                 Duration.seconds(8 + Math.random() * 12), e -> {
             if (currentSession == null || !sessionSelected) return;
-            String bot = bots[(int)(Math.random() * bots.length)];
+            String bot      = bots[(int)(Math.random() * bots.length)];
             double newPrice = currentSession.getCurrentPrice()
-                    + currentSession.getMinBidStep()
-                    * (1 + (int)(Math.random() * 3));
+                    + currentSession.getMinBidStep() * (1 + (int)(Math.random() * 3));
             Bid bid = new Bid(UUID.randomUUID().toString(), bot, newPrice);
             try {
                 currentSession.placeBid(bid);
@@ -310,7 +346,7 @@ public class LiveAuctionController {
             bidCountLabel.setText(currentSession.getBidHistory().size() + " lượt");
 
             AppContext.addHistory(user.getUsername(), new AppContext.HistoryRecord(
-                    "BID-" + UUID.randomUUID().toString().substring(0,6).toUpperCase(),
+                    "BID-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase(),
                     currentSession.getItemName(), amount, "SellerLong",
                     "CHỜ XỬ LÝ", false, LocalDateTime.now()
             ));
@@ -351,14 +387,18 @@ public class LiveAuctionController {
             row.setPadding(new Insets(6, 10, 6, 10));
             if (i == history.size() - 1) row.getStyleClass().add("bid-row-top");
 
-            Label rank  = new Label(i == history.size() - 1 ? "👑" : String.valueOf(history.size() - i));
+            Label rank = new Label(
+                    i == history.size() - 1 ? "👑" : String.valueOf(history.size() - i));
             rank.setStyle("-fx-font-size: 14px; -fx-min-width: 24px;");
-            Label name   = new Label(b.getBidderId());
+
+            Label name = new Label(b.getBidderId());
             name.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 13px;");
             HBox.setHgrow(name, Priority.ALWAYS);
+
             Label amount = new Label(formatVND(b.getAmount()));
             amount.getStyleClass().add("bid-amount");
-            Label time   = new Label(b.getTimestamp().format(TIME_FMT));
+
+            Label time = new Label(b.getTimestamp().format(TIME_FMT));
             time.getStyleClass().add("bid-time");
 
             row.getChildren().addAll(rank, name, amount, time);
@@ -387,9 +427,11 @@ public class LiveAuctionController {
 
         Label nameLabel = new Label(sender);
         nameLabel.getStyleClass().add("chat-sender");
+
         Label msgLabel = new Label(message);
         msgLabel.setWrapText(true);
         msgLabel.getStyleClass().add("chat-message");
+
         bubble.getChildren().addAll(nameLabel, msgLabel);
         liveChatBox.getChildren().add(bubble);
         Platform.runLater(() -> liveChatScrollPane.setVvalue(1.0));
@@ -402,11 +444,14 @@ public class LiveAuctionController {
         catch (Exception e) { e.printStackTrace(); }
     }
 
+    // ── Helpers ───────────────────────────────────────────────
     private String formatVND(double v) { return String.format("₫ %,.0f", v); }
 
     private void showAlert(String title, String msg) {
         Alert a = new Alert(Alert.AlertType.WARNING);
-        a.setTitle(title); a.setHeaderText(null); a.setContentText(msg);
+        a.setTitle(title);
+        a.setHeaderText(null);
+        a.setContentText(msg);
         a.showAndWait();
     }
 }
