@@ -1,1 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
 
+<BorderPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.nhom6.auctionsystem_nhom6.MyProductsController"
+            styleClass="main-root">
+
+    <!-- ══ HEADER ══ -->
+    <top>
+        <HBox styleClass="header" spacing="12" alignment="CENTER_LEFT">
+            <padding><Insets top="0" right="20" bottom="0" left="20"/></padding>
+            <Button text="← Quay lại" onAction="#handleBack" styleClass="btn-secondary"/>
+            <Label text="Sản phẩm đăng bán" styleClass="header-username"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <ComboBox fx:id="statusFilter" promptText="Tất cả trạng thái"
+                      styleClass="filter-combo" onAction="#handleFilter"/>
+            <TextField fx:id="searchField" promptText="Tìm sản phẩm..."
+                       prefWidth="200" styleClass="search-field"
+                       onKeyReleased="#handleSearch"/>
+            <Button text="＋  Đăng bán mới" onAction="#handleAddProduct"
+                    styleClass="btn-primary"/>
+        </HBox>
+    </top>
+
+    <!-- ══ CONTENT ══ -->
+    <center>
+        <VBox style="-fx-background-color: #0f172a;" spacing="16">
+            <padding><Insets top="24" right="24" bottom="24" left="24"/></padding>
+
+            <!-- Thống kê -->
+            <HBox spacing="16">
+                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" alignment="CENTER" spacing="4">
+                    <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+                    <Label fx:id="totalProductsLabel" text="0" styleClass="stat-big-num"/>
+                    <Label text="Tổng sản phẩm" styleClass="stat-big-label"/>
+                </VBox>
+                <VBox styleClass="stat-card stat-card-success" HBox.hgrow="ALWAYS" alignment="CENTER" spacing="4">
+                    <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+                    <Label fx:id="activeProductsLabel" text="0" styleClass="stat-big-num"/>
+                    <Label text="Đang đấu giá" styleClass="stat-big-label"/>
+                </VBox>
+                <VBox styleClass="stat-card stat-card-warn" HBox.hgrow="ALWAYS" alignment="CENTER" spacing="4">
+                    <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+                    <Label fx:id="soldProductsLabel" text="0" styleClass="stat-big-num"/>
+                    <Label text="Đã bán" styleClass="stat-big-label"/>
+                </VBox>
+                <VBox styleClass="stat-card stat-card-info" HBox.hgrow="ALWAYS" alignment="CENTER" spacing="4">
+                    <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+                    <Label fx:id="revenueLabel" text="₫ 0" styleClass="stat-big-num"/>
+                    <Label text="Doanh thu" styleClass="stat-big-label"/>
+                </VBox>
+            </HBox>
+
+            <!-- Danh sách sản phẩm -->
+            <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" styleClass="bid-scroll">
+                <VBox fx:id="productListBox" spacing="10">
+                    <padding><Insets top="8" right="0" bottom="8" left="0"/></padding>
+                </VBox>
+            </ScrollPane>
+
+        </VBox>
+    </center>
+</BorderPane>
