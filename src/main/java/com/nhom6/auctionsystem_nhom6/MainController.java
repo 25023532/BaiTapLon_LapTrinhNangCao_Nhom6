@@ -25,6 +25,10 @@ public class MainController {
     @FXML private Label      userAvatarLabel;
     @FXML private Label      walletLabel;
     @FXML private TextField  searchField;
+    @FXML private MenuButton profileMenuBtn;
+
+    // ── Profile Menu Item (ẩn/đổi theo role) ─────────────────
+    @FXML private MenuItem   ordersMenuItem;
 
     // ── Auction Card ──────────────────────────────────────────
     @FXML private Label productTitleLabel;
@@ -44,37 +48,64 @@ public class MainController {
     @FXML private VBox bidHistoryBox;
 
     // ── Chat ──────────────────────────────────────────────────
-    @FXML private VBox      chatPanel;       // ✅ panel nổi
-    @FXML private VBox      chatMessagesBox;
-    @FXML private TextField chatInput;
+    @FXML private VBox       chatPanel;
+    @FXML private VBox       chatMessagesBox;
+    @FXML private TextField  chatInput;
     @FXML private ScrollPane chatScrollPane;
 
     private AuctionSession session;
     private Timeline countdownTimer;
-    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss");
+    private static final DateTimeFormatter TIME_FMT =
+            DateTimeFormatter.ofPattern("HH:mm:ss");
 
     @FXML
     public void initialize() {
         User user = AppContext.getCurrentUser();
         session   = AppContext.getActiveSession();
 
+        // ── Thông tin header ──────────────────────────────────
         userNameLabel.setText(user.getUsername());
         userRoleLabel.setText(user.getRole());
-        // Avatar: lấy 2 ký tự đầu của username viết hoa
         String av = user.getUsername().length() >= 2
                 ? user.getUsername().substring(0, 2).toUpperCase()
                 : user.getUsername().toUpperCase();
         userAvatarLabel.setText(av);
         walletLabel.setText("0 ₫");
 
+        // ── Cập nhật menu profile theo role ──────────────────
+        applyRoleMenu(user);
+
         loadAuctionInfo();
         refreshBidHistory();
         startCountdown();
 
-        // Chat mẫu – chỉ load sẵn, không hiển thị cho đến khi bấm nút
         addChatMessage("SellerLong", "Sản phẩm còn bảo hành chính hãng.", true);
-        addChatMessage("bidder07",   "Bước giá tiếp theo là bao nhiêu?", false);
+        addChatMessage("bidder07",   "Bước giá tiếp theo là bao nhiêu?",  false);
         addChatMessage("SellerLong", "Bước giá tối thiểu là 500,000 VNĐ.", true);
+    }
+
+    /**
+     * Ẩn hoặc đổi tên MenuItem "Đơn hàng" tuỳ theo role:
+     *  - BIDDER : xoá hoàn toàn khỏi menu
+     *  - SELLER : đổi thành "Sản phẩm đăng bán"
+     *  - Khác   : giữ nguyên "Đơn hàng"
+     */
+    private void applyRoleMenu(User user) {
+        String role = user.getRole() == null ? "" : user.getRole().toUpperCase();
+        switch (role) {
+            case "BIDDER":
+                // Xoá hẳn khỏi danh sách – không để lại khoảng trắng
+                profileMenuBtn.getItems().remove(ordersMenuItem);
+                break;
+            case "SELLER":
+                ordersMenuItem.setText("📦  Sản phẩm đăng bán");
+                // Gắn lại handler cho action mới
+                ordersMenuItem.setOnAction(e -> handleMyProducts());
+                break;
+            default:
+                // Giữ nguyên text "Đơn hàng" và handler #handleOrders
+                break;
+        }
     }
 
     // ── Toggle Chat ───────────────────────────────────────────
@@ -83,17 +114,15 @@ public class MainController {
         boolean nowVisible = !chatPanel.isVisible();
         chatPanel.setVisible(nowVisible);
         chatPanel.setManaged(nowVisible);
-
-        // Cuộn xuống cuối khi mở
-        if (nowVisible) {
+        if (nowVisible)
             Platform.runLater(() -> chatScrollPane.setVvalue(1.0));
-        }
     }
 
     // ── Auction Info ──────────────────────────────────────────
     private void loadAuctionInfo() {
         productTitleLabel.setText(session.getItemName());
-        productDescLabel.setText("Laptop cao cấp – Mới 100%, còn nguyên seal. Bảo hành 12 tháng.");
+        productDescLabel.setText(
+                "Laptop cao cấp – Mới 100%, còn nguyên seal. Bảo hành 12 tháng.");
         startPriceLabel.setText(formatVND(session.getStartingPrice()));
         currentPriceLabel.setText(formatVND(session.getCurrentPrice()));
         minStepLabel.setText(formatVND(session.getMinBidStep()));
@@ -177,9 +206,18 @@ public class MainController {
         showAlert("Lịch sử", "Tính năng lịch sử đang phát triển.");
     }
 
+    /**
+     * Dùng cho role mặc định (không phải BIDDER/SELLER).
+     * Với SELLER thì handleMyProducts() được gắn trực tiếp qua setOnAction.
+     */
     @FXML
     private void handleOrders() {
         showAlert("Đơn hàng", "Tính năng đơn hàng đang phát triển.");
+    }
+
+    /** Chỉ gọi khi role = SELLER */
+    private void handleMyProducts() {
+        showAlert("Sản phẩm đăng bán", "Tính năng sản phẩm đăng bán đang phát triển.");
     }
 
     // ── Logout ────────────────────────────────────────────────
