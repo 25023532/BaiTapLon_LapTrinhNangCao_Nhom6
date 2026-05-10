@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.nhom6.auctionsystem_nhom6.AuctionListController"
+            styleClass="main-root">
+
+    <top>
+        <HBox styleClass="header" spacing="12" alignment="CENTER_LEFT">
+            <padding><Insets top="0" right="20" bottom="0" left="20"/></padding>
+            <Button text="← Quay lại" onAction="#handleBack" styleClass="btn-secondary"/>
+            <Label text="Danh sách phiên đấu giá" styleClass="header-username"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <!-- Lọc trạng thái -->
+            <ComboBox fx:id="statusFilter" promptText="Tất cả trạng thái"
+                      styleClass="filter-combo" onAction="#handleFilter" prefWidth="180"/>
+            <!-- Lọc danh mục -->
+            <ComboBox fx:id="categoryFilter" promptText="Tất cả danh mục"
+                      styleClass="filter-combo" onAction="#handleFilter" prefWidth="160"/>
+            <!-- Tìm kiếm -->
+            <TextField fx:id="searchField" promptText="Tìm phiên, sản phẩm..."
+                       prefWidth="220" styleClass="search-field"
+                       onKeyReleased="#handleSearch"/>
+        </HBox>
+    </top>
+
+    <center>
+        <VBox style="-fx-background-color: #0f172a;" spacing="16">
+            <padding><Insets top="20" right="24" bottom="24" left="24"/></padding>
+
+            <!-- Stat cards -->
+            <HBox spacing="12">
+                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" alignment="CENTER" spacing="4">
+                    <padding><Insets top="14" right="16" bottom="14" left="16"/></padding>
+                    <Label fx:id="totalLabel"   text="0" styleClass="stat-big-num"/>
+                    <Label text="Tổng phiên"    styleClass="stat-big-label"/>
+                </VBox>
+                <VBox styleClass="stat-card stat-card-success" HBox.hgrow="ALWAYS" alignment="CENTER" spacing="4">
+                    <padding><Insets top="14" right="16" bottom="14" left="16"/></padding>
+                    <Label fx:id="runningLabel" text="0" styleClass="stat-big-num"/>
+                    <Label text="Đang diễn ra"  styleClass="stat-big-label"/>
+                </VBox>
+                <VBox styleClass="stat-card stat-card-warn" HBox.hgrow="ALWAYS" alignment="CENTER" spacing="4">
+                    <padding><Insets top="14" right="16" bottom="14" left="16"/></padding>
+                    <Label fx:id="upcomingLabel" text="0" styleClass="stat-big-num"/>
+                    <Label text="Sắp diễn ra"   styleClass="stat-big-label"/>
+                </VBox>
+                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" alignment="CENTER" spacing="4">
+                    <padding><Insets top="14" right="16" bottom="14" left="16"/></padding>
+                    <Label fx:id="endedLabel"   text="0" styleClass="stat-big-num"/>
+                    <Label text="Đã kết thúc"   styleClass="stat-big-label"/>
+                </VBox>
+            </HBox>
+
+            <!-- Tab bar -->
+            <HBox styleClass="tab-bar" spacing="0">
+                <Button fx:id="tabAllBtn"     text="📋  Tất cả"
+                        styleClass="tab-btn,tab-active"
+                        onAction="#handleTabAll" maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
+                <Button fx:id="tabRunBtn"     text="🟢  Đang diễn ra"
+                        styleClass="tab-btn"
+                        onAction="#handleTabRunning" maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
+                <Button fx:id="tabUpBtn"      text="⏰  Sắp diễn ra"
+                        styleClass="tab-btn"
+                        onAction="#handleTabUpcoming" maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
+                <Button fx:id="tabEndBtn"     text="🏁  Đã kết thúc"
+                        styleClass="tab-btn"
+                        onAction="#handleTabEnded" maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
+            </HBox>
+
+            <!-- Danh sách phiên -->
+            <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" styleClass="bid-scroll">
+                <VBox fx:id="sessionListBox" spacing="10">
+                    <padding><Insets top="4" right="0" bottom="8" left="0"/></padding>
+                </VBox>
+            </ScrollPane>
+        </VBox>
+    </center>
+</BorderPane>
