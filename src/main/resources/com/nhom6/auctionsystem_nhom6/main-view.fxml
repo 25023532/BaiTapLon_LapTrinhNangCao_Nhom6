@@ -11,7 +11,6 @@
     <!-- ══ SIDEBAR ══ -->
     <left>
         <VBox styleClass="sidebar" spacing="0">
-            <!-- Logo -->
             <HBox styleClass="sidebar-logo" spacing="10" alignment="CENTER_LEFT">
                 <padding><Insets top="20" right="16" bottom="20" left="16"/></padding>
                 <Label text="⬡" styleClass="logo-icon"/>
@@ -21,7 +20,6 @@
                 </VBox>
             </HBox>
 
-            <!-- Nav -->
             <VBox styleClass="sidebar-nav" spacing="2">
                 <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
                 <Button text="⊞  Tổng quan"        maxWidth="Infinity" styleClass="nav-btn,nav-active"/>
@@ -34,7 +32,6 @@
                 <Button text="?  Trợ giúp"           maxWidth="Infinity" styleClass="nav-btn"/>
             </VBox>
 
-            <!-- Categories -->
             <VBox styleClass="sidebar-cats" spacing="2">
                 <padding><Insets top="8" right="8" bottom="8" left="16"/></padding>
                 <Label text="DANH MỤC" styleClass="cat-title"/>
@@ -46,7 +43,6 @@
                 <Button text="🚗  Xe cộ"     maxWidth="Infinity" styleClass="cat-btn"/>
             </VBox>
 
-            <!-- ✅ Đã XÓA upgrade-box "Trở thành ProRole" -->
             <Region VBox.vgrow="ALWAYS"/>
         </VBox>
     </left>
@@ -81,7 +77,8 @@
                 <items>
                     <MenuItem text="👤  Hồ sơ"     onAction="#handleProfile"/>
                     <MenuItem text="📋  Lịch sử"   onAction="#handleHistory"/>
-                    <MenuItem text="🛒  Đơn hàng"  onAction="#handleOrders"/>
+                    <!-- ordersMenuItem: ẩn với BIDDER, đổi text với SELLER -->
+                    <MenuItem fx:id="ordersMenuItem" text="🛒  Đơn hàng" onAction="#handleOrders"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="🚪  Đăng xuất" onAction="#handleLogout"/>
                 </items>
@@ -91,10 +88,7 @@
 
     <!-- ══ CONTENT ══ -->
     <center>
-        <!-- StackPane để chat panel nổi lên trên content -->
         <StackPane>
-
-            <!-- Main content -->
             <HBox spacing="16" style="-fx-background-color: #0f172a;">
                 <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
 
@@ -188,11 +182,11 @@
                             <Label text="✅ Đã xác minh danh tính"  styleClass="seller-verified"/>
                             <HBox spacing="16">
                                 <VBox alignment="CENTER" HBox.hgrow="ALWAYS">
-                                    <Label text="98%"    styleClass="stat-num"/>
+                                    <Label text="98%"     styleClass="stat-num"/>
                                     <Label text="Tỉ lệ thắng" styleClass="stat-label"/>
                                 </VBox>
                                 <VBox alignment="CENTER" HBox.hgrow="ALWAYS">
-                                    <Label text="156"  styleClass="stat-num"/>
+                                    <Label text="156"   styleClass="stat-num"/>
                                     <Label text="Đã bán"    styleClass="stat-label"/>
                                 </VBox>
                                 <VBox alignment="CENTER" HBox.hgrow="ALWAYS">
@@ -205,14 +199,14 @@
                 </VBox>
             </HBox>
 
-            <!-- ✅ Nút chat FAB góc dưới phải -->
+            <!-- Chat FAB -->
             <Button text="💬" onAction="#handleToggleChat"
                     styleClass="btn-chat-fab"
                     StackPane.alignment="BOTTOM_RIGHT">
                 <StackPane.margin><Insets bottom="24" right="24"/></StackPane.margin>
             </Button>
 
-            <!-- ✅ Chat panel nổi – ẩn mặc định -->
+            <!-- Chat Panel -->
             <VBox fx:id="chatPanel" styleClass="chat-panel" spacing="0"
                   prefWidth="340" maxWidth="340" maxHeight="480"
                   StackPane.alignment="BOTTOM_RIGHT" visible="false" managed="false">
@@ -223,7 +217,6 @@
                     <Label text="💬 CHAT TRỰC TUYẾN" styleClass="chat-title"/>
                     <Region HBox.hgrow="ALWAYS"/>
                     <Label text="● Online 52" styleClass="chat-online"/>
-                    <!-- Nút đóng chat -->
                     <Button text="✕" onAction="#handleToggleChat" styleClass="btn-close-chat"/>
                 </HBox>
 
