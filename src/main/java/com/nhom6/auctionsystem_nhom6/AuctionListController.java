@@ -55,11 +55,11 @@ public class AuctionListController {
         renderList(allSessions);
     }
 
-    // ── Load: kết hợp session từ AppContext + dữ liệu mẫu ────
+    // ── Load: chỉ lấy dữ liệu thực từ AppContext ─────────────
     private void loadSessions() {
         allSessions = new ArrayList<>();
 
-        // Thêm active session từ AppContext nếu có
+        // Active session từ AppContext nếu có
         if (AppContext.getActiveSession() != null) {
             var s = AppContext.getActiveSession();
             allSessions.add(new SessionRecord(
@@ -70,7 +70,7 @@ public class AuctionListController {
             ));
         }
 
-        // Sản phẩm seller đã đăng (CHỜ DUYỆT → UPCOMING, ĐANG ĐẤU GIÁ → RUNNING)
+        // Sản phẩm seller đã đăng
         User user = AppContext.getCurrentUser();
         if ("SELLER".equalsIgnoreCase(user.getRole())) {
             for (AppContext.ProductRecord p : AppContext.getProducts(user.getUsername())) {
@@ -90,39 +90,8 @@ public class AuctionListController {
             }
         }
 
-        // Dữ liệu mẫu để có nội dung hiển thị
-        allSessions.addAll(List.of(
-            new SessionRecord("S-002", "iPhone 15 Pro Max 256GB – Titanium",
-                    "Điện thoại", "TechStore",
-                    25_000_000, 27_500_000, 14, "RUNNING",
-                    LocalDateTime.now().minusHours(2),
-                    LocalDateTime.now().plusHours(3)),
-            new SessionRecord("S-003", "Sony Alpha A7 IV – Body Only",
-                    "Máy ảnh", "CameraShop",
-                    40_000_000, 40_000_000, 0, "UPCOMING",
-                    LocalDateTime.now().plusHours(2),
-                    LocalDateTime.now().plusHours(26)),
-            new SessionRecord("S-004", "Dell XPS 15 9530 – i9 RTX 4060",
-                    "Laptop", "LaptopHub",
-                    30_000_000, 32_000_000, 8, "RUNNING",
-                    LocalDateTime.now().minusHours(3),
-                    LocalDateTime.now().plusHours(1)),
-            new SessionRecord("S-005", "Apple Watch Ultra 2 – 49mm",
-                    "Đồng hồ", "WatchWorld",
-                    17_000_000, 19_500_000, 6, "ENDED",
-                    LocalDateTime.now().minusDays(2),
-                    LocalDateTime.now().minusDays(1)),
-            new SessionRecord("S-006", "DJI Mini 4 Pro Combo",
-                    "Điện tử", "DroneViet",
-                    15_000_000, 16_800_000, 5, "ENDED",
-                    LocalDateTime.now().minusDays(3),
-                    LocalDateTime.now().minusDays(2)),
-            new SessionRecord("S-007", "Nikon Z6 III – Body",
-                    "Máy ảnh", "PhotoViet",
-                    35_000_000, 35_000_000, 0, "UPCOMING",
-                    LocalDateTime.now().plusDays(1),
-                    LocalDateTime.now().plusDays(3))
-        ));
+        // ── Dữ liệu mẫu đã được XÓA ──────────────────────────
+        // Danh sách chỉ hiển thị khi có sản phẩm thực được thêm vào
     }
 
     // ── Stats ─────────────────────────────────────────────────
@@ -140,9 +109,21 @@ public class AuctionListController {
     private void renderList(List<SessionRecord> list) {
         sessionListBox.getChildren().clear();
         if (list.isEmpty()) {
-            Label empty = new Label("Không tìm thấy phiên nào.");
-            empty.setStyle("-fx-text-fill: #64748b; -fx-font-size: 14px; -fx-padding: 40 0 40 0;");
-            sessionListBox.getChildren().add(empty);
+            VBox emptyBox = new VBox(12);
+            emptyBox.setAlignment(Pos.CENTER);
+            emptyBox.setPadding(new Insets(60, 0, 60, 0));
+
+            Label icon = new Label("📭");
+            icon.setStyle("-fx-font-size: 48px;");
+
+            Label msg = new Label("Chưa có phiên đấu giá nào.");
+            msg.setStyle("-fx-text-fill: #64748b; -fx-font-size: 15px; -fx-font-weight: bold;");
+
+            Label hint = new Label("Hãy thêm sản phẩm để tạo phiên đấu giá.");
+            hint.setStyle("-fx-text-fill: #475569; -fx-font-size: 13px;");
+
+            emptyBox.getChildren().addAll(icon, msg, hint);
+            sessionListBox.getChildren().add(emptyBox);
             return;
         }
         for (SessionRecord s : list) {
@@ -156,7 +137,7 @@ public class AuctionListController {
         card.getStyleClass().add("history-row");
         card.setPadding(new Insets(16, 20, 16, 20));
 
-        // Status icon + color bar
+        // Status icon + badge
         VBox leftBar = new VBox(6);
         leftBar.setAlignment(Pos.CENTER);
         leftBar.setMinWidth(52);
@@ -209,7 +190,6 @@ public class AuctionListController {
         Label curP = new Label(formatVND(s.currentPrice()));
         curP.getStyleClass().add("history-item-price");
 
-        // Progress bar giá
         double progress = s.startPrice() > 0
                 ? Math.min((s.currentPrice() - s.startPrice()) / s.startPrice(), 1.0)
                 : 0;
@@ -245,10 +225,10 @@ public class AuctionListController {
     }
 
     // ── Tab handlers ──────────────────────────────────────────
-    @FXML private void handleTabAll()     { setTab(0); }
-    @FXML private void handleTabRunning() { setTab(1); }
-    @FXML private void handleTabUpcoming(){ setTab(2); }
-    @FXML private void handleTabEnded()   { setTab(3); }
+    @FXML private void handleTabAll()      { setTab(0); }
+    @FXML private void handleTabRunning()  { setTab(1); }
+    @FXML private void handleTabUpcoming() { setTab(2); }
+    @FXML private void handleTabEnded()    { setTab(3); }
 
     private void setTab(int tab) {
         currentTab = tab;
@@ -269,19 +249,15 @@ public class AuctionListController {
 
         List<SessionRecord> filtered = allSessions.stream()
             .filter(s -> {
-                // Tab filter
                 if (currentTab == 1 && !"RUNNING".equals(s.status()))  return false;
                 if (currentTab == 2 && !"UPCOMING".equals(s.status())) return false;
                 if (currentTab == 3 && !"ENDED".equals(s.status()))    return false;
-                // Status combo
                 if (status != null && !status.isEmpty()
                         && !"Tất cả".equals(status)
                         && !status.equals(s.status())) return false;
-                // Category combo
                 if (category != null && !category.isEmpty()
                         && !"Tất cả".equals(category)
                         && !category.equals(s.category())) return false;
-                // Search
                 if (!keyword.isEmpty()
                         && !s.itemName().toLowerCase().contains(keyword)
                         && !s.sellerName().toLowerCase().contains(keyword)
@@ -298,15 +274,15 @@ public class AuctionListController {
         alert.setTitle("Chi tiết phiên đấu giá");
         alert.setHeaderText(s.itemName());
         alert.setContentText(
-                "ID          : " + s.id() + "\n" +
-                "Danh mục   : " + s.category() + "\n" +
-                "Người bán  : " + s.sellerName() + "\n" +
-                "Giá khởi điểm : " + formatVND(s.startPrice()) + "\n" +
-                "Giá hiện tại  : " + formatVND(s.currentPrice()) + "\n" +
-                "Số lượt bid   : " + s.bidCount() + "\n" +
-                "Bắt đầu   : " + s.startTime().format(DT_FMT) + "\n" +
-                "Kết thúc  : " + s.endTime().format(DT_FMT) + "\n" +
-                "Trạng thái: " + statusText(s.status())
+                "ID             : " + s.id()                      + "\n" +
+                "Danh mục      : " + s.category()                 + "\n" +
+                "Người bán     : " + s.sellerName()               + "\n" +
+                "Giá khởi điểm : " + formatVND(s.startPrice())    + "\n" +
+                "Giá hiện tại  : " + formatVND(s.currentPrice())  + "\n" +
+                "Số lượt bid   : " + s.bidCount()                 + "\n" +
+                "Bắt đầu       : " + s.startTime().format(DT_FMT) + "\n" +
+                "Kết thúc      : " + s.endTime().format(DT_FMT)   + "\n" +
+                "Trạng thái    : " + statusText(s.status())
         );
         alert.showAndWait();
     }
