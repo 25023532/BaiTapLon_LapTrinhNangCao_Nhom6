@@ -59,9 +59,10 @@ public class LiveAuctionController {
 
     private AuctionSession currentSession;
     private Timeline       countdownTimer;
-    private Timeline       simulateTimer;  // giả lập bid từ user khác
+    private Timeline       simulateTimer;
     private boolean        sessionSelected = false;
 
+    // ── Khai báo TIME_FMT duy nhất ────────────────────────────
     private static final DateTimeFormatter TIME_FMT =
             DateTimeFormatter.ofPattern("HH:mm:ss");
 
@@ -70,10 +71,8 @@ public class LiveAuctionController {
         loadLiveSessionList();
         setNoSessionState();
 
-        // Giả lập online count
         onlineLabel.setText("● " + (15 + (int)(Math.random() * 30)) + " online");
 
-        // Tự động chọn active session nếu có
         if (AppContext.getActiveSession() != null) {
             selectSession(AppContext.getActiveSession());
         }
@@ -83,19 +82,17 @@ public class LiveAuctionController {
     private void loadLiveSessionList() {
         liveSessionListBox.getChildren().clear();
 
-        // Active session từ AppContext
         if (AppContext.getActiveSession() != null) {
             AuctionSession s = AppContext.getActiveSession();
             liveSessionListBox.getChildren().add(buildSessionItem(
                     s.getItemName(), "RUNNING", s.getCurrentPrice(), s));
         }
 
-        // Phiên mẫu
         liveSessionListBox.getChildren().addAll(
             buildSessionItemDemo("iPhone 15 Pro Max 256GB", "RUNNING", 27_500_000),
-            buildSessionItemDemo("Dell XPS 15 9530", "RUNNING", 32_000_000),
-            buildSessionItemDemo("Sony Alpha A7 IV", "UPCOMING", 40_000_000),
-            buildSessionItemDemo("Nikon Z6 III Body", "UPCOMING", 35_000_000)
+            buildSessionItemDemo("Dell XPS 15 9530",        "RUNNING", 32_000_000),
+            buildSessionItemDemo("Sony Alpha A7 IV",        "UPCOMING", 40_000_000),
+            buildSessionItemDemo("Nikon Z6 III Body",       "UPCOMING", 35_000_000)
         );
     }
 
@@ -150,7 +147,6 @@ public class LiveAuctionController {
 
         card.getChildren().addAll(nameLabel, meta);
 
-        // Demo: click vào phiên mẫu thì thông báo
         if ("RUNNING".equals(status)) {
             card.setOnMouseClicked(e -> {
                 if (AppContext.getActiveSession() != null) {
@@ -184,7 +180,6 @@ public class LiveAuctionController {
         currentSession  = session;
         sessionSelected = true;
 
-        // Điền thông tin
         liveTitleLabel.setText(session.getItemName());
         liveDescLabel.setText("Sản phẩm mới 100%, còn nguyên seal. Bảo hành 12 tháng.");
         liveStartPrice.setText(formatVND(session.getStartingPrice()));
@@ -193,7 +188,6 @@ public class LiveAuctionController {
         liveStatusLabel.setText("● " + session.getStatus().name());
         liveStatusLabel.getStyleClass().setAll("status-badge", "status-running");
 
-        // Quick bid labels
         quickBid1Btn.setText("+1 bước  (" + formatVND(
                 session.getCurrentPrice() + session.getMinBidStep()) + ")");
         quickBid2Btn.setText("+2 bước  (" + formatVND(
@@ -201,7 +195,6 @@ public class LiveAuctionController {
         quickBid3Btn.setText("+5 bước  (" + formatVND(
                 session.getCurrentPrice() + 5 * session.getMinBidStep()) + ")");
 
-        // Leader
         var history = session.getBidHistory();
         if (!history.isEmpty()) {
             var topBid = history.get(history.size() - 1);
@@ -212,10 +205,7 @@ public class LiveAuctionController {
         startCountdown();
         startSimulation();
 
-        // Participants
         participantsLabel.setText("👥 " + (8 + (int)(Math.random() * 20)) + " người tham gia");
-
-        // Chat welcome
         addChatMsg("System", "Bạn đã tham gia phiên: " + session.getItemName(), false);
     }
 
@@ -319,7 +309,6 @@ public class LiveAuctionController {
             addChatMsg("System", user.getUsername() + " đặt giá " + formatVND(amount), false);
             bidCountLabel.setText(currentSession.getBidHistory().size() + " lượt");
 
-            // Ghi vào lịch sử bidder
             AppContext.addHistory(user.getUsername(), new AppContext.HistoryRecord(
                     "BID-" + UUID.randomUUID().toString().substring(0,6).toUpperCase(),
                     currentSession.getItemName(), amount, "SellerLong",
@@ -420,7 +409,4 @@ public class LiveAuctionController {
         a.setTitle(title); a.setHeaderText(null); a.setContentText(msg);
         a.showAndWait();
     }
-
-    private static final DateTimeFormatter TIME_FMT =
-            DateTimeFormatter.ofPattern("HH:mm:ss");
 }
