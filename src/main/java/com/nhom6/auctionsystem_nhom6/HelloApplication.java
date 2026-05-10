@@ -56,7 +56,6 @@ public class HelloApplication extends Application {
         primaryStage.setTitle("AuctionSys – Đăng ký tài khoản");
     }
 
-    // ✅ Màn hình hồ sơ cá nhân
     public static void showProfileView() throws Exception {
         FXMLLoader loader = new FXMLLoader(
                 HelloApplication.class.getResource(
@@ -64,6 +63,26 @@ public class HelloApplication extends Application {
         BorderPane root = loader.load();
         primaryStage.getScene().setRoot(root);
         primaryStage.setTitle("AuctionSys – Hồ sơ cá nhân");
+    }
+
+    // ✅ Lịch sử mua/bán — dùng chung 1 view, controller tự nhận role
+    public static void showHistoryView() throws Exception {
+        FXMLLoader loader = new FXMLLoader(
+                HelloApplication.class.getResource(
+                        "/com/nhom6/auctionsystem_nhom6/history-view.fxml"));
+        BorderPane root = loader.load();
+        primaryStage.getScene().setRoot(root);
+        primaryStage.setTitle("AuctionSys – Lịch sử");
+    }
+
+    // ✅ Sản phẩm đăng bán — chỉ Seller
+    public static void showMyProductsView() throws Exception {
+        FXMLLoader loader = new FXMLLoader(
+                HelloApplication.class.getResource(
+                        "/com/nhom6/auctionsystem_nhom6/my-products-view.fxml"));
+        BorderPane root = loader.load();
+        primaryStage.getScene().setRoot(root);
+        primaryStage.setTitle("AuctionSys – Sản phẩm đăng bán");
     }
 
     public static Stage getPrimaryStage() { return primaryStage; }
