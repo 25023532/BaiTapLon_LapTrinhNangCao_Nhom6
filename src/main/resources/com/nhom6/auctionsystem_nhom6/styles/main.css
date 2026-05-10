@@ -6,7 +6,6 @@
 .main-root  { -fx-background-color: #0f172a; }
 .login-root { -fx-background-color: #0f172a; }
 
-/* Fix StackPane trong center không che nền */
 .stack-pane { -fx-background-color: transparent; }
 
 /* ── Sidebar ────────────────────────────────────────────── */
@@ -406,17 +405,11 @@
     -fx-cursor: hand;
 }
 
-.profile-menu-btn:hover {
-    -fx-background-color: #334155;
-}
+.profile-menu-btn:hover { -fx-background-color: #334155; }
 
-.profile-menu-btn .arrow-button {
-    -fx-background-color: transparent;
-}
+.profile-menu-btn .arrow-button { -fx-background-color: transparent; }
 
-.profile-menu-btn .arrow {
-    -fx-background-color: #94a3b8;
-}
+.profile-menu-btn .arrow { -fx-background-color: #94a3b8; }
 
 .profile-avatar {
     -fx-background-color: #2563eb;
@@ -450,13 +443,9 @@
     -fx-font-size: 13px;
 }
 
-.menu-item:hover {
-    -fx-background-color: #334155;
-}
+.menu-item:hover { -fx-background-color: #334155; }
 
-.menu-item:hover .label {
-    -fx-text-fill: #f1f5f9;
-}
+.menu-item:hover .label { -fx-text-fill: #f1f5f9; }
 
 /* ── FAB Chat Button ─────────────────────────────────────── */
 .btn-chat-fab {
@@ -483,7 +472,6 @@
     -fx-border-width: 1;
 }
 
-/* ✅ Tất cả Label bên trong login-card đều sáng */
 .login-card .label {
     -fx-text-fill: #f1f5f9;
     -fx-font-size: 13px;
@@ -518,9 +506,7 @@
     -fx-font-size: 13px;
 }
 
-.login-input:focused {
-    -fx-border-color: #2563eb;
-}
+.login-input:focused { -fx-border-color: #2563eb; }
 
 .login-error {
     -fx-text-fill: #ef4444;
@@ -571,8 +557,8 @@
 .btn-secondary {
     -fx-background-color: #334155;
     -fx-text-fill: #f1f5f9;
-    -fx-font-size: 14px;
-    -fx-padding: 10 0 10 0;
+    -fx-font-size: 13px;
+    -fx-padding: 6 14 6 14;
     -fx-background-radius: 8;
     -fx-cursor: hand;
 }
@@ -583,4 +569,215 @@
 .separator *.line {
     -fx-background-color: #334155;
     -fx-border-color: #334155;
+}
+
+/* ══════════════════════════════════════════════════════════
+   HISTORY & MY PRODUCTS – Các class mới thêm vào
+   ══════════════════════════════════════════════════════════ */
+
+/* ── History / Product rows ──────────────────────────────── */
+.history-row {
+    -fx-background-color: #1e293b;
+    -fx-background-radius: 10;
+    -fx-border-color: #334155;
+    -fx-border-radius: 10;
+    -fx-border-width: 1;
+}
+
+.history-row:hover {
+    -fx-background-color: #243447;
+    -fx-border-color: #2563eb;
+    -fx-cursor: hand;
+}
+
+.history-item-name {
+    -fx-text-fill: #e2e8f0;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+.history-item-meta {
+    -fx-text-fill: #64748b;
+    -fx-font-size: 12px;
+}
+
+.history-item-price {
+    -fx-text-fill: #38bdf8;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+
+/* ── Status Badges ───────────────────────────────────────── */
+.history-badge {
+    -fx-padding: 3 10 3 10;
+    -fx-background-radius: 20;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-alignment: CENTER;
+}
+
+.badge-success {
+    -fx-background-color: #14532d;
+    -fx-text-fill: #4ade80;
+}
+
+.badge-warn {
+    -fx-background-color: #78350f;
+    -fx-text-fill: #fbbf24;
+}
+
+.badge-danger {
+    -fx-background-color: #7f1d1d;
+    -fx-text-fill: #f87171;
+}
+
+.badge-info {
+    -fx-background-color: #1e3a5f;
+    -fx-text-fill: #38bdf8;
+}
+
+.badge-neutral {
+    -fx-background-color: #1e293b;
+    -fx-text-fill: #94a3b8;
+    -fx-border-color: #334155;
+    -fx-border-radius: 20;
+    -fx-border-width: 1;
+}
+
+/* ── Summary Stat Cards (History & Products pages) ───────── */
+.stat-card {
+    -fx-background-color: #1e293b;
+    -fx-background-radius: 10;
+    -fx-border-color: #334155;
+    -fx-border-radius: 10;
+    -fx-border-width: 1;
+}
+
+.stat-card-success {
+    -fx-border-color: #14532d;
+    -fx-border-radius: 10;
+    -fx-border-width: 1;
+}
+
+.stat-card-warn {
+    -fx-border-color: #78350f;
+    -fx-border-radius: 10;
+    -fx-border-width: 1;
+}
+
+.stat-card-info {
+    -fx-border-color: #1e3a5f;
+    -fx-border-radius: 10;
+    -fx-border-width: 1;
+}
+
+.stat-big-num {
+    -fx-text-fill: #e2e8f0;
+    -fx-font-size: 26px;
+    -fx-font-weight: bold;
+}
+
+.stat-big-label {
+    -fx-text-fill: #64748b;
+    -fx-font-size: 12px;
+}
+
+/* ── Tab Bar ─────────────────────────────────────────────── */
+.tab-bar {
+    -fx-background-color: #1e293b;
+    -fx-background-radius: 8;
+    -fx-border-color: #334155;
+    -fx-border-radius: 8;
+    -fx-border-width: 1;
+}
+
+.tab-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #64748b;
+    -fx-font-size: 13px;
+    -fx-padding: 10 20 10 20;
+    -fx-cursor: hand;
+    -fx-background-radius: 6;
+}
+
+.tab-btn:hover {
+    -fx-background-color: #243447;
+    -fx-text-fill: #e2e8f0;
+}
+
+.tab-active {
+    -fx-background-color: #1d4ed8;
+    -fx-text-fill: white;
+    -fx-background-radius: 6;
+}
+
+.tab-active:hover {
+    -fx-background-color: #2563eb;
+    -fx-text-fill: white;
+}
+
+/* ── Filter ComboBox ─────────────────────────────────────── */
+.filter-combo {
+    -fx-background-color: #1e293b;
+    -fx-border-color: #334155;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 2 6 2 6;
+    -fx-cursor: hand;
+}
+
+.filter-combo .list-cell {
+    -fx-text-fill: #e2e8f0;
+    -fx-background-color: #1e293b;
+    -fx-font-size: 13px;
+}
+
+.filter-combo .list-view {
+    -fx-background-color: #1e293b;
+    -fx-border-color: #334155;
+}
+
+.filter-combo .list-view .list-cell:hover {
+    -fx-background-color: #334155;
+}
+
+/* ── Danger Button ───────────────────────────────────────── */
+.btn-danger {
+    -fx-background-color: #7f1d1d;
+    -fx-text-fill: #f87171;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+    -fx-font-size: 12px;
+    -fx-padding: 5 12 5 12;
+    -fx-border-color: #991b1b;
+    -fx-border-radius: 6;
+    -fx-border-width: 1;
+}
+
+.btn-danger:hover { -fx-background-color: #991b1b; }
+
+.btn-danger:disabled {
+    -fx-opacity: 0.35;
+    -fx-cursor: default;
+}
+
+/* ── Profile avatar large (profile-view) ─────────────────── */
+.profile-avatar-large {
+    -fx-background-color: #2563eb;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 22px;
+    -fx-min-width: 64px;
+    -fx-min-height: 64px;
+    -fx-max-width: 64px;
+    -fx-max-height: 64px;
+    -fx-background-radius: 50%;
+    -fx-alignment: CENTER;
+}
+
+/* ── Profile scroll ──────────────────────────────────────── */
+.profile-scroll {
+    -fx-background-color: #0f172a;
+    -fx-background: #0f172a;
+    -fx-border-color: transparent;
 }
