@@ -54,16 +54,18 @@ public class MainController {
     @FXML private ScrollPane chatScrollPane;
 
     private AuctionSession session;
-    private Timeline countdownTimer;
+    private Timeline       countdownTimer;
+
     private static final DateTimeFormatter TIME_FMT =
             DateTimeFormatter.ofPattern("HH:mm:ss");
 
+    // ═════════════════════════════════════════════════════════
     @FXML
     public void initialize() {
         User user = AppContext.getCurrentUser();
         session   = AppContext.getActiveSession();
 
-        // ── Thông tin header ──────────────────────────────────
+        // ── Header info ───────────────────────────────────────
         userNameLabel.setText(user.getUsername());
         userRoleLabel.setText(user.getRole());
         String av = user.getUsername().length() >= 2
@@ -72,38 +74,36 @@ public class MainController {
         userAvatarLabel.setText(av);
         walletLabel.setText("0 ₫");
 
-        // ── Cập nhật menu profile theo role ──────────────────
+        // ── Menu theo role ────────────────────────────────────
         applyRoleMenu(user);
 
         loadAuctionInfo();
         refreshBidHistory();
         startCountdown();
 
+        // Chat mẫu
         addChatMessage("SellerLong", "Sản phẩm còn bảo hành chính hãng.", true);
-        addChatMessage("bidder07",   "Bước giá tiếp theo là bao nhiêu?",  false);
+        addChatMessage("bidder07",   "Bước giá tiếp theo là bao nhiêu?",   false);
         addChatMessage("SellerLong", "Bước giá tối thiểu là 500,000 VNĐ.", true);
     }
 
+    // ── Role-based menu ───────────────────────────────────────
     /**
-     * Ẩn hoặc đổi tên MenuItem "Đơn hàng" tuỳ theo role:
-     *  - BIDDER : xoá hoàn toàn khỏi menu
-     *  - SELLER : đổi thành "Sản phẩm đăng bán"
-     *  - Khác   : giữ nguyên "Đơn hàng"
+     * BIDDER  → xoá hoàn toàn mục ordersMenuItem khỏi menu
+     * SELLER  → đổi text "Đơn hàng" → "Sản phẩm đăng bán" + gắn handler mới
+     * (khác)  → giữ nguyên "Đơn hàng" + handler #handleOrders
      */
     private void applyRoleMenu(User user) {
         String role = user.getRole() == null ? "" : user.getRole().toUpperCase();
         switch (role) {
             case "BIDDER":
-                // Xoá hẳn khỏi danh sách – không để lại khoảng trắng
                 profileMenuBtn.getItems().remove(ordersMenuItem);
                 break;
             case "SELLER":
                 ordersMenuItem.setText("📦  Sản phẩm đăng bán");
-                // Gắn lại handler cho action mới
                 ordersMenuItem.setOnAction(e -> handleMyProducts());
                 break;
             default:
-                // Giữ nguyên text "Đơn hàng" và handler #handleOrders
                 break;
         }
     }
@@ -159,9 +159,10 @@ public class MainController {
     // ── Place Bid ─────────────────────────────────────────────
     @FXML
     private void handlePlaceBid() {
-        User user = AppContext.getCurrentUser();
+        User   user     = AppContext.getCurrentUser();
         double newPrice = session.getCurrentPrice() + session.getMinBidStep();
-        Bid bid = new Bid(UUID.randomUUID().toString(), user.getUsername(), newPrice);
+        Bid    bid      = new Bid(UUID.randomUUID().toString(),
+                                  user.getUsername(), newPrice);
         try {
             session.placeBid(bid);
             currentPriceLabel.setText(formatVND(session.getCurrentPrice()));
@@ -201,23 +202,31 @@ public class MainController {
         catch (Exception e) { e.printStackTrace(); }
     }
 
+    /**
+     * Bidder  → mở lịch sử mua hàng
+     * Seller  → mở lịch sử bán hàng
+     * (dùng chung history-view.fxml, controller tự nhận role)
+     */
     @FXML
     private void handleHistory() {
-        showAlert("Lịch sử", "Tính năng lịch sử đang phát triển.");
+        try { HelloApplication.showHistoryView(); }
+        catch (Exception e) { e.printStackTrace(); }
     }
 
     /**
-     * Dùng cho role mặc định (không phải BIDDER/SELLER).
-     * Với SELLER thì handleMyProducts() được gắn trực tiếp qua setOnAction.
+     * Giữ lại cho role mặc định (không phải BIDDER/SELLER).
+     * SELLER dùng handleMyProducts() được gắn qua setOnAction.
      */
     @FXML
     private void handleOrders() {
-        showAlert("Đơn hàng", "Tính năng đơn hàng đang phát triển.");
+        try { HelloApplication.showHistoryView(); }
+        catch (Exception e) { e.printStackTrace(); }
     }
 
-    /** Chỉ gọi khi role = SELLER */
+    /** Chỉ gọi khi role = SELLER, gắn qua applyRoleMenu() */
     private void handleMyProducts() {
-        showAlert("Sản phẩm đăng bán", "Tính năng sản phẩm đăng bán đang phát triển.");
+        try { HelloApplication.showMyProductsView(); }
+        catch (Exception e) { e.printStackTrace(); }
     }
 
     // ── Logout ────────────────────────────────────────────────
@@ -229,7 +238,7 @@ public class MainController {
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    // ── Helpers ───────────────────────────────────────────────
+    // ── Bid History ───────────────────────────────────────────
     private void refreshBidHistory() {
         bidHistoryBox.getChildren().clear();
         var history = session.getBidHistory();
@@ -239,7 +248,8 @@ public class MainController {
             row.getStyleClass().add("bid-row");
             if (i == history.size() - 1) row.getStyleClass().add("bid-row-top");
 
-            Label name   = new Label((i == history.size() - 1 ? "👑 " : "") + b.getBidderId());
+            Label name   = new Label(
+                    (i == history.size() - 1 ? "👑 " : "") + b.getBidderId());
             Label amount = new Label(formatVND(b.getAmount()));
             Label time   = new Label(b.getTimestamp().format(TIME_FMT));
             amount.getStyleClass().add("bid-amount");
@@ -250,9 +260,11 @@ public class MainController {
         }
     }
 
+    // ── Chat Helpers ──────────────────────────────────────────
     private void addChatMessage(String sender, String message, boolean isSeller) {
         VBox bubble = new VBox(2);
-        bubble.getStyleClass().add(isSeller ? "chat-bubble-seller" : "chat-bubble-buyer");
+        bubble.getStyleClass().add(
+                isSeller ? "chat-bubble-seller" : "chat-bubble-buyer");
         Label nameLabel = new Label(sender);
         nameLabel.getStyleClass().add("chat-sender");
         Label msgLabel = new Label(message);
@@ -263,6 +275,7 @@ public class MainController {
         Platform.runLater(() -> chatScrollPane.setVvalue(1.0));
     }
 
+    // ── Utility ───────────────────────────────────────────────
     private String formatVND(double amount) {
         return String.format("₫ %,.0f", amount);
     }
