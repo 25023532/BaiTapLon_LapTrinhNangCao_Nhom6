@@ -29,68 +29,56 @@ public class HelloApplication extends Application {
         stage.show();
     }
 
+    // ── Existing views ────────────────────────────────────────
     public static void showMainView() throws Exception {
-        FXMLLoader loader = new FXMLLoader(
-                HelloApplication.class.getResource(
-                        "/com/nhom6/auctionsystem_nhom6/main-view.fxml"));
-        BorderPane root = loader.load();
-        primaryStage.getScene().setRoot(root);
-        primaryStage.setTitle("AuctionSys – Trang chủ");
+        load("main-view.fxml", "AuctionSys – Trang chủ");
     }
 
     public static void showLoginView() throws Exception {
-        FXMLLoader loader = new FXMLLoader(
-                HelloApplication.class.getResource(
-                        "/com/nhom6/auctionsystem_nhom6/login-view.fxml"));
-        BorderPane root = loader.load();
-        primaryStage.getScene().setRoot(root);
-        primaryStage.setTitle("AuctionSys – Đăng nhập");
+        load("login-view.fxml", "AuctionSys – Đăng nhập");
     }
 
     public static void showRegisterView() throws Exception {
-        FXMLLoader loader = new FXMLLoader(
-                HelloApplication.class.getResource(
-                        "/com/nhom6/auctionsystem_nhom6/register-view.fxml"));
-        BorderPane root = loader.load();
-        primaryStage.getScene().setRoot(root);
-        primaryStage.setTitle("AuctionSys – Đăng ký tài khoản");
+        load("register-view.fxml", "AuctionSys – Đăng ký tài khoản");
     }
 
     public static void showProfileView() throws Exception {
-        FXMLLoader loader = new FXMLLoader(
-                HelloApplication.class.getResource(
-                        "/com/nhom6/auctionsystem_nhom6/profile-view.fxml"));
-        BorderPane root = loader.load();
-        primaryStage.getScene().setRoot(root);
-        primaryStage.setTitle("AuctionSys – Hồ sơ cá nhân");
+        load("profile-view.fxml", "AuctionSys – Hồ sơ cá nhân");
     }
 
     public static void showHistoryView() throws Exception {
-        FXMLLoader loader = new FXMLLoader(
-                HelloApplication.class.getResource(
-                        "/com/nhom6/auctionsystem_nhom6/history-view.fxml"));
-        BorderPane root = loader.load();
-        primaryStage.getScene().setRoot(root);
-        primaryStage.setTitle("AuctionSys – Lịch sử");
+        load("history-view.fxml", "AuctionSys – Lịch sử");
     }
 
     public static void showMyProductsView() throws Exception {
-        FXMLLoader loader = new FXMLLoader(
-                HelloApplication.class.getResource(
-                        "/com/nhom6/auctionsystem_nhom6/my-products-view.fxml"));
-        BorderPane root = loader.load();
-        primaryStage.getScene().setRoot(root);
-        primaryStage.setTitle("AuctionSys – Sản phẩm đăng bán");
+        load("my-products-view.fxml", "AuctionSys – Sản phẩm đăng bán");
     }
 
-    // ✅ MỚI — Ví & Giao dịch
     public static void showWalletView() throws Exception {
+        load("wallet-view.fxml", "AuctionSys – Ví & Giao dịch");
+    }
+
+    // ── NEW views ─────────────────────────────────────────────
+    public static void showAuctionListView() throws Exception {
+        load("auction-list-view.fxml", "AuctionSys – Danh sách phiên đấu giá");
+    }
+
+    public static void showProductManagementView() throws Exception {
+        load("product-management-view.fxml", "AuctionSys – Quản lý sản phẩm");
+    }
+
+    public static void showLiveAuctionView() throws Exception {
+        load("live-auction-view.fxml", "AuctionSys – Đấu giá trực tiếp");
+    }
+
+    // ── Helper ────────────────────────────────────────────────
+    private static void load(String fxml, String title) throws Exception {
         FXMLLoader loader = new FXMLLoader(
                 HelloApplication.class.getResource(
-                        "/com/nhom6/auctionsystem_nhom6/wallet-view.fxml"));
+                        "/com/nhom6/auctionsystem_nhom6/" + fxml));
         BorderPane root = loader.load();
         primaryStage.getScene().setRoot(root);
-        primaryStage.setTitle("AuctionSys – Ví & Giao dịch");
+        primaryStage.setTitle(title);
     }
 
     public static Stage getPrimaryStage() { return primaryStage; }
