@@ -96,6 +96,25 @@ public class AppContext {
     }
 
     // =========================================================
+    // ✅ FIX: Tách riêng method tạo demo session để tái sử dụng
+    // =========================================================
+
+    private static AuctionSession createDemoSession() {
+
+        AuctionSession session = new AuctionSession(
+                "SESSION-001",
+                "MacBook Pro M3 – 18GB RAM, 512GB SSD",
+                22_000_000,
+                500_000,
+                LocalDateTime.now().plusHours(2)
+        );
+
+        session.start();
+
+        return session;
+    }
+
+    // =========================================================
     // SAMPLE DATA
     // =========================================================
 
@@ -165,18 +184,10 @@ public class AppContext {
             }
 
             // =================================================
-            // DEMO AUCTION SESSION
+            // ✅ FIX: Dùng createDemoSession() thay vì tạo inline
             // =================================================
 
-            activeSession = new AuctionSession(
-                    "SESSION-001",
-                    "MacBook Pro M3 – 18GB RAM, 512GB SSD",
-                    22_000_000,
-                    500_000,
-                    LocalDateTime.now().plusHours(2)
-            );
-
-            activeSession.start();
+            activeSession = createDemoSession();
 
             // =================================================
             // DEMO HISTORY
@@ -303,14 +314,17 @@ public class AppContext {
     }
 
     // =========================================================
-    // LOGOUT
+    // ✅ FIX: logout() tạo lại session thay vì set null
+    // Nguyên nhân lỗi gốc: activeSession = null sau logout
+    // → login lại → MainController.initialize() → session null → alert lỗi
     // =========================================================
 
     public static void logout() {
 
         currentUser = null;
 
-        activeSession = null;
+        // ✅ Tạo lại session mới thay vì set null
+        activeSession = createDemoSession();
 
         avatarImage = null;
 
