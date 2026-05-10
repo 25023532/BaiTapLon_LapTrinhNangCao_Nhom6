@@ -1,263 +1,250 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.SeparatorMenuItem?>
+package com.nhom6.auctionsystem_nhom6;
 
-<BorderPane xmlns:fx="http://javafx.com/fxml"
-            fx:controller="com.nhom6.auctionsystem_nhom6.MainController"
-            styleClass="main-root">
+import javafx.scene.image.Image;
+import org.example.auction.AuctionSession;
+import org.example.service.AuthService;
+import org.example.user.Admin;
+import org.example.user.Bidder;
+import org.example.user.Seller;
+import org.example.user.User;
 
-    <!-- ══════════════════════════════════════════════════════
-         SIDEBAR
-    ══════════════════════════════════════════════════════ -->
-    <left>
-        <VBox styleClass="sidebar" spacing="0">
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-            <HBox styleClass="sidebar-logo" spacing="10" alignment="CENTER_LEFT">
-                <padding><Insets top="20" right="16" bottom="20" left="16"/></padding>
-                <Label text="⬡" styleClass="logo-icon"/>
-                <VBox>
-                    <Label text="AuctionSys"       styleClass="logo-name"/>
-                    <Label text="Hệ thống đấu giá" styleClass="logo-sub"/>
-                </VBox>
-            </HBox>
+public class AppContext {
 
-            <VBox styleClass="sidebar-nav" spacing="2">
-                <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
-                <Button text="⊞  Tổng quan"         maxWidth="Infinity" styleClass="nav-btn,nav-active"/>
-                <Button text="☰  Danh sách phiên"    maxWidth="Infinity" styleClass="nav-btn"/>
-                <Button text="⚡  Đấu giá trực tiếp"  maxWidth="Infinity" styleClass="nav-btn"/>
-                <Button text="📦  Quản lý sản phẩm"  maxWidth="Infinity" styleClass="nav-btn"/>
-                <Button text="🛒  Đơn hàng của tôi"  maxWidth="Infinity" styleClass="nav-btn"/>
-                <Button text="💳  Ví &amp; Giao dịch" maxWidth="Infinity" styleClass="nav-btn"/>
-                <Button text="★  Đánh giá"           maxWidth="Infinity" styleClass="nav-btn"/>
-                <Button text="?  Trợ giúp"            maxWidth="Infinity" styleClass="nav-btn"/>
-            </VBox>
+    // =========================================================
+    // GLOBAL APP STATE
+    // =========================================================
 
-            <VBox styleClass="sidebar-cats" spacing="2">
-                <padding><Insets top="8" right="8" bottom="8" left="16"/></padding>
-                <Label text="DANH MỤC" styleClass="cat-title"/>
-                <Button text="🖥️  Điện tử"    maxWidth="Infinity" styleClass="cat-btn"/>
-                <Button text="📷  Máy ảnh"    maxWidth="Infinity" styleClass="cat-btn"/>
-                <Button text="💻  Laptop"     maxWidth="Infinity" styleClass="cat-btn"/>
-                <Button text="📱  Điện thoại" maxWidth="Infinity" styleClass="cat-btn"/>
-                <Button text="⌚  Đồng hồ"   maxWidth="Infinity" styleClass="cat-btn"/>
-                <Button text="🚗  Xe cộ"     maxWidth="Infinity" styleClass="cat-btn"/>
-            </VBox>
+    private static User currentUser;
 
-            <Region VBox.vgrow="ALWAYS"/>
-        </VBox>
-    </left>
+    private static final AuthService authService =
+            new AuthService();
 
-    <!-- ══════════════════════════════════════════════════════
-         HEADER
-    ══════════════════════════════════════════════════════ -->
-    <top>
-        <HBox styleClass="header" spacing="12" alignment="CENTER_LEFT">
-            <padding><Insets top="0" right="20" bottom="0" left="20"/></padding>
+    // ✅ null mặc định — chỉ có giá trị khi Seller tạo phiên thật
+    private static AuctionSession activeSession = null;
 
-            <TextField fx:id="searchField"
-                       promptText="Tìm kiếm sản phẩm, người bán..."
-                       HBox.hgrow="ALWAYS" styleClass="search-field"/>
+    private static Image avatarImage;
 
-            <Region HBox.hgrow="ALWAYS"/>
-            <Button text="🔔" styleClass="icon-btn"/>
-            <Separator orientation="VERTICAL"/>
+    // =========================================================
+    // HISTORY STORAGE
+    // =========================================================
 
-            <VBox alignment="CENTER_RIGHT">
-                <Label text="Số dư (VNĐ)" styleClass="wallet-label"/>
-                <Label fx:id="walletLabel" styleClass="wallet-amount"/>
-            </VBox>
-            <Separator orientation="VERTICAL"/>
+    private static final Map<String, List<HistoryRecord>>
+            historyMap = new HashMap<>();
 
-            <MenuButton fx:id="profileMenuBtn" styleClass="profile-menu-btn">
-                <graphic>
-                    <HBox spacing="8" alignment="CENTER">
-                        <Label fx:id="userAvatarLabel" styleClass="profile-avatar"/>
-                        <VBox alignment="CENTER_LEFT">
-                            <Label fx:id="userNameLabel" styleClass="header-username"/>
-                            <Label fx:id="userRoleLabel" styleClass="header-role"/>
-                        </VBox>
-                    </HBox>
-                </graphic>
-                <items>
-                    <MenuItem text="👤  Hồ sơ"     onAction="#handleProfile"/>
-                    <MenuItem text="📋  Lịch sử"   onAction="#handleHistory"/>
-                    <MenuItem fx:id="ordersMenuItem" text="🛒  Đơn hàng" onAction="#handleOrders"/>
-                    <SeparatorMenuItem/>
-                    <MenuItem text="🚪  Đăng xuất" onAction="#handleLogout"/>
-                </items>
-            </MenuButton>
-        </HBox>
-    </top>
+    // =========================================================
+    // PRODUCT STORAGE
+    // =========================================================
 
-    <!-- ══════════════════════════════════════════════════════
-         CONTENT
-    ══════════════════════════════════════════════════════ -->
-    <center>
-        <StackPane>
+    private static final Map<String, List<ProductRecord>>
+            productMap = new HashMap<>();
 
-            <!-- Nền chính -->
-            <VBox spacing="16" style="-fx-background-color: #0f172a;">
-                <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+    // =========================================================
+    // STATIC INIT
+    // =========================================================
 
-                <!-- ── Tiêu đề khu vực ───────────────────── -->
-                <Label text="🏷️  Sản phẩm đấu giá hiện tại"
-                       style="-fx-font-size:16px;
-                              -fx-font-weight:bold;
-                              -fx-text-fill:#e2e8f0;"/>
+    static {
+        seedData();
+        connectToServer();
+    }
 
-                <!-- ── Auction Card (ẩn mặc định) ─────────
-                     MainController.showAuctionCard(true)
-                     sẽ hiện lên khi có session              -->
-                <HBox fx:id="auctionCard"
-                      styleClass="auction-card"
-                      spacing="24"
-                      visible="false"
-                      managed="false">
-                    <padding><Insets top="24" right="24" bottom="24" left="24"/></padding>
+    // =========================================================
+    // SERVER CONNECTION
+    // =========================================================
 
-                    <!-- Ảnh sản phẩm -->
-                    <VBox styleClass="product-image-box" alignment="CENTER" minWidth="220">
-                        <Label text="⬡" styleClass="product-image-icon"/>
-                        <Label fx:id="statusLabel" styleClass="status-badge"/>
-                    </VBox>
+    private static void connectToServer() {
 
-                    <!-- Chi tiết sản phẩm -->
-                    <VBox spacing="12" HBox.hgrow="ALWAYS">
-                        <Label fx:id="productTitleLabel" styleClass="product-title"/>
-                        <Label fx:id="productDescLabel"  styleClass="product-desc" wrapText="true"/>
+        try {
 
-                        <HBox spacing="24">
-                            <VBox styleClass="price-cell">
-                                <Label text="Giá khởi điểm" styleClass="price-label"/>
-                                <Label fx:id="startPriceLabel" styleClass="price-value"/>
-                            </VBox>
-                            <VBox styleClass="price-cell price-current">
-                                <Label text="Giá hiện tại" styleClass="price-label"/>
-                                <Label fx:id="currentPriceLabel" styleClass="price-current-value"/>
-                            </VBox>
-                            <VBox styleClass="price-cell">
-                                <Label text="Bước giá tối thiểu" styleClass="price-label"/>
-                                <Label fx:id="minStepLabel" styleClass="price-value"/>
-                            </VBox>
-                            <VBox styleClass="price-cell">
-                                <Label text="Kết thúc lúc" styleClass="price-label"/>
-                                <Label fx:id="endTimeLabel" styleClass="price-value"/>
-                            </VBox>
-                        </HBox>
+            ServerConnection conn =
+                    ServerConnection.getInstance();
 
-                        <HBox alignment="CENTER_LEFT" spacing="24">
-                            <VBox>
-                                <Label text="THỜI GIAN CÒN LẠI" styleClass="countdown-label"/>
-                                <HBox spacing="4" alignment="CENTER_LEFT">
-                                    <VBox alignment="CENTER">
-                                        <Label fx:id="hoursLabel" text="00" styleClass="countdown-num"/>
-                                        <Label text="GIỜ" styleClass="countdown-unit"/>
-                                    </VBox>
-                                    <Label text=":" styleClass="countdown-sep"/>
-                                    <VBox alignment="CENTER">
-                                        <Label fx:id="minsLabel" text="00" styleClass="countdown-num"/>
-                                        <Label text="PHÚT" styleClass="countdown-unit"/>
-                                    </VBox>
-                                    <Label text=":" styleClass="countdown-sep"/>
-                                    <VBox alignment="CENTER">
-                                        <Label fx:id="secsLabel" text="00" styleClass="countdown-num"/>
-                                        <Label text="GIÂY" styleClass="countdown-unit"/>
-                                    </VBox>
-                                </HBox>
-                            </VBox>
-                            <Button text="ĐẶT GIÁ NGAY!"
-                                    onAction="#handlePlaceBid"
-                                    styleClass="btn-bid"/>
-                        </HBox>
-                    </VBox>
-                </HBox>
+            boolean connected = conn.connect();
 
-                <!-- ── Empty State (hiện mặc định) ───────
-                     Ẩn đi khi có session                  -->
-                <VBox fx:id="emptyAuctionBox"
-                      styleClass="auction-card"
-                      alignment="CENTER"
-                      spacing="12"
-                      prefHeight="200"
-                      visible="true"
-                      managed="true">
-                    <padding><Insets top="36" right="40" bottom="36" left="40"/></padding>
-                    <Label text="🏷️"
-                           style="-fx-font-size:48px;"/>
-                    <Label text="Chưa có phiên đấu giá nào đang diễn ra"
-                           style="-fx-font-size:15px;
-                                  -fx-font-weight:bold;
-                                  -fx-text-fill:#94a3b8;"/>
-                    <Label text="Khi có sản phẩm được đăng, thông tin sẽ hiển thị tại đây."
-                           style="-fx-font-size:13px; -fx-text-fill:#64748b;"
-                           wrapText="true"/>
-                </VBox>
+            System.out.println(connected
+                    ? "AppContext: Kết nối server thành công."
+                    : "AppContext: Chạy offline.");
 
-                <!-- ── Lịch sử bid (full width, đã bỏ seller) ── -->
-                <VBox styleClass="info-card" VBox.vgrow="ALWAYS" spacing="8">
-                    <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
-                    <Label text="Lịch sử bid" styleClass="card-title"/>
-                    <Separator/>
-                    <ScrollPane fitToWidth="true" prefHeight="200" styleClass="bid-scroll">
-                        <VBox fx:id="bidHistoryBox" spacing="6"/>
-                    </ScrollPane>
-                    <Hyperlink text="Xem tất cả lịch sử →"
-                               onAction="#handleHistory"
-                               styleClass="see-all-link"/>
-                </VBox>
+        } catch (Exception e) {
 
-            </VBox>
+            System.out.println("AppContext: Lỗi kết nối server.");
+            e.printStackTrace();
+        }
+    }
 
-            <!-- ── Chat FAB ──────────────────────────────── -->
-            <Button text="💬"
-                    onAction="#handleToggleChat"
-                    styleClass="btn-chat-fab"
-                    StackPane.alignment="BOTTOM_RIGHT">
-                <StackPane.margin><Insets bottom="24" right="24"/></StackPane.margin>
-            </Button>
+    // =========================================================
+    // SAMPLE DATA  (chỉ seed tài khoản, KHÔNG tạo session demo)
+    // =========================================================
 
-            <!-- ── Chat Panel ────────────────────────────── -->
-            <VBox fx:id="chatPanel"
-                  styleClass="chat-panel"
-                  spacing="0"
-                  prefWidth="340" maxWidth="340" maxHeight="480"
-                  StackPane.alignment="BOTTOM_RIGHT"
-                  visible="false" managed="false">
-                <StackPane.margin><Insets bottom="88" right="16"/></StackPane.margin>
+    private static void seedData() {
 
-                <HBox styleClass="chat-header" alignment="CENTER_LEFT" spacing="8">
-                    <padding><Insets top="12" right="16" bottom="12" left="16"/></padding>
-                    <Label text="💬 CHAT TRỰC TUYẾN" styleClass="chat-title"/>
-                    <Region HBox.hgrow="ALWAYS"/>
-                    <Label text="● Online 52" styleClass="chat-online"/>
-                    <Button text="✕" onAction="#handleToggleChat" styleClass="btn-close-chat"/>
-                </HBox>
+        try {
 
-                <ScrollPane fx:id="chatScrollPane"
-                            fitToWidth="true"
-                            VBox.vgrow="ALWAYS"
-                            prefHeight="360"
-                            styleClass="chat-scroll">
-                    <VBox fx:id="chatMessagesBox" spacing="8">
-                        <padding><Insets top="12" right="12" bottom="12" left="12"/></padding>
-                    </VBox>
-                </ScrollPane>
+            // ADMIN
+            if (!authService.isRegistered("admin")) {
+                authService.register(new Admin("A001", "admin", "admin123"));
+            }
 
-                <HBox styleClass="chat-input-row" spacing="8" alignment="CENTER">
-                    <padding><Insets top="8" right="12" bottom="8" left="12"/></padding>
-                    <TextField fx:id="chatInput"
-                               promptText="Nhập tin nhắn..."
-                               HBox.hgrow="ALWAYS"
-                               styleClass="chat-input"
-                               onAction="#handleSendChat"/>
-                    <Button text="➤" onAction="#handleSendChat" styleClass="btn-send"/>
-                </HBox>
-            </VBox>
+            // SELLER
+            if (!authService.isRegistered("sellerlong")) {
+                authService.register(new Seller("S001", "sellerlong", "seller123"));
+            }
 
-        </StackPane>
-    </center>
+            // BIDDER
+            if (!authService.isRegistered("bidder07")) {
+                authService.register(new Bidder("B001", "bidder07", "bidder123"));
+            }
+            if (!authService.isRegistered("bidder03")) {
+                authService.register(new Bidder("B002", "bidder03", "bidder123"));
+            }
+            if (!authService.isRegistered("bidder01")) {
+                authService.register(new Bidder("B003", "bidder01", "bidder123"));
+            }
 
-</BorderPane>
+            // ✅ KHÔNG tạo activeSession demo ở đây nữa
+            // activeSession = null  (mặc định khai báo ở trên)
+
+            // DEMO HISTORY
+            addHistory("bidder07", new HistoryRecord(
+                    "HD001", "iPhone 15 Pro Max", 28000000,
+                    "SellerLong", "THÀNH CÔNG", true,
+                    LocalDateTime.now().minusDays(1)));
+
+            addHistory("sellerlong", new HistoryRecord(
+                    "HD002", "MacBook Air M2", 22000000,
+                    "Bidder07", "CHỜ XỬ LÝ", true,
+                    LocalDateTime.now().minusHours(5)));
+
+            // DEMO PRODUCT
+            addProduct("sellerlong", new ProductRecord(
+                    "PR001", "MacBook Pro M3", "Laptop",
+                    22000000, 26500000, 12, "ĐANG ĐẤU GIÁ",
+                    LocalDateTime.now().plusHours(2), "bidder07"));
+
+            addProduct("sellerlong", new ProductRecord(
+                    "PR002", "iPhone 15 Pro", "Điện thoại",
+                    18000000, 21000000, 7, "ĐÃ BÁN",
+                    LocalDateTime.now().minusDays(1), "bidder03"));
+
+            System.out.println("AppContext: Seed data thành công.");
+
+        } catch (Exception e) {
+
+            System.out.println("AppContext: Lỗi seed data.");
+            e.printStackTrace();
+        }
+    }
+
+    // =========================================================
+    // CURRENT USER
+    // =========================================================
+
+    public static User getCurrentUser() { return currentUser; }
+
+    public static void setCurrentUser(User user) { currentUser = user; }
+
+    // =========================================================
+    // AUTH SERVICE
+    // =========================================================
+
+    public static AuthService getAuthService() { return authService; }
+
+    // =========================================================
+    // AUCTION SESSION
+    // =========================================================
+
+    public static AuctionSession getActiveSession() { return activeSession; }
+
+    public static void setActiveSession(AuctionSession session) {
+        activeSession = session;
+    }
+
+    // =========================================================
+    // AVATAR
+    // =========================================================
+
+    public static Image getAvatarImage() { return avatarImage; }
+
+    public static void setAvatarImage(Image image) { avatarImage = image; }
+
+    // =========================================================
+    // LOGOUT  — reset về null, MainController sẽ hiện empty state
+    // =========================================================
+
+    public static void logout() {
+
+        currentUser  = null;
+        activeSession = null;   // ✅ null → màn hình chính hiện empty state
+        avatarImage  = null;
+
+        System.out.println("AppContext: Đã đăng xuất.");
+    }
+
+    // =========================================================
+    // HISTORY RECORD
+    // =========================================================
+
+    public record HistoryRecord(
+            String id, String itemName, double amount,
+            String counterparty, String status, boolean wonBid,
+            LocalDateTime time) {}
+
+    public static List<HistoryRecord> getHistory(String username) {
+        return historyMap.computeIfAbsent(username, k -> new ArrayList<>());
+    }
+
+    public static void addHistory(String username, HistoryRecord record) {
+        getHistory(username).add(record);
+    }
+
+    // =========================================================
+    // PRODUCT RECORD
+    // =========================================================
+
+    public record ProductRecord(
+            String id, String name, String category,
+            double startPrice, double currentPrice, int bidCount,
+            String status, LocalDateTime endTime, String topBidder) {
+
+        public ProductRecord withUpdated(
+                double newPrice, int newBidCount,
+                String newStatus, String newTopBidder) {
+
+            return new ProductRecord(
+                    id, name, category, startPrice,
+                    newPrice, newBidCount, newStatus,
+                    endTime, newTopBidder);
+        }
+    }
+
+    // =========================================================
+    // PRODUCT METHODS
+    // =========================================================
+
+    public static List<ProductRecord> getProducts(String username) {
+        return productMap.computeIfAbsent(username, k -> new ArrayList<>());
+    }
+
+    public static void addProduct(String username, ProductRecord product) {
+        getProducts(username).add(product);
+    }
+
+    public static void removeProduct(String username, String productId) {
+        getProducts(username).removeIf(p -> p.id().equals(productId));
+    }
+
+    public static void updateProduct(String username, ProductRecord updated) {
+        List<ProductRecord> list = getProducts(username);
+        for (int i = 0; i < list.size(); i++) {
+            if (list.get(i).id().equals(updated.id())) {
+                list.set(i, updated);
+                return;
+            }
+        }
+    }
+}
