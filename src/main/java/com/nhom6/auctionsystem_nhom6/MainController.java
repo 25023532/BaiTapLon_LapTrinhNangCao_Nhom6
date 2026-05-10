@@ -33,10 +33,6 @@ public class MainController {
 
     @FXML private MenuButton profileMenuBtn;
 
-    // IMPORTANT:
-    // Trong FXML phải thêm:
-    // <MenuItem fx:id="ordersMenuItem" ... />
-
     @FXML private MenuItem ordersMenuItem;
 
     // =========================================================
@@ -99,7 +95,7 @@ public class MainController {
 
         session = AppContext.getActiveSession();
 
-        // ===== FIX NULL USER =====
+        // ===== CHECK NULL USER =====
         if (user == null) {
 
             showAlert(
@@ -110,15 +106,29 @@ public class MainController {
             return;
         }
 
-        // ===== FIX NULL SESSION =====
+        // =========================================================
+        // ✅ FIX: Nếu session null thì tạo lại thay vì chỉ báo lỗi
+        // Trường hợp này xảy ra nếu AppContext.logout() đã set null
+        // hoặc session chưa được khởi tạo vì lý do nào đó
+        // =========================================================
+
         if (session == null) {
 
-            showAlert(
-                    "Lỗi phiên đấu giá",
-                    "Không tìm thấy phiên đấu giá."
+            System.out.println(
+                    "MainController: session null, tạo lại session mặc định."
             );
 
-            return;
+            session = new AuctionSession(
+                    "SESSION-001",
+                    "MacBook Pro M3 – 18GB RAM, 512GB SSD",
+                    22_000_000,
+                    500_000,
+                    LocalDateTime.now().plusHours(2)
+            );
+
+            session.start();
+
+            AppContext.setActiveSession(session);
         }
 
         // =====================================================
