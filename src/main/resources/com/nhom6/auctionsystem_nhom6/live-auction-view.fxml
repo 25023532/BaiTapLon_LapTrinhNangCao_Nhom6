@@ -46,7 +46,8 @@
                     <padding><Insets top="20" right="20" bottom="20" left="20"/></padding>
 
                     <!-- Ảnh sản phẩm -->
-                    <VBox styleClass="product-image-box" alignment="CENTER" minWidth="180" maxWidth="180">
+                    <VBox styleClass="product-image-box" alignment="CENTER"
+                          minWidth="180" maxWidth="180">
                         <Label text="⬡" styleClass="product-image-icon"/>
                         <Label fx:id="liveStatusLabel" styleClass="status-badge"/>
                     </VBox>
@@ -117,6 +118,25 @@
                                 </HBox>
                             </VBox>
                         </HBox>
+
+                        <!-- ══ THÊM MỚI: Thông báo gia hạn phiên ══ -->
+                        <Label fx:id="extensionNoticeLabel"
+                               text=""
+                               visible="false"
+                               managed="false"
+                               wrapText="true"
+                               maxWidth="Infinity"
+                               style="-fx-text-fill: #fbbf24;
+                                      -fx-font-size: 13px;
+                                      -fx-font-weight: bold;
+                                      -fx-background-color: #1e293b;
+                                      -fx-background-radius: 6;
+                                      -fx-padding: 6 12 6 12;
+                                      -fx-border-color: #fbbf24;
+                                      -fx-border-radius: 6;
+                                      -fx-border-width: 1;"/>
+                        <!-- ════════════════════════════════════════ -->
+
                     </VBox>
                 </HBox>
 
