@@ -4,10 +4,11 @@ import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.util.Duration;
-
 import org.example.auction.AuctionSession;
 import org.example.auction.Bid;
 import org.example.exception.AuctionClosedException;
@@ -16,6 +17,7 @@ import org.example.user.User;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.UUID;
 
 public class MainController {
@@ -68,9 +70,6 @@ public class MainController {
     @FXML private TextField  chatInput;
     @FXML private ScrollPane chatScrollPane;
 
-    // =========================================================
-    // DATA
-    // =========================================================
     private AuctionSession session;
     private Timeline       countdownTimer;
 
@@ -82,7 +81,6 @@ public class MainController {
     // =========================================================
     @FXML
     public void initialize() {
-
         User user = AppContext.getCurrentUser();
         if (user == null) {
             showAlert("Lỗi đăng nhập", "Không tìm thấy user hiện tại.");
@@ -96,14 +94,24 @@ public class MainController {
                 ? user.getUsername().substring(0, 2).toUpperCase()
                 : user.getUsername().toUpperCase();
         userAvatarLabel.setText(avatar);
-        walletLabel.setText("0 ₫");
+        walletLabel.setText(String.format("₫ %,.0f",
+                AppContext.getWalletBalance(user.getUsername())));
 
-        // ── Menu theo role ────────────────────────────────────
         applyRoleMenu(user);
 
-        // ── Session ──────────────────────────────────────────
+        // ── Lấy session ──────────────────────────────────────
         session = AppContext.getActiveSession();
 
+        // Bidder: nếu chưa có activeSession → tự động lấy phiên RUNNING đầu tiên
+        if (session == null && "BIDDER".equalsIgnoreCase(user.getRole())) {
+            List<AuctionSession> running = AppContext.getRunningSessions();
+            if (!running.isEmpty()) {
+                session = running.get(0);
+                AppContext.setActiveSession(session);
+            }
+        }
+
+        // ── Hiển thị ─────────────────────────────────────────
         if (session != null) {
             showAuctionCard(true);
             loadAuctionInfo();
@@ -115,7 +123,7 @@ public class MainController {
     }
 
     // =========================================================
-    // TOGGLE AUCTION CARD / EMPTY STATE
+    // TOGGLE CARD / EMPTY
     // =========================================================
     private void showAuctionCard(boolean hasSession) {
         if (auctionCard != null) {
@@ -142,8 +150,6 @@ public class MainController {
                 ordersMenuItem.setText("📦  Sản phẩm đăng bán");
                 ordersMenuItem.setOnAction(e -> handleMyProducts());
                 break;
-            default:
-                break;
         }
     }
 
@@ -152,8 +158,7 @@ public class MainController {
     // =========================================================
     private void loadAuctionInfo() {
         productTitleLabel.setText(session.getItemName());
-        productDescLabel.setText(
-                "Laptop cao cấp – Mới 100%, nguyên seal, bảo hành 12 tháng.");
+        productDescLabel.setText("Sản phẩm mới 100%, còn nguyên seal. Bảo hành 12 tháng.");
         startPriceLabel.setText(formatVND(session.getStartingPrice()));
         currentPriceLabel.setText(formatVND(session.getCurrentPrice()));
         minStepLabel.setText(formatVND(session.getMinBidStep()));
@@ -164,7 +169,7 @@ public class MainController {
     }
 
     // =========================================================
-    // COUNTDOWN
+    // COUNTDOWN — tự cập nhật đúng kể cả khi anti-sniping kéo dài
     // =========================================================
     private void startCountdown() {
         countdownTimer = new Timeline(
@@ -174,12 +179,14 @@ public class MainController {
     }
 
     private void updateCountdown() {
+        if (session == null) return;
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime end = session.getEndTime();
+        LocalDateTime end = session.getEndTime(); // luôn lấy endTime mới nhất
         if (now.isAfter(end)) {
             hoursLabel.setText("00");
             minsLabel.setText("00");
             secsLabel.setText("00");
+            if (statusLabel != null) statusLabel.setText("● KẾT THÚC");
             countdownTimer.stop();
             return;
         }
@@ -208,18 +215,20 @@ public class MainController {
             session.placeBid(bid);
 
             currentPriceLabel.setText(formatVND(session.getCurrentPrice()));
+            // Cập nhật countdown ngay nếu anti-sniping vừa gia hạn
+            updateCountdown();
             refreshBidHistory();
             addChatMessage("System",
                     user.getUsername() + " đã đặt giá " + formatVND(newPrice), false);
 
-            // Ghi lịch sử
             AppContext.addHistory(user.getUsername(), new AppContext.HistoryRecord(
                     "BID-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase(),
                     session.getItemName(), newPrice, "SellerLong",
                     "CHỜ XỬ LÝ", true, LocalDateTime.now()));
 
             ServerConnection conn = ServerConnection.getInstance();
-            if (conn.isConnected()) conn.send("BID:" + user.getUsername() + ":" + newPrice);
+            if (conn.isConnected())
+                conn.send("BID:" + user.getUsername() + ":" + newPrice);
 
         } catch (InvalidBidException e) {
             showAlert("Bid không hợp lệ", e.getMessage());
@@ -247,55 +256,57 @@ public class MainController {
         String msg = chatInput.getText().trim();
         if (msg.isEmpty()) return;
         User user = AppContext.getCurrentUser();
-        addChatMessage(user.getUsername(),
-                msg, user.getRole().equalsIgnoreCase("SELLER"));
+        addChatMessage(user.getUsername(), msg,
+                user.getRole().equalsIgnoreCase("SELLER"));
         chatInput.clear();
         ServerConnection conn = ServerConnection.getInstance();
-        if (conn.isConnected()) conn.send("CHAT:" + user.getUsername() + ":" + msg);
+        if (conn.isConnected())
+            conn.send("CHAT:" + user.getUsername() + ":" + msg);
     }
 
     // =========================================================
-    // SIDEBAR NAVIGATION — CÁC TÍNH NĂNG MỚI
+    // SIDEBAR NAVIGATION
     // =========================================================
-
-    /** Danh sách phiên đấu giá */
-    @FXML
-    private void handleAuctionList() {
+    @FXML private void handleAuctionList() {
         try { HelloApplication.showAuctionListView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    /** Đấu giá trực tiếp */
-    @FXML
-    private void handleLiveAuction() {
+    @FXML private void handleLiveAuction() {
+        // Bidder: nếu chưa có session, lấy phiên running đầu tiên
+        if (AppContext.getActiveSession() == null) {
+            List<AuctionSession> running = AppContext.getRunningSessions();
+            if (!running.isEmpty())
+                AppContext.setActiveSession(running.get(0));
+            else {
+                showAlert("Thông báo",
+                        "Hiện chưa có phiên đấu giá nào đang diễn ra.");
+                return;
+            }
+        }
         try { HelloApplication.showLiveAuctionView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    /** Quản lý sản phẩm */
-    @FXML
-    private void handleProductManagement() {
+    @FXML private void handleProductManagement() {
         try { HelloApplication.showProductManagementView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
 
     // =========================================================
-    // PROFILE MENU HANDLERS
+    // PROFILE MENU
     // =========================================================
-    @FXML
-    private void handleProfile() {
+    @FXML private void handleProfile() {
         try { HelloApplication.showProfileView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    @FXML
-    private void handleHistory() {
+    @FXML private void handleHistory() {
         try { HelloApplication.showHistoryView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    @FXML
-    private void handleOrders() {
+    @FXML private void handleOrders() {
         try { HelloApplication.showHistoryView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
@@ -305,20 +316,12 @@ public class MainController {
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    // =========================================================
-    // WALLET
-    // =========================================================
-    @FXML
-    private void handleWallet() {
+    @FXML private void handleWallet() {
         try { HelloApplication.showWalletView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    // =========================================================
-    // LOGOUT
-    // =========================================================
-    @FXML
-    private void handleLogout() {
+    @FXML private void handleLogout() {
         if (countdownTimer != null) countdownTimer.stop();
         AppContext.logout();
         try { HelloApplication.showLoginView(); }
@@ -330,14 +333,15 @@ public class MainController {
     // =========================================================
     private void refreshBidHistory() {
         bidHistoryBox.getChildren().clear();
+        if (session == null) return;
         var history = session.getBidHistory();
         for (int i = history.size() - 1; i >= 0; i--) {
             Bid b = history.get(i);
             HBox row = new HBox(12);
             row.getStyleClass().add("bid-row");
             if (i == history.size() - 1) row.getStyleClass().add("bid-row-top");
-
-            Label name   = new Label((i == history.size() - 1 ? "👑 " : "") + b.getBidderId());
+            Label name   = new Label(
+                    (i == history.size() - 1 ? "👑 " : "") + b.getBidderId());
             Label amount = new Label(formatVND(b.getAmount()));
             Label time   = new Label(b.getTimestamp().format(TIME_FMT));
             amount.getStyleClass().add("bid-amount");
@@ -353,7 +357,8 @@ public class MainController {
     // =========================================================
     private void addChatMessage(String sender, String message, boolean isSeller) {
         VBox bubble = new VBox(2);
-        bubble.getStyleClass().add(isSeller ? "chat-bubble-seller" : "chat-bubble-buyer");
+        bubble.getStyleClass().add(
+                isSeller ? "chat-bubble-seller" : "chat-bubble-buyer");
         Label senderLabel = new Label(sender);
         senderLabel.getStyleClass().add("chat-sender");
         Label msgLabel = new Label(message);
