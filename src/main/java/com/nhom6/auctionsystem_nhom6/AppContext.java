@@ -1,6 +1,7 @@
 package com.nhom6.auctionsystem_nhom6;
 
 import org.example.auction.AuctionSession;
+import org.example.service.AuthService;
 import org.example.user.User;
 
 import java.time.LocalDateTime;
@@ -14,24 +15,36 @@ public class AppContext {
     private static User           currentUser;
     private static AuctionSession activeSession;
 
-    private static final Map<String, List<HistoryRecord>> historyMap  = new HashMap<>();
-    private static final Map<String, List<ProductRecord>> productMap  = new HashMap<>();
+    // ✅ AuthService singleton — dùng chung toàn app
+    private static final AuthService authService = new AuthService();
+
+    private static final Map<String, List<HistoryRecord>> historyMap = new HashMap<>();
+    private static final Map<String, List<ProductRecord>> productMap = new HashMap<>();
+
+    // ── AuthService ───────────────────────────────────────────
+    public static AuthService getAuthService() {
+        return authService;
+    }
 
     // ── User ──────────────────────────────────────────────────
-    public static void setCurrentUser(User u)          { currentUser   = u; }
-    public static User getCurrentUser()                { return currentUser; }
+    public static void setCurrentUser(User u)             { currentUser  = u; }
+    public static User getCurrentUser()                   { return currentUser; }
     public static void setActiveSession(AuctionSession s) { activeSession = s; }
-    public static AuctionSession getActiveSession()    { return activeSession; }
-    public static void logout() { currentUser = null; activeSession = null; }
+    public static AuctionSession getActiveSession()       { return activeSession; }
+
+    public static void logout() {
+        currentUser   = null;
+        activeSession = null;
+    }
 
     // ── History Record ────────────────────────────────────────
     public record HistoryRecord(
-            String id,
-            String itemName,
-            double amount,
-            String counterparty,
-            String status,
-            boolean wonBid,
+            String        id,
+            String        itemName,
+            double        amount,
+            String        counterparty,
+            String        status,
+            boolean       wonBid,
             LocalDateTime time
     ) {}
 
@@ -44,18 +57,17 @@ public class AppContext {
     }
 
     // ── Product Record ────────────────────────────────────────
-    // ✅ Thêm startTime vào record
     public record ProductRecord(
-            String id,
-            String name,
-            String category,
-            double startPrice,
-            double currentPrice,
-            int    bidCount,
-            String status,
-            LocalDateTime startTime,   // ← MỚI
+            String        id,
+            String        name,
+            String        category,
+            double        startPrice,
+            double        currentPrice,
+            int           bidCount,
+            String        status,
+            LocalDateTime startTime,
             LocalDateTime endTime,
-            String topBidder
+            String        topBidder
     ) {
         public ProductRecord withUpdated(double newPrice, int newBidCount,
                                           String newStatus, String newTopBidder) {
