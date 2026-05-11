@@ -45,6 +45,11 @@ public class LiveAuctionController {
     @FXML private Button     quickBid2Btn;
     @FXML private Button     quickBid3Btn;
 
+    // ── [THÊM MỚI] Label thông báo gia hạn ───────────────────
+    @FXML private Label      extensionNoticeLabel;
+    private Timeline         extensionNoticeTimer; // timer tự ẩn thông báo
+    // ─────────────────────────────────────────────────────────
+
     // ── Bid history ───────────────────────────────────────────
     @FXML private VBox       liveBidHistoryBox;
     @FXML private ScrollPane bidScrollPane;
@@ -61,7 +66,6 @@ public class LiveAuctionController {
     private Timeline       simulateTimer;
     private boolean        sessionSelected = false;
 
-    // ── Khai báo TIME_FMT duy nhất (FIX: xóa bản trùng ở cuối) ──
     private static final DateTimeFormatter TIME_FMT =
             DateTimeFormatter.ofPattern("HH:mm:ss");
 
@@ -73,19 +77,22 @@ public class LiveAuctionController {
 
         onlineLabel.setText("● " + (15 + (int)(Math.random() * 30)) + " online");
 
-        // Tự động chọn active session nếu có
+        // [THÊM MỚI] Ẩn label thông báo lúc khởi tạo
+        if (extensionNoticeLabel != null) {
+            extensionNoticeLabel.setVisible(false);
+            extensionNoticeLabel.setManaged(false);
+        }
+
         if (AppContext.getActiveSession() != null) {
             selectSession(AppContext.getActiveSession());
         }
     }
 
-    // ── Left panel: chỉ load dữ liệu thực, không có mẫu ─────
+    // ── Left panel ────────────────────────────────────────────
     private void loadLiveSessionList() {
         liveSessionListBox.getChildren().clear();
-
         boolean hasAny = false;
 
-        // 1. Active session từ AppContext
         if (AppContext.getActiveSession() != null) {
             AuctionSession s = AppContext.getActiveSession();
             liveSessionListBox.getChildren().add(
@@ -93,7 +100,6 @@ public class LiveAuctionController {
             hasAny = true;
         }
 
-        // 2. Sản phẩm ĐANG ĐẤU GIÁ / CHỜ DUYỆT của seller hiện tại
         User user = AppContext.getCurrentUser();
         if ("SELLER".equalsIgnoreCase(user.getRole())) {
             for (AppContext.ProductRecord p : AppContext.getProducts(user.getUsername())) {
@@ -106,7 +112,6 @@ public class LiveAuctionController {
             }
         }
 
-        // 3. Không có phiên nào → hiện thông báo trống
         if (!hasAny) {
             VBox emptyBox = new VBox(8);
             emptyBox.setAlignment(Pos.CENTER);
@@ -129,7 +134,6 @@ public class LiveAuctionController {
         }
     }
 
-    // Card cho AuctionSession thực (click được để vào phiên)
     private VBox buildSessionItem(String name, String status,
                                    double currentPrice, AuctionSession session) {
         VBox card = new VBox(4);
@@ -153,14 +157,11 @@ public class LiveAuctionController {
         meta.getChildren().addAll(statusL, priceL);
 
         card.getChildren().addAll(nameLabel, meta);
-
-        if ("RUNNING".equals(status) && session != null) {
+        if ("RUNNING".equals(status) && session != null)
             card.setOnMouseClicked(e -> selectSession(session));
-        }
         return card;
     }
 
-    // Card cho ProductRecord của seller (chưa có AuctionSession riêng)
     private VBox buildSessionItemFromProduct(AppContext.ProductRecord p, String status) {
         VBox card = new VBox(4);
         card.setPadding(new Insets(10, 12, 10, 12));
@@ -184,12 +185,11 @@ public class LiveAuctionController {
 
         if ("RUNNING".equals(status)) {
             card.setOnMouseClicked(e -> {
-                if (AppContext.getActiveSession() != null) {
+                if (AppContext.getActiveSession() != null)
                     selectSession(AppContext.getActiveSession());
-                } else {
+                else
                     showAlert("Thông báo",
                             "Vui lòng tham gia từ màn hình chính để tải phiên.");
-                }
             });
         }
         return card;
@@ -232,9 +232,8 @@ public class LiveAuctionController {
                 session.getCurrentPrice() + 5 * session.getMinBidStep()) + ")");
 
         var history = session.getBidHistory();
-        if (!history.isEmpty()) {
+        if (!history.isEmpty())
             liveLeaderLabel.setText("👑 " + history.get(history.size() - 1).getBidderId());
-        }
 
         refreshBidHistory();
         startCountdown();
@@ -298,6 +297,11 @@ public class LiveAuctionController {
                     updateQuickBidLabels();
                     addChatMsg(bot, "Tôi vừa đặt " + formatVND(newPrice) + "!", false);
                     bidCountLabel.setText(currentSession.getBidHistory().size() + " lượt");
+
+                    // [THÊM MỚI] Bot bid cũng kích hoạt thông báo gia hạn
+                    if (currentSession.isLastBidTriggeredExtension()) {
+                        showExtensionNotice(currentSession.getExtensionCount());
+                    }
                 });
             } catch (Exception ignored) {}
         }));
@@ -345,6 +349,11 @@ public class LiveAuctionController {
             addChatMsg("System", user.getUsername() + " đặt giá " + formatVND(amount), false);
             bidCountLabel.setText(currentSession.getBidHistory().size() + " lượt");
 
+            // [THÊM MỚI] Hiện thông báo gia hạn nếu bid vừa kích hoạt anti-sniping
+            if (currentSession.isLastBidTriggeredExtension()) {
+                showExtensionNotice(currentSession.getExtensionCount());
+            }
+
             AppContext.addHistory(user.getUsername(), new AppContext.HistoryRecord(
                     "BID-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase(),
                     currentSession.getItemName(), amount, "SellerLong",
@@ -374,6 +383,39 @@ public class LiveAuctionController {
         quickBid3Btn.setText("+5 bước  (" + formatVND(
                 currentSession.getCurrentPrice() + 5 * currentSession.getMinBidStep()) + ")");
     }
+
+    // ── [THÊM MỚI] Hiện thông báo gia hạn, tự ẩn sau 6 giây ─
+    private void showExtensionNotice(int extensionCount) {
+        if (extensionNoticeLabel == null) return;
+
+        // Dừng timer cũ nếu đang đếm
+        if (extensionNoticeTimer != null) extensionNoticeTimer.stop();
+
+        extensionNoticeLabel.setText(
+                "⏰  Phiên được gia hạn thêm 30 giây! (lần " + extensionCount + ")");
+        extensionNoticeLabel.setStyle(
+                "-fx-text-fill: #fbbf24; -fx-font-size: 13px; "
+                + "-fx-font-weight: bold; "
+                + "-fx-background-color: #1e293b; "
+                + "-fx-background-radius: 6; "
+                + "-fx-padding: 6 12 6 12;");
+        extensionNoticeLabel.setVisible(true);
+        extensionNoticeLabel.setManaged(true);
+
+        // Thông báo chat luôn
+        addChatMsg("System",
+                "⏰ Phiên vừa được gia hạn thêm 30 giây (lần " + extensionCount + ")!", false);
+
+        // Tự ẩn sau 6 giây
+        extensionNoticeTimer = new Timeline(
+                new KeyFrame(Duration.seconds(6), e -> {
+                    extensionNoticeLabel.setVisible(false);
+                    extensionNoticeLabel.setManaged(false);
+                }));
+        extensionNoticeTimer.setCycleCount(1);
+        extensionNoticeTimer.play();
+    }
+    // ─────────────────────────────────────────────────────────
 
     // ── Bid History ───────────────────────────────────────────
     private void refreshBidHistory() {
