@@ -15,18 +15,23 @@ public class AppContext {
     private static User           currentUser;
     private static AuctionSession activeSession;
 
-    // ✅ AuthService singleton — dùng chung toàn app
+    // ── AuthService singleton ─────────────────────────────────
     private static final AuthService authService = new AuthService();
 
-    private static final Map<String, List<HistoryRecord>> historyMap = new HashMap<>();
-    private static final Map<String, List<ProductRecord>> productMap = new HashMap<>();
+    // ── Storage ───────────────────────────────────────────────
+    private static final Map<String, List<HistoryRecord>>     historyMap     = new HashMap<>();
+    private static final Map<String, List<ProductRecord>>     productMap     = new HashMap<>();
+    private static final Map<String, Double>                  walletMap      = new HashMap<>();
+    private static final Map<String, List<TransactionRecord>> transactionMap = new HashMap<>();
 
-    // ── AuthService ───────────────────────────────────────────
-    public static AuthService getAuthService() {
-        return authService;
-    }
+    // =========================================================
+    // AUTH SERVICE
+    // =========================================================
+    public static AuthService getAuthService() { return authService; }
 
-    // ── User ──────────────────────────────────────────────────
+    // =========================================================
+    // USER / SESSION
+    // =========================================================
     public static void setCurrentUser(User u)             { currentUser  = u; }
     public static User getCurrentUser()                   { return currentUser; }
     public static void setActiveSession(AuctionSession s) { activeSession = s; }
@@ -37,7 +42,79 @@ public class AppContext {
         activeSession = null;
     }
 
-    // ── History Record ────────────────────────────────────────
+    // =========================================================
+    // WALLET
+    // =========================================================
+
+    /** Lấy số dư ví, mặc định 0 nếu chưa có */
+    public static double getWalletBalance(String username) {
+        return walletMap.getOrDefault(username, 0.0);
+    }
+
+    /**
+     * Nạp tiền vào ví.
+     * @return true nếu thành công
+     */
+    public static boolean deposit(String username, double amount) {
+        if (amount <= 0) return false;
+        double current = walletMap.getOrDefault(username, 0.0);
+        walletMap.put(username, current + amount);
+        addTransaction(username, new TransactionRecord(
+                "TX-" + System.currentTimeMillis(),
+                "Nạp tiền",
+                amount,               // dương = tiền vào
+                "Nạp tiền vào ví",
+                "THÀNH CÔNG",
+                LocalDateTime.now()
+        ));
+        return true;
+    }
+
+    /**
+     * Thanh toán / rút tiền từ ví.
+     * @return true nếu đủ số dư và thành công
+     */
+    public static boolean payment(String username, double amount, String description) {
+        if (amount <= 0) return false;
+        double current = walletMap.getOrDefault(username, 0.0);
+        if (current < amount) return false;
+        walletMap.put(username, current - amount);
+        addTransaction(username, new TransactionRecord(
+                "TX-" + System.currentTimeMillis(),
+                "Thanh toán",
+                -amount,              // âm = tiền ra
+                description,
+                "THÀNH CÔNG",
+                LocalDateTime.now()
+        ));
+        return true;
+    }
+
+    // =========================================================
+    // TRANSACTION RECORD
+    // =========================================================
+
+    public record TransactionRecord(
+            String        id,
+            String        type,         // "Nạp tiền" | "Thanh toán" | "Hoàn tiền" ...
+            double        amount,       // dương = vào, âm = ra
+            String        description,
+            String        status,       // "THÀNH CÔNG" | "THẤT BẠI" | "CHỜ XỬ LÝ"
+            LocalDateTime time
+    ) {}
+
+    public static List<TransactionRecord> getTransactions(String username) {
+        return transactionMap.computeIfAbsent(username, k -> new ArrayList<>());
+    }
+
+    public static void addTransaction(String username, TransactionRecord tx) {
+        getTransactions(username).add(tx);
+    }
+
+    // =========================================================
+    // HISTORY RECORD
+    // =========================================================
+
     public record HistoryRecord(
             String        id,
             String        itemName,
@@ -56,7 +133,10 @@ public class AppContext {
         getHistory(username).add(record);
     }
 
-    // ── Product Record ────────────────────────────────────────
+    // =========================================================
+    // PRODUCT RECORD
+    // =========================================================
+
     public record ProductRecord(
             String        id,
             String        name,
