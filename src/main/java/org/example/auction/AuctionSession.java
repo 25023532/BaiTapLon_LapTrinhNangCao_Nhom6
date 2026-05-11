@@ -12,7 +12,7 @@ public class AuctionSession {
     private final String itemName;
     private final double startingPrice;
     private final double minBidStep;
-    private final LocalDateTime endTime;
+    private LocalDateTime endTime; // BỎ final để có thể gia hạn
 
     private AuctionStatus status;
     private double currentPrice;
@@ -21,6 +21,14 @@ public class AuctionSession {
     private final List<Bid> bidHistory = new ArrayList<>();
     private final List<Observer> observers = new ArrayList<>();
     private final ReentrantLock lock = new ReentrantLock();
+
+    // ── Anti-sniping: THÊM MỚI ───────────────────────────────
+    private static final long TRIGGER_THRESHOLD_SECONDS = 30; // bid trong 30s cuối → gia hạn
+    private static final long EXTENSION_SECONDS = 30;         // gia hạn thêm 30s
+    private static final int  MAX_EXTENSIONS = 5;             // tối đa 5 lần
+    private int extensionCount = 0;
+    private boolean lastBidTriggeredExtension = false;
+    // ─────────────────────────────────────────────────────────
 
     public AuctionSession(String sessionId, String itemName,
                           double startingPrice, double minBidStep,
@@ -41,7 +49,7 @@ public class AuctionSession {
         this.status        = AuctionStatus.OPEN;
     }
 
-    // ── Observer ─────────────────────────────────────────────
+    // ── Observer ──────────────────────────────────────────────
     public void addObserver(Observer observer)    { observers.add(observer); }
     public void removeObserver(Observer observer) { observers.remove(observer); }
 
@@ -96,15 +104,12 @@ public class AuctionSession {
         } finally { lock.unlock(); }
     }
 
-    // ── placeBid — throw exception thay vì return false ───────
-    /**
-     * Đặt giá vào phiên đấu giá.
-     * @throws AuctionClosedException nếu phiên không ở trạng thái RUNNING
-     * @throws InvalidBidException    nếu số tiền thấp hơn mức tối thiểu
-     */
+    // ── placeBid — tích hợp Anti-sniping ─────────────────────
     public boolean placeBid(Bid bid) throws AuctionClosedException, InvalidBidException {
         lock.lock();
         try {
+            lastBidTriggeredExtension = false; // reset mỗi lần
+
             // Kiểm tra trạng thái phiên
             if (status != AuctionStatus.RUNNING) {
                 throw new AuctionClosedException(
@@ -128,7 +133,8 @@ public class AuctionSession {
             double minRequired = currentPrice + minBidStep;
             if (bid.getAmount() < minRequired) {
                 throw new InvalidBidException(
-                        String.format("Bid %.2f không hợp lệ, phải >= %.2f", bid.getAmount(), minRequired),
+                        String.format("Bid %.2f không hợp lệ, phải >= %.2f",
+                                bid.getAmount(), minRequired),
                         bid.getAmount(),
                         minRequired
                 );
@@ -141,20 +147,55 @@ public class AuctionSession {
             System.out.printf("Bid được chấp nhận: %s đặt %.2f%n",
                     bid.getBidderId(), bid.getAmount());
 
+            // ── Anti-sniping: kiểm tra và gia hạn ────────────
+            tryExtend();
+            // ─────────────────────────────────────────────────
+
             notifyObservers(bid);
             return true;
 
         } finally { lock.unlock(); }
     }
 
+    /**
+     * Gia hạn phiên nếu bid xảy ra trong ngưỡng cuối.
+     * Gọi bên trong lock nên thread-safe.
+     */
+    private void tryExtend() {
+        long secondsLeft = java.time.temporal.ChronoUnit.SECONDS
+                .between(LocalDateTime.now(), endTime);
+
+        // Chỉ gia hạn nếu còn trong ngưỡng cuối
+        if (secondsLeft < 0 || secondsLeft > TRIGGER_THRESHOLD_SECONDS) return;
+
+        // Kiểm tra giới hạn số lần gia hạn
+        if (extensionCount >= MAX_EXTENSIONS) {
+            System.out.println("[AntiSniping] Đã đạt giới hạn gia hạn tối đa: "
+                    + MAX_EXTENSIONS + " lần.");
+            return;
+        }
+
+        // Gia hạn
+        endTime = endTime.plusSeconds(EXTENSION_SECONDS);
+        extensionCount++;
+        lastBidTriggeredExtension = true;
+
+        System.out.printf("[AntiSniping] Phiên [%s] được gia hạn lần %d! Kết thúc mới: %s%n",
+                sessionId, extensionCount, endTime);
+    }
+
     // ── Getters ───────────────────────────────────────────────
-    public String getSessionId()      { return sessionId; }
-    public String getItemName()       { return itemName; }
-    public double getStartingPrice()  { return startingPrice; }
-    public double getCurrentPrice()   { return currentPrice; }
-    public double getMinBidStep()     { return minBidStep; }
-    public AuctionStatus getStatus()  { return status; }
-    public Bid getHighestBid()        { return highestBid; }
-    public List<Bid> getBidHistory()  { return new ArrayList<>(bidHistory); }
-    public LocalDateTime getEndTime() { return endTime; }
+    public String        getSessionId()                   { return sessionId; }
+    public String        getItemName()                    { return itemName; }
+    public double        getStartingPrice()               { return startingPrice; }
+    public double        getCurrentPrice()                { return currentPrice; }
+    public double        getMinBidStep()                  { return minBidStep; }
+    public AuctionStatus getStatus()                      { return status; }
+    public Bid           getHighestBid()                  { return highestBid; }
+    public List<Bid>     getBidHistory()                  { return new ArrayList<>(bidHistory); }
+    public LocalDateTime getEndTime()                     { return endTime; }
+
+    // Getter mới cho anti-sniping
+    public int     getExtensionCount()                    { return extensionCount; }
+    public boolean isLastBidTriggeredExtension()          { return lastBidTriggeredExtension; }
 }
