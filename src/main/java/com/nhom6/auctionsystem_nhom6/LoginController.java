@@ -42,8 +42,11 @@ public class LoginController {
 
         AppContext.setCurrentUser(user);
 
+        // ✅ Kết nối server với username thực (gửi JSON LOGIN đúng format)
         ServerConnection conn = ServerConnection.getInstance();
-        if (conn.isConnected()) conn.send("LOGIN:" + username + ":" + password);
+        if (!conn.isConnected()) {
+            conn.connect(username); // connect() đã tự gửi {"action":"LOGIN","username":"..."}
+        }
 
         try {
             HelloApplication.showMainView();
@@ -52,7 +55,6 @@ public class LoginController {
         }
     }
 
-    // ← Sửa: mở màn hình đăng ký thật thay vì Alert
     @FXML
     private void handleRegister() {
         try {

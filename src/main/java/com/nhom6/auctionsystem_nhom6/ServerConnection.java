@@ -26,8 +26,8 @@ public class ServerConnection {
         return instance;
     }
 
-    /** Kết nối đến server. Trả về true nếu thành công. */
-    public boolean connect() {
+    /** Kết nối đến server và đăng ký username */
+    public boolean connect(String username) {
         try {
             socket = new Socket(HOST, PORT);
             out    = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()), true);
@@ -39,6 +39,9 @@ public class ServerConnection {
             readerThread.setDaemon(true);
             readerThread.start();
 
+            // ✅ Gửi LOGIN để server biết username và cập nhật online count
+            sendJson("{\"action\":\"LOGIN\",\"username\":\"" + username + "\"}");
+
             return true;
         } catch (IOException e) {
             System.err.println("Không thể kết nối server: " + e.getMessage());
@@ -46,12 +49,57 @@ public class ServerConnection {
         }
     }
 
-    /** Gửi lệnh lên server */
-    public void send(String message) {
+    /** Giữ lại method cũ để không break code cũ */
+    public boolean connect() {
+        return connect("guest_" + System.currentTimeMillis());
+    }
+
+    /** Gửi tin nhắn chat */
+    public void sendChat(String username, String message) {
+        sendJson("{\"action\":\"CHAT\","
+                + "\"username\":\"" + username + "\","
+                + "\"message\":\"" + escapeJson(message) + "\"}");
+    }
+
+    /** Gửi bid */
+    public void sendBid(String username, String sessionId, double amount) {
+        sendJson("{\"action\":\"PLACE_BID\","
+                + "\"username\":\"" + username + "\","
+                + "\"sessionId\":\"" + sessionId + "\","
+                + "\"amount\":\"" + amount + "\"}");
+    }
+
+    /** Gửi raw JSON string lên server */
+    public void sendJson(String json) {
         if (out != null) {
-            out.println(message);
-            System.out.println("Client gửi: " + message);
+            out.println(json);
+            System.out.println("Client gửi: " + json);
         }
+    }
+
+    /** Gửi lệnh thô (giữ tương thích cũ) */
+    public void send(String message) {
+        // Parse "CHAT:user:msg" và "BID:user:amount" thành JSON đúng format
+        if (message.startsWith("CHAT:")) {
+            String[] parts = message.split(":", 3);
+            if (parts.length == 3) {
+                sendChat(parts[1], parts[2]);
+                return;
+            }
+        }
+        if (message.startsWith("BID:")) {
+            String[] parts = message.split(":", 3);
+            if (parts.length == 3) {
+                try {
+                    sendBid(parts[1], "default-session", Double.parseDouble(parts[2]));
+                } catch (NumberFormatException e) {
+                    sendJson(message);
+                }
+                return;
+            }
+        }
+        // Fallback: gửi thẳng
+        sendJson(message);
     }
 
     /** Đặt listener để nhận tin nhắn từ server */
@@ -85,6 +133,12 @@ public class ServerConnection {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private String escapeJson(String s) {
+        return s.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n");
     }
 
     /** Interface để nhận tin nhắn từ server */

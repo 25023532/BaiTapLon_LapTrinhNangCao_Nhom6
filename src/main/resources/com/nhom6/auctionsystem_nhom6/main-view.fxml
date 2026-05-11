@@ -239,7 +239,7 @@
                     <padding><Insets top="12" right="16" bottom="12" left="16"/></padding>
                     <Label text="💬 CHAT TRỰC TUYẾN" styleClass="chat-title"/>
                     <Region HBox.hgrow="ALWAYS"/>
-                    <Label text="● Online 52" styleClass="chat-online"/>
+                    <Label fx:id="onlineCountLabel" text="● Online ..." styleClass="chat-online"/>
                     <Button text="✕" onAction="#handleToggleChat" styleClass="btn-close-chat"/>
                 </HBox>
 

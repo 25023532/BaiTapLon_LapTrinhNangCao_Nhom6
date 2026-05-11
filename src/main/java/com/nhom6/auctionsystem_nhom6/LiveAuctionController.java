@@ -74,16 +74,95 @@ public class LiveAuctionController {
         loadLiveSessionList();
         setNoSessionState();
 
-        // Ẩn notice mặc định
         if (extensionNoticeLabel != null) {
             extensionNoticeLabel.setVisible(false);
             extensionNoticeLabel.setManaged(false);
         }
 
-        onlineLabel.setText("● " + (15 + (int)(Math.random() * 30)) + " online");
+        // ✅ Số online mặc định, sẽ được cập nhật từ server
+        onlineLabel.setText("● -- online");
+
+        // ✅ Kết nối server với username thực, đăng ký nhận message
+        connectToServer();
 
         if (AppContext.getActiveSession() != null)
             selectSession(AppContext.getActiveSession());
+    }
+
+    // ✅ Kết nối server và xử lý tất cả message nhận về
+    private void connectToServer() {
+        ServerConnection conn = ServerConnection.getInstance();
+        if (!conn.isConnected()) {
+            User user = AppContext.getCurrentUser();
+            conn.connect(user.getUsername()); // gửi LOGIN với username thực
+        }
+
+        // Đăng ký listener xử lý message từ server
+        conn.setListener(this::handleServerMessage);
+    }
+
+    /**
+     * ✅ Xử lý tất cả message JSON từ server:
+     *    - CHAT       → hiển thị tin nhắn
+     *    - ONLINE_COUNT → cập nhật số người online
+     *    - NEW_BID    → cập nhật giá đấu
+     *    - SYSTEM     → thông báo hệ thống
+     */
+    private void handleServerMessage(String rawMessage) {
+        try {
+            // Parse JSON thủ công (không cần thư viện thêm)
+            if (rawMessage.contains("\"type\"")) {
+                String type = extractJsonValue(rawMessage, "type");
+
+                switch (type) {
+                    case "CHAT" -> {
+                        String sender  = extractJsonValue(rawMessage, "username");
+                        String message = extractJsonValue(rawMessage, "message");
+                        User me = AppContext.getCurrentUser();
+                        // Không hiện lại tin nhắn của chính mình (đã hiện rồi)
+                        if (!sender.equals(me.getUsername())) {
+                            boolean isSeller = false; // không biết role của người kia
+                            addChatMsg(sender, message, isSeller);
+                        }
+                    }
+
+                    case "ONLINE_COUNT" -> {
+                        String count = extractJsonValue(rawMessage, "count");
+                        onlineLabel.setText("● " + count + " online");
+                    }
+
+                    case "NEW_BID" -> {
+                        String bidder = extractJsonValue(rawMessage, "username");
+                        String amount = extractJsonValue(rawMessage, "amount");
+                        // Cập nhật UI nếu đang xem phiên này
+                        if (currentSession != null) {
+                            try {
+                                double amt = Double.parseDouble(amount);
+                                liveCurrentPrice.setText(formatVND(amt));
+                                liveLeaderLabel.setText("👑 " + bidder);
+                            } catch (NumberFormatException ignored) {}
+                        }
+                    }
+
+                    case "SYSTEM" -> {
+                        String message = extractJsonValue(rawMessage, "message");
+                        addChatMsg("System", message, false);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Lỗi parse message: " + e.getMessage());
+        }
+    }
+
+    /** Parse giá trị từ JSON string đơn giản */
+    private String extractJsonValue(String json, String key) {
+        String search = "\"" + key + "\":\"";
+        int start = json.indexOf(search);
+        if (start == -1) return "";
+        start += search.length();
+        int end = json.indexOf("\"", start);
+        return end == -1 ? "" : json.substring(start, end);
     }
 
     // ── Left panel ────────────────────────────────────────────
@@ -129,7 +208,7 @@ public class LiveAuctionController {
     }
 
     private VBox buildSessionItem(String name, String status,
-                                   double currentPrice, AuctionSession session) {
+                                  double currentPrice, AuctionSession session) {
         VBox card = new VBox(4);
         card.getStyleClass().add("live-session-item");
         card.setPadding(new Insets(10, 12, 10, 12));
@@ -237,13 +316,11 @@ public class LiveAuctionController {
     }
 
     // ── Countdown ─────────────────────────────────────────────
-    // Tự động cập nhật đúng vì luôn đọc currentSession.getEndTime()
-    // → khi anti-sniping kéo dài endTime, countdown hiển thị đúng ngay
     private void startCountdown() {
         countdownTimer = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
             if (currentSession == null) return;
             LocalDateTime now = LocalDateTime.now();
-            LocalDateTime end = currentSession.getEndTime(); // luôn lấy endTime mới nhất
+            LocalDateTime end = currentSession.getEndTime();
             if (now.isAfter(end)) {
                 liveHours.setText("00");
                 liveMins.setText("00");
@@ -282,7 +359,6 @@ public class LiveAuctionController {
                     addChatMsg(bot, "Tôi vừa đặt " + formatVND(newPrice) + "!", false);
                     bidCountLabel.setText(currentSession.getBidHistory().size() + " lượt");
 
-                    // Anti-sniping: bot bid cũng kích hoạt gia hạn
                     if (currentSession.isLastBidTriggeredExtension())
                         showAntiSnipingNotice();
                 });
@@ -332,7 +408,6 @@ public class LiveAuctionController {
             addChatMsg("System", user.getUsername() + " đặt giá " + formatVND(amount), false);
             bidCountLabel.setText(currentSession.getBidHistory().size() + " lượt");
 
-            // Anti-sniping: hiện thông báo nếu bid vừa kích hoạt gia hạn
             if (currentSession.isLastBidTriggeredExtension())
                 showAntiSnipingNotice();
 
@@ -342,15 +417,17 @@ public class LiveAuctionController {
                     "CHỜ XỬ LÝ", false, LocalDateTime.now()
             ));
 
+            // ✅ Gửi bid đúng JSON format
             ServerConnection conn = ServerConnection.getInstance();
             if (conn.isConnected())
-                conn.send("BID:" + user.getUsername() + ":" + amount);
+                conn.sendBid(user.getUsername(),
+                        currentSession.getItemName(), amount);
 
         } catch (InvalidBidException e) {
             showAlert("Bid không hợp lệ",
                     e.getMessage() + "\nGiá tối thiểu: "
-                    + formatVND(currentSession.getCurrentPrice()
-                    + currentSession.getMinBidStep()));
+                            + formatVND(currentSession.getCurrentPrice()
+                            + currentSession.getMinBidStep()));
         } catch (AuctionClosedException e) {
             showAlert("Phiên đã đóng", e.getMessage());
         }
@@ -376,16 +453,15 @@ public class LiveAuctionController {
 
         extensionNoticeLabel.setText(
                 "⚡ Có bid vào phút chót! Phiên tự động kéo dài thêm 70 giây. "
-                + "Kết thúc mới: " + newEnd
-                + "  (lần " + count + "/5)");
+                        + "Kết thúc mới: " + newEnd
+                        + "  (lần " + count + "/5)");
         extensionNoticeLabel.setVisible(true);
         extensionNoticeLabel.setManaged(true);
 
         addChatMsg("System",
                 "⚡ Anti-sniping kích hoạt! Phiên kéo dài đến " + newEnd
-                + " (lần " + count + "/5)", false);
+                        + " (lần " + count + "/5)", false);
 
-        // Tự ẩn sau 8 giây
         extensionNoticeTimer = new Timeline(
                 new KeyFrame(Duration.seconds(8), ev -> {
                     extensionNoticeLabel.setVisible(false);
@@ -432,11 +508,23 @@ public class LiveAuctionController {
         String msg = liveChatInput.getText().trim();
         if (msg.isEmpty()) return;
         User user = AppContext.getCurrentUser();
+
+        // ✅ Hiện tin nhắn của mình ngay lập tức
         addChatMsg(user.getUsername(), msg, "SELLER".equals(user.getRole()));
         liveChatInput.clear();
+
+        // ✅ Gửi đúng JSON format để server broadcast cho người khác
         ServerConnection conn = ServerConnection.getInstance();
-        if (conn.isConnected())
-            conn.send("CHAT:" + user.getUsername() + ":" + msg);
+        if (conn.isConnected()) {
+            conn.sendChat(user.getUsername(), msg);
+        } else {
+            // Thử kết nối lại nếu mất kết nối
+            boolean reconnected = conn.connect(user.getUsername());
+            if (reconnected) {
+                conn.setListener(this::handleServerMessage);
+                conn.sendChat(user.getUsername(), msg);
+            }
+        }
     }
 
     private void addChatMsg(String sender, String message, boolean isSeller) {

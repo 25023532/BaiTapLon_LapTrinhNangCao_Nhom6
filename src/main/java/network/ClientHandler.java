@@ -19,16 +19,16 @@ public class ClientHandler implements Runnable, Observer {
     @Override
     public void run() {
         try (
-            BufferedReader in = new BufferedReader(
-                    new InputStreamReader(socket.getInputStream()));
-            PrintWriter writer = new PrintWriter(
-                    new OutputStreamWriter(socket.getOutputStream()), true)
+                BufferedReader in = new BufferedReader(
+                        new InputStreamReader(socket.getInputStream()));
+                PrintWriter writer = new PrintWriter(
+                        new OutputStreamWriter(socket.getOutputStream()), true)
         ) {
             this.out = writer;
 
             sendJson(Map.of(
-                "status", "OK",
-                "message", "Connected to Auction Server"
+                    "status",  "OK",
+                    "message", "Connected to Auction Server"
             ));
 
             String inputLine;
@@ -40,12 +40,11 @@ public class ClientHandler implements Runnable, Observer {
         } catch (IOException e) {
             System.out.println("Client [" + username + "] disconnected.");
         } finally {
-            AuctionServer.removeObserver(this);
+            AuctionServer.removeObserver(this); // sẽ tự broadcast online count mới
             try { socket.close(); } catch (IOException e) { e.printStackTrace(); }
         }
     }
 
-    // ✅ Method này được AuctionServer.broadcast() gọi
     public void sendMessage(String message) {
         if (out != null) {
             out.println(message);
@@ -65,28 +64,31 @@ public class ClientHandler implements Runnable, Observer {
                 case "LOGIN" -> {
                     username = data.get("username").toString();
                     sendJson(Map.of(
-                        "status", "OK",
-                        "message", "Login success",
-                        "username", username
+                            "status",   "OK",
+                            "message",  "Login success",
+                            "username", username
                     ));
-                    AuctionServer.broadcast(
-                        JsonUtil.toJson(Map.of(
-                            "type", "SYSTEM",
-                            "message", username + " joined auction."
-                        )), this
+                    // Thông báo có người vào
+                    AuctionServer.broadcastAll(
+                            JsonUtil.toJson(Map.of(
+                                    "type",    "SYSTEM",
+                                    "message", username + " đã tham gia."
+                            ))
                     );
+                    // Gửi số online cập nhật cho tất cả
+                    AuctionServer.broadcastOnlineCount();
                 }
 
                 case "PLACE_BID" -> {
                     String sessionId = data.get("sessionId").toString();
                     String amount    = data.get("amount").toString();
-                    AuctionServer.broadcast(
-                        JsonUtil.toJson(Map.of(
-                            "type",      "NEW_BID",
-                            "username",  username,
-                            "sessionId", sessionId,
-                            "amount",    amount
-                        )), null
+                    AuctionServer.broadcastAll(
+                            JsonUtil.toJson(Map.of(
+                                    "type",      "NEW_BID",
+                                    "username",  username,
+                                    "sessionId", sessionId,
+                                    "amount",    amount
+                            ))
                     );
                     sendJson(Map.of("status", "OK", "message", "Bid placed successfully"));
                 }
@@ -94,19 +96,27 @@ public class ClientHandler implements Runnable, Observer {
                 case "CHAT" -> {
                     String chatMessage = data.get("message").toString();
                     AuctionServer.broadcast(
-                        JsonUtil.toJson(Map.of(
-                            "type",     "CHAT",
-                            "username", username,
-                            "message",  chatMessage
-                        )), null
+                            JsonUtil.toJson(Map.of(
+                                    "type",     "CHAT",
+                                    "username", username,
+                                    "message",  chatMessage
+                            )), this
                     );
+                }
+
+                case "GET_ONLINE_COUNT" -> {
+                    // Gửi count chỉ cho client này
+                    sendJson(Map.of(
+                            "type",  "ONLINE_COUNT",
+                            "count", String.valueOf(AuctionServer.getOnlineCount())
+                    ));
                 }
 
                 default -> sendJson(Map.of("status", "ERROR", "message", "Unsupported action"));
             }
 
         } catch (Exception e) {
-            sendJson(Map.of("status", "ERROR", "message", "Invalid JSON format"));
+            sendJson(Map.of("status", "ERROR", "message", "Invalid JSON format: " + e.getMessage()));
         }
     }
 
@@ -114,7 +124,6 @@ public class ClientHandler implements Runnable, Observer {
         if (out != null) out.println(JsonUtil.toJson(data));
     }
 
-    // Observer pattern
     @Override
     public void update(Object message) {
         if (out != null) out.println(message.toString());

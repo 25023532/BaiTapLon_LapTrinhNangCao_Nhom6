@@ -67,6 +67,7 @@ public class MainController {
     @FXML private VBox       chatMessagesBox;
     @FXML private TextField  chatInput;
     @FXML private ScrollPane chatScrollPane;
+    @FXML private Label      onlineCountLabel; // ← thêm fx:id này trong FXML nếu chưa có
 
     // =========================================================
     // DATA
@@ -112,6 +113,91 @@ public class MainController {
         } else {
             showAuctionCard(false);
         }
+
+        // ✅ Kết nối server và lắng nghe message
+        connectToServer();
+
+        System.out.println("onlineCountLabel = " + onlineCountLabel);
+    }
+
+    // =========================================================
+    // SERVER CONNECTION & MESSAGE HANDLING
+    // =========================================================
+
+    private void connectToServer() {
+        User user = AppContext.getCurrentUser();
+        ServerConnection conn = ServerConnection.getInstance();
+
+        // ✅ Set listener TRƯỚC khi connect
+        conn.setListener(this::handleServerMessage);
+
+        if (!conn.isConnected()) {
+            conn.connect(user.getUsername());
+        } else {
+            // Đã connect rồi thì yêu cầu server gửi lại count
+            conn.sendJson("{\"action\":\"GET_ONLINE_COUNT\"}");
+        }
+    }
+
+    /**
+     * Xử lý tất cả message JSON từ server.
+     * Chạy trên JavaFX thread (Platform.runLater đã được gọi trong ServerConnection).
+     */
+    private void handleServerMessage(String raw) {
+        try {
+            if (!raw.contains("\"type\"")) return;
+            String type = extractJson(raw, "type");
+
+            switch (type) {
+                case "CHAT" -> {
+                    String sender  = extractJson(raw, "username");
+                    String message = extractJson(raw, "message");
+                    User me = AppContext.getCurrentUser();
+                    if (!sender.equals(me.getUsername())) {
+                        addChatMessage(sender, message, false);
+                    }
+                }
+
+                case "ONLINE_COUNT" -> {
+                    String count = extractJson(raw, "count");
+                    // Cập nhật label online nếu có trong FXML
+                    if (onlineCountLabel != null) {
+                        onlineCountLabel.setText("● Online " + count);
+                    }
+                    System.out.println("Online hiện tại: " + count);
+                }
+
+                case "NEW_BID" -> {
+                    String bidder = extractJson(raw, "username");
+                    String amount = extractJson(raw, "amount");
+                    if (session != null) {
+                        try {
+                            double amt = Double.parseDouble(amount);
+                            currentPriceLabel.setText(formatVND(amt));
+                            addChatMessage("System",
+                                    bidder + " đặt giá " + formatVND(amt), false);
+                        } catch (NumberFormatException ignored) {}
+                    }
+                }
+
+                case "SYSTEM" -> {
+                    String message = extractJson(raw, "message");
+                    addChatMessage("System", message, false);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Lỗi xử lý message: " + e.getMessage());
+        }
+    }
+
+    /** Parse giá trị string từ JSON đơn giản */
+    private String extractJson(String json, String key) {
+        String search = "\"" + key + "\":\"";
+        int start = json.indexOf(search);
+        if (start == -1) return "";
+        start += search.length();
+        int end = json.indexOf("\"", start);
+        return end == -1 ? "" : json.substring(start, end);
     }
 
     // =========================================================
@@ -212,14 +298,15 @@ public class MainController {
             addChatMessage("System",
                     user.getUsername() + " đã đặt giá " + formatVND(newPrice), false);
 
-            // Ghi lịch sử
             AppContext.addHistory(user.getUsername(), new AppContext.HistoryRecord(
                     "BID-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase(),
                     session.getItemName(), newPrice, "SellerLong",
                     "CHỜ XỬ LÝ", true, LocalDateTime.now()));
 
+            // ✅ Gửi đúng JSON format
             ServerConnection conn = ServerConnection.getInstance();
-            if (conn.isConnected()) conn.send("BID:" + user.getUsername() + ":" + newPrice);
+            if (conn.isConnected())
+                conn.sendBid(user.getUsername(), session.getItemName(), newPrice);
 
         } catch (InvalidBidException e) {
             showAlert("Bid không hợp lệ", e.getMessage());
@@ -247,55 +334,57 @@ public class MainController {
         String msg = chatInput.getText().trim();
         if (msg.isEmpty()) return;
         User user = AppContext.getCurrentUser();
-        addChatMessage(user.getUsername(),
-                msg, user.getRole().equalsIgnoreCase("SELLER"));
+
+        // ✅ Hiện tin của mình ngay
+        addChatMessage(user.getUsername(), msg,
+                user.getRole().equalsIgnoreCase("SELLER"));
         chatInput.clear();
+
+        // ✅ Gửi đúng JSON để server broadcast
         ServerConnection conn = ServerConnection.getInstance();
-        if (conn.isConnected()) conn.send("CHAT:" + user.getUsername() + ":" + msg);
+        if (conn.isConnected()) {
+            conn.sendChat(user.getUsername(), msg);
+        } else {
+            boolean ok = conn.connect(user.getUsername());
+            if (ok) {
+                conn.setListener(this::handleServerMessage);
+                conn.sendChat(user.getUsername(), msg);
+            }
+        }
     }
 
     // =========================================================
-    // SIDEBAR NAVIGATION — CÁC TÍNH NĂNG MỚI
+    // SIDEBAR NAVIGATION
     // =========================================================
-
-    /** Danh sách phiên đấu giá */
-    @FXML
-    private void handleAuctionList() {
+    @FXML private void handleAuctionList() {
         try { HelloApplication.showAuctionListView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    /** Đấu giá trực tiếp */
-    @FXML
-    private void handleLiveAuction() {
+    @FXML private void handleLiveAuction() {
         try { HelloApplication.showLiveAuctionView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    /** Quản lý sản phẩm */
-    @FXML
-    private void handleProductManagement() {
+    @FXML private void handleProductManagement() {
         try { HelloApplication.showProductManagementView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
 
     // =========================================================
-    // PROFILE MENU HANDLERS
+    // PROFILE MENU
     // =========================================================
-    @FXML
-    private void handleProfile() {
+    @FXML private void handleProfile() {
         try { HelloApplication.showProfileView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    @FXML
-    private void handleHistory() {
+    @FXML private void handleHistory() {
         try { HelloApplication.showHistoryView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    @FXML
-    private void handleOrders() {
+    @FXML private void handleOrders() {
         try { HelloApplication.showHistoryView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
@@ -305,21 +394,14 @@ public class MainController {
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    // =========================================================
-    // WALLET
-    // =========================================================
-    @FXML
-    private void handleWallet() {
+    @FXML private void handleWallet() {
         try { HelloApplication.showWalletView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    // =========================================================
-    // LOGOUT
-    // =========================================================
-    @FXML
-    private void handleLogout() {
+    @FXML private void handleLogout() {
         if (countdownTimer != null) countdownTimer.stop();
+        ServerConnection.getInstance().disconnect();
         AppContext.logout();
         try { HelloApplication.showLoginView(); }
         catch (Exception e) { e.printStackTrace(); }
