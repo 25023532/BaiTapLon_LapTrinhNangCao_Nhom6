@@ -30,15 +30,17 @@ public class MyProductsController {
 
     private static final DateTimeFormatter DT_FMT =
             DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
-    private static final DateTimeFormatter DATE_FMT =
-            DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter TIME_ONLY =
             DateTimeFormatter.ofPattern("HH:mm");
 
+    // =========================================================
+    // INITIALIZE — luôn đọc thẳng từ AppContext
+    // =========================================================
     @FXML
     public void initialize() {
         User user = AppContext.getCurrentUser();
-        username  = user.getUsername();
+        if (user == null) return;
+        username = user.getUsername();
 
         statusFilter.getItems().addAll(
                 "Tất cả", "ĐANG ĐẤU GIÁ", "ĐÃ BÁN", "HẾT HẠN", "ĐÃ HỦY");
@@ -47,27 +49,33 @@ public class MyProductsController {
         renderList(AppContext.getProducts(username));
     }
 
-    // ── Stats ──────────────────────────────────────────────────
+    // =========================================================
+    // STATS — tính thẳng từ AppContext
+    // =========================================================
     private void refreshStats() {
         List<AppContext.ProductRecord> list = AppContext.getProducts(username);
-        long total  = list.size();
-        long active = list.stream()
-                .filter(p -> "ĐANG ĐẤU GIÁ".equals(p.status())).count();
-        long sold   = list.stream()
-                .filter(p -> "ĐÃ BÁN".equals(p.status())).count();
-        double rev  = list.stream()
-                .filter(p -> "ĐÃ BÁN".equals(p.status()))
-                .mapToDouble(AppContext.ProductRecord::currentPrice).sum();
 
-        totalProductsLabel.setText(String.valueOf(total));
-        activeProductsLabel.setText(String.valueOf(active));
-        soldProductsLabel.setText(String.valueOf(sold));
+        totalProductsLabel.setText(String.valueOf(list.size()));
+
+        activeProductsLabel.setText(String.valueOf(
+                list.stream().filter(p -> "ĐANG ĐẤU GIÁ".equals(p.status())).count()));
+
+        soldProductsLabel.setText(String.valueOf(
+                list.stream().filter(p -> "ĐÃ BÁN".equals(p.status())).count()));
+
+        double rev = list.stream()
+                .filter(p -> "ĐÃ BÁN".equals(p.status()))
+                .mapToDouble(AppContext.ProductRecord::currentPrice)
+                .sum();
         revenueLabel.setText(formatVND(rev));
     }
 
-    // ── Render ────────────────────────────────────────────────
+    // =========================================================
+    // RENDER
+    // =========================================================
     private void renderList(List<AppContext.ProductRecord> list) {
         productListBox.getChildren().clear();
+
         if (list.isEmpty()) {
             productListBox.getChildren().add(buildEmptyState());
             return;
@@ -81,13 +89,16 @@ public class MyProductsController {
         VBox box = new VBox(12);
         box.setAlignment(Pos.CENTER);
         box.setPadding(new Insets(60, 0, 60, 0));
+
         Label icon = new Label("📦");
         icon.setStyle("-fx-font-size: 48px;");
+
         Label msg = new Label(
                 "Bạn chưa đăng bán sản phẩm nào.\nNhấn \"＋ Đăng bán mới\" để bắt đầu.");
-        msg.setStyle("-fx-text-fill: #64748b; -fx-font-size: 14px; -fx-text-alignment: center;");
+        msg.setStyle("-fx-text-fill: #64748b; -fx-font-size: 14px;");
         msg.setWrapText(true);
         msg.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
+
         box.getChildren().addAll(icon, msg);
         return box;
     }
@@ -100,8 +111,9 @@ public class MyProductsController {
 
         // Thumbnail
         Label thumb = new Label("⬡");
-        thumb.setStyle("-fx-font-size: 28px; -fx-text-fill: #3b82f6; "
-                + "-fx-background-color: #1e3a5f; -fx-padding: 8 12 8 12; "
+        thumb.setStyle(
+                "-fx-font-size: 28px; -fx-text-fill: #3b82f6;"
+                + "-fx-background-color: #1e3a5f; -fx-padding: 8 12 8 12;"
                 + "-fx-background-radius: 8; -fx-min-width: 56; -fx-alignment: center;");
 
         // Info
@@ -114,21 +126,20 @@ public class MyProductsController {
         HBox metaRow = new HBox(16);
         metaRow.setAlignment(Pos.CENTER_LEFT);
 
-        Label cat  = new Label("📂 " + p.category());
-        Label bids = new Label("🔨 " + p.bidCount() + " lượt bid");
-        Label time = new Label("⏰ Kết thúc: " + p.endTime().format(DT_FMT));
+        Label cat   = new Label("📂 " + p.category());
+        Label bids  = new Label("🔨 " + p.bidCount() + " lượt bid");
         Label start = new Label("🕐 Bắt đầu: " + p.startTime().format(DT_FMT));
+        Label end   = new Label("⏰ Kết thúc: " + p.endTime().format(DT_FMT));
 
         cat.getStyleClass().add("history-item-meta");
         bids.getStyleClass().add("history-item-meta");
-        time.getStyleClass().add("history-item-meta");
         start.getStyleClass().add("history-item-meta");
-        metaRow.getChildren().addAll(cat, bids, start, time);
+        end.getStyleClass().add("history-item-meta");
+        metaRow.getChildren().addAll(cat, bids, start, end);
 
-        if ("ĐÃ BÁN".equals(p.status()) && !p.topBidder().equals("—")) {
+        if ("ĐÃ BÁN".equals(p.status()) && !"—".equals(p.topBidder())) {
             Label winner = new Label("🏆 Người thắng: " + p.topBidder());
-            winner.getStyleClass().add("history-item-meta");
-            winner.setStyle("-fx-text-fill: #22d3ee;");
+            winner.setStyle("-fx-text-fill: #22d3ee; -fx-font-size: 12px;");
             metaRow.getChildren().add(winner);
         }
 
@@ -140,6 +151,7 @@ public class MyProductsController {
 
         Label startP = new Label("Khởi điểm: " + formatVND(p.startPrice()));
         startP.setStyle("-fx-text-fill: #64748b; -fx-font-size: 11px;");
+
         Label curP = new Label(formatVND(p.currentPrice()));
         curP.getStyleClass().add("history-item-price");
 
@@ -171,31 +183,34 @@ public class MyProductsController {
         return row;
     }
 
-    // ── Add Product Dialog ─────────────────────────────────────
+    // =========================================================
+    // ADD PRODUCT
+    // =========================================================
     @FXML
     private void handleAddProduct() {
 
         Dialog<AppContext.ProductRecord> dialog = new Dialog<>();
         dialog.setTitle("Đăng bán sản phẩm mới");
         dialog.setHeaderText("Nhập thông tin sản phẩm");
+        dialog.getDialogPane().setPrefWidth(500);
 
         ButtonType saveBtn = new ButtonType("Đăng bán", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(saveBtn, ButtonType.CANCEL);
-        dialog.getDialogPane().setPrefWidth(480);
 
+        // ── Form fields ───────────────────────────────────────
         GridPane grid = new GridPane();
         grid.setHgap(12);
         grid.setVgap(14);
         grid.setPadding(new Insets(20));
 
-        // ── Fields ─────────────────────────────────────────────
         TextField nameField = new TextField();
         nameField.setPromptText("Tên sản phẩm...");
         nameField.setPrefWidth(320);
 
         ComboBox<String> catBox = new ComboBox<>();
         catBox.getItems().addAll(
-                "Điện tử","Máy ảnh","Laptop","Điện thoại","Đồng hồ","Xe cộ","Khác");
+                "Điện tử","Máy ảnh","Laptop","Điện thoại",
+                "Đồng hồ","Xe cộ","Khác");
         catBox.setPromptText("Chọn danh mục");
         catBox.setPrefWidth(320);
 
@@ -203,59 +218,53 @@ public class MyProductsController {
         priceField.setPromptText("VD: 5000000");
         priceField.setPrefWidth(320);
 
-        // Thời gian bắt đầu
-        DatePicker startDatePicker = new DatePicker(LocalDate.now());
-        startDatePicker.setPrefWidth(190);
-        TextField startTimeField = new TextField(
-                LocalTime.now().plusMinutes(5).format(TIME_ONLY));
-        startTimeField.setPromptText("HH:mm");
-        startTimeField.setPrefWidth(100);
+        // Bắt đầu
+        DatePicker startDate = new DatePicker(LocalDate.now());
+        startDate.setPrefWidth(185);
+        TextField startTime = new TextField(
+                LocalTime.now().plusMinutes(10).format(TIME_ONLY));
+        startTime.setPrefWidth(90);
 
-        // Thời gian kết thúc
-        DatePicker endDatePicker = new DatePicker(LocalDate.now().plusDays(3));
-        endDatePicker.setPrefWidth(190);
-        TextField endTimeField = new TextField("23:59");
-        endTimeField.setPromptText("HH:mm");
-        endTimeField.setPrefWidth(100);
+        // Kết thúc
+        DatePicker endDate = new DatePicker(LocalDate.now().plusDays(7));
+        endDate.setPrefWidth(185);
+        TextField endTime = new TextField("23:59");
+        endTime.setPrefWidth(90);
 
-        // Nhãn lỗi
         Label errLabel = new Label();
         errLabel.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 12px;");
         errLabel.setWrapText(true);
 
-        // Bố cục ngày + giờ
-        HBox startRow = new HBox(8, startDatePicker, new Label("lúc"), startTimeField);
+        HBox startRow = new HBox(8, startDate, new Label("lúc"), startTime);
         startRow.setAlignment(Pos.CENTER_LEFT);
-        HBox endRow   = new HBox(8, endDatePicker, new Label("lúc"), endTimeField);
+        HBox endRow   = new HBox(8, endDate,   new Label("lúc"), endTime);
         endRow.setAlignment(Pos.CENTER_LEFT);
 
-        // Style labels trong dialog
-        String lblStyle = "-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #1e293b;";
-        Label lName  = new Label("Tên sản phẩm *"); lName.setStyle(lblStyle);
-        Label lCat   = new Label("Danh mục *");     lCat.setStyle(lblStyle);
-        Label lPrice = new Label("Giá khởi điểm *"); lPrice.setStyle(lblStyle);
-        Label lStart = new Label("Thời gian bắt đầu *"); lStart.setStyle(lblStyle);
-        Label lEnd   = new Label("Thời gian kết thúc *"); lEnd.setStyle(lblStyle);
+        String ls = "-fx-font-size:13px;-fx-font-weight:bold;-fx-text-fill:#1e293b;";
+        Label lN = new Label("Tên sản phẩm *");      lN.setStyle(ls);
+        Label lC = new Label("Danh mục *");           lC.setStyle(ls);
+        Label lP = new Label("Giá khởi điểm *");      lP.setStyle(ls);
+        Label lS = new Label("Thời gian bắt đầu *");  lS.setStyle(ls);
+        Label lE = new Label("Thời gian kết thúc *"); lE.setStyle(ls);
 
-        grid.add(lName,  0, 0); grid.add(nameField, 1, 0);
-        grid.add(lCat,   0, 1); grid.add(catBox,    1, 1);
-        grid.add(lPrice, 0, 2); grid.add(priceField,1, 2);
-        grid.add(lStart, 0, 3); grid.add(startRow,  1, 3);
-        grid.add(lEnd,   0, 4); grid.add(endRow,    1, 4);
+        grid.add(lN, 0, 0); grid.add(nameField,  1, 0);
+        grid.add(lC, 0, 1); grid.add(catBox,     1, 1);
+        grid.add(lP, 0, 2); grid.add(priceField, 1, 2);
+        grid.add(lS, 0, 3); grid.add(startRow,   1, 3);
+        grid.add(lE, 0, 4); grid.add(endRow,     1, 4);
         grid.add(errLabel, 0, 5, 2, 1);
 
         dialog.getDialogPane().setContent(grid);
 
-        // Disable nút Đăng bán nếu tên rỗng
+        // Disable nút Đăng bán khi tên rỗng
         javafx.scene.Node saveNode = dialog.getDialogPane().lookupButton(saveBtn);
         saveNode.setDisable(true);
         nameField.textProperty().addListener((obs, o, n) ->
                 saveNode.setDisable(n.trim().isEmpty()));
 
-        // ── Xử lý kết quả ─────────────────────────────────────
-        dialog.setResultConverter(btnType -> {
-            if (btnType != saveBtn) return null;
-
+        // ── Result converter ──────────────────────────────────
+        dialog.setResultConverter(btn -> {
+            if (btn != saveBtn) return null;
             errLabel.setText("");
 
             // Validate tên
@@ -276,86 +285,68 @@ public class MyProductsController {
                 return null;
             }
 
-            // Validate thời gian bắt đầu
-            LocalDateTime startDT;
+            // Validate thời gian
+            LocalDateTime startDT, endDT;
             try {
-                LocalDate  sd = startDatePicker.getValue();
-                LocalTime  st = LocalTime.parse(startTimeField.getText().trim(), TIME_ONLY);
-                startDT = LocalDateTime.of(sd, st);
+                startDT = LocalDateTime.of(startDate.getValue(),
+                        LocalTime.parse(startTime.getText().trim(), TIME_ONLY));
+                endDT   = LocalDateTime.of(endDate.getValue(),
+                        LocalTime.parse(endTime.getText().trim(), TIME_ONLY));
             } catch (DateTimeParseException | NullPointerException ex) {
-                errLabel.setText("⚠ Thời gian bắt đầu không hợp lệ (HH:mm).");
+                errLabel.setText("⚠ Thời gian không hợp lệ (định dạng HH:mm).");
                 return null;
             }
 
-            // Validate thời gian kết thúc
-            LocalDateTime endDT;
-            try {
-                LocalDate  ed = endDatePicker.getValue();
-                LocalTime  et = LocalTime.parse(endTimeField.getText().trim(), TIME_ONLY);
-                endDT = LocalDateTime.of(ed, et);
-            } catch (DateTimeParseException | NullPointerException ex) {
-                errLabel.setText("⚠ Thời gian kết thúc không hợp lệ (HH:mm).");
-                return null;
-            }
-
-            // Kiểm tra thứ tự thời gian
             if (!endDT.isAfter(startDT)) {
                 errLabel.setText("⚠ Thời gian kết thúc phải sau thời gian bắt đầu.");
                 return null;
             }
             if (startDT.isBefore(LocalDateTime.now())) {
-                errLabel.setText("⚠ Thời gian bắt đầu phải từ thời điểm hiện tại trở đi.");
+                errLabel.setText("⚠ Thời gian bắt đầu phải từ hiện tại trở đi.");
                 return null;
             }
 
-            // ── Kiểm tra trùng thời gian với sản phẩm đã có ──
-            String conflict = findTimeConflict(username, startDT, endDT, null);
+            // Kiểm tra trùng thời gian
+            String conflict = findTimeConflict(startDT, endDT, null);
             if (conflict != null) {
                 errLabel.setText(
-                        "⚠ Đã có sản phẩm đấu giá trong khoảng thời gian này:\n\"" + conflict + "\"");
+                        "⚠ Đã có sản phẩm đấu giá trong khoảng thời gian này:\n\""
+                        + conflict + "\"");
                 return null;
             }
 
-            String catVal = catBox.getValue() == null ? "Khác" : catBox.getValue();
-
             return new AppContext.ProductRecord(
-                    "P-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase(),
-                    nameVal, catVal, price, price, 0,
-                    "ĐANG ĐẤU GIÁ",   // ✅ Tự động ĐANG ĐẤU GIÁ, không cần duyệt
-                    startDT, endDT, "—"
+                    "P-" + UUID.randomUUID().toString()
+                              .substring(0, 6).toUpperCase(),
+                    nameVal,
+                    catBox.getValue() == null ? "Khác" : catBox.getValue(),
+                    price, price, 0,
+                    "ĐANG ĐẤU GIÁ",   // ✅ thẳng ĐANG ĐẤU GIÁ, không qua duyệt
+                    startDT, endDT,
+                    "—"
             );
         });
 
-        // Giữ dialog mở khi có lỗi (không đóng khi null)
-        dialog.getDialogPane().lookupButton(saveBtn)
-              .addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
-                  // ResultConverter trả null → chặn đóng
-                  // (JavaFX tự đóng khi trả non-null)
-              });
-
+        // ── Hiển thị dialog và xử lý kết quả ─────────────────
         dialog.showAndWait().ifPresent(product -> {
-            if (product != null) {
-                AppContext.addProduct(username, product);
-                refreshStats();
-                renderList(AppContext.getProducts(username));
-            }
+            if (product == null) return;
+
+            // ✅ Lưu thẳng vào AppContext
+            AppContext.addProduct(username, product);
+
+            // ✅ Reload toàn bộ từ AppContext → luôn đúng
+            refreshStats();
+            renderList(AppContext.getProducts(username));
         });
     }
 
-    // ── Kiểm tra trùng thời gian ───────────────────────────────
-    /**
-     * Trả về tên sản phẩm bị trùng, hoặc null nếu không có conflict.
-     * excludeId: khi edit thì bỏ qua sản phẩm đang sửa.
-     */
-    private String findTimeConflict(String user,
-                                     LocalDateTime newStart,
+    // ── Kiểm tra trùng thời gian ──────────────────────────────
+    private String findTimeConflict(LocalDateTime newStart,
                                      LocalDateTime newEnd,
                                      String excludeId) {
-        for (AppContext.ProductRecord p : AppContext.getProducts(user)) {
+        for (AppContext.ProductRecord p : AppContext.getProducts(username)) {
             if (excludeId != null && excludeId.equals(p.id())) continue;
             if (!"ĐANG ĐẤU GIÁ".equals(p.status())) continue;
-
-            // Overlap: newStart < p.endTime AND newEnd > p.startTime
             boolean overlap = newStart.isBefore(p.endTime())
                            && newEnd.isAfter(p.startTime());
             if (overlap) return p.name();
@@ -363,129 +354,105 @@ public class MyProductsController {
         return null;
     }
 
-    // ── Edit ──────────────────────────────────────────────────
+    // =========================================================
+    // EDIT
+    // =========================================================
     private void handleEdit(AppContext.ProductRecord p) {
-
         Dialog<AppContext.ProductRecord> dialog = new Dialog<>();
         dialog.setTitle("Chỉnh sửa sản phẩm");
         dialog.setHeaderText(p.name());
-        dialog.getDialogPane().setPrefWidth(480);
+        dialog.getDialogPane().setPrefWidth(500);
 
         ButtonType saveBtn = new ButtonType("Lưu", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(saveBtn, ButtonType.CANCEL);
 
         GridPane grid = new GridPane();
-        grid.setHgap(12);
-        grid.setVgap(14);
+        grid.setHgap(12); grid.setVgap(14);
         grid.setPadding(new Insets(20));
 
-        TextField nameField = new TextField(p.name());
+        TextField nameField  = new TextField(p.name());
         nameField.setPrefWidth(320);
 
         ComboBox<String> catBox = new ComboBox<>();
         catBox.getItems().addAll(
-                "Điện tử","Máy ảnh","Laptop","Điện thoại","Đồng hồ","Xe cộ","Khác");
+                "Điện tử","Máy ảnh","Laptop","Điện thoại",
+                "Đồng hồ","Xe cộ","Khác");
         catBox.setValue(p.category());
         catBox.setPrefWidth(320);
 
-        TextField priceField = new TextField(String.valueOf((long) p.startPrice()));
-        priceField.setPrefWidth(320);
-
-        DatePicker startDatePicker = new DatePicker(p.startTime().toLocalDate());
-        startDatePicker.setPrefWidth(190);
-        TextField startTimeField = new TextField(p.startTime().format(TIME_ONLY));
-        startTimeField.setPrefWidth(100);
-
-        DatePicker endDatePicker = new DatePicker(p.endTime().toLocalDate());
-        endDatePicker.setPrefWidth(190);
-        TextField endTimeField = new TextField(p.endTime().format(TIME_ONLY));
-        endTimeField.setPrefWidth(100);
+        DatePicker endDate = new DatePicker(p.endTime().toLocalDate());
+        endDate.setPrefWidth(185);
+        TextField endTime = new TextField(p.endTime().format(TIME_ONLY));
+        endTime.setPrefWidth(90);
 
         Label errLabel = new Label();
         errLabel.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 12px;");
         errLabel.setWrapText(true);
 
-        HBox startRow = new HBox(8, startDatePicker, new Label("lúc"), startTimeField);
-        startRow.setAlignment(Pos.CENTER_LEFT);
-        HBox endRow = new HBox(8, endDatePicker, new Label("lúc"), endTimeField);
+        HBox endRow = new HBox(8, endDate, new Label("lúc"), endTime);
         endRow.setAlignment(Pos.CENTER_LEFT);
 
-        String lblStyle = "-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #1e293b;";
-        Label lName  = new Label("Tên sản phẩm");   lName.setStyle(lblStyle);
-        Label lCat   = new Label("Danh mục");        lCat.setStyle(lblStyle);
-        Label lPrice = new Label("Giá khởi điểm");   lPrice.setStyle(lblStyle);
-        Label lStart = new Label("Thời gian bắt đầu"); lStart.setStyle(lblStyle);
-        Label lEnd   = new Label("Thời gian kết thúc"); lEnd.setStyle(lblStyle);
+        String ls = "-fx-font-size:13px;-fx-font-weight:bold;-fx-text-fill:#1e293b;";
+        Label lN = new Label("Tên sản phẩm"); lN.setStyle(ls);
+        Label lC = new Label("Danh mục");     lC.setStyle(ls);
+        Label lE = new Label("Thời gian kết thúc"); lE.setStyle(ls);
 
-        grid.add(lName,  0, 0); grid.add(nameField,  1, 0);
-        grid.add(lCat,   0, 1); grid.add(catBox,     1, 1);
-        grid.add(lPrice, 0, 2); grid.add(priceField, 1, 2);
-        grid.add(lStart, 0, 3); grid.add(startRow,   1, 3);
-        grid.add(lEnd,   0, 4); grid.add(endRow,     1, 4);
-        grid.add(errLabel, 0, 5, 2, 1);
+        grid.add(lN, 0, 0); grid.add(nameField, 1, 0);
+        grid.add(lC, 0, 1); grid.add(catBox,    1, 1);
+        grid.add(lE, 0, 2); grid.add(endRow,    1, 2);
+        grid.add(errLabel, 0, 3, 2, 1);
 
         dialog.getDialogPane().setContent(grid);
 
-        dialog.setResultConverter(btnType -> {
-            if (btnType != saveBtn) return null;
+        dialog.setResultConverter(btn -> {
+            if (btn != saveBtn) return null;
             errLabel.setText("");
 
-            double newPrice;
-            try {
-                newPrice = Double.parseDouble(
-                        priceField.getText().trim().replaceAll("[^0-9.]",""));
-                if (newPrice <= 0) throw new NumberFormatException();
-            } catch (NumberFormatException ex) {
-                errLabel.setText("⚠ Giá không hợp lệ."); return null;
-            }
-
-            LocalDateTime newStart;
             LocalDateTime newEnd;
             try {
-                newStart = LocalDateTime.of(
-                        startDatePicker.getValue(),
-                        LocalTime.parse(startTimeField.getText().trim(), TIME_ONLY));
-                newEnd = LocalDateTime.of(
-                        endDatePicker.getValue(),
-                        LocalTime.parse(endTimeField.getText().trim(), TIME_ONLY));
+                newEnd = LocalDateTime.of(endDate.getValue(),
+                        LocalTime.parse(endTime.getText().trim(), TIME_ONLY));
             } catch (Exception ex) {
-                errLabel.setText("⚠ Thời gian không hợp lệ (HH:mm)."); return null;
+                errLabel.setText("⚠ Thời gian không hợp lệ."); return null;
             }
 
-            if (!newEnd.isAfter(newStart)) {
-                errLabel.setText("⚠ Thời gian kết thúc phải sau bắt đầu."); return null;
+            if (!newEnd.isAfter(p.startTime())) {
+                errLabel.setText("⚠ Thời gian kết thúc phải sau thời gian bắt đầu.");
+                return null;
             }
 
-            // Kiểm tra trùng thời gian (bỏ qua chính sản phẩm đang sửa)
-            String conflict = findTimeConflict(username, newStart, newEnd, p.id());
+            // Kiểm tra trùng (bỏ qua chính sản phẩm đang sửa)
+            String conflict = findTimeConflict(p.startTime(), newEnd, p.id());
             if (conflict != null) {
                 errLabel.setText(
-                        "⚠ Đã có sản phẩm đấu giá trong khoảng thời gian này:\n\"" + conflict + "\"");
+                        "⚠ Trùng thời gian với sản phẩm:\n\"" + conflict + "\"");
                 return null;
             }
 
             String nameVal = nameField.getText().trim().isEmpty()
                     ? p.name() : nameField.getText().trim();
-            String catVal  = catBox.getValue() == null ? p.category() : catBox.getValue();
+            String catVal  = catBox.getValue() == null
+                    ? p.category() : catBox.getValue();
 
             return new AppContext.ProductRecord(
                     p.id(), nameVal, catVal,
-                    newPrice, newPrice,
+                    p.startPrice(), p.currentPrice(),
                     p.bidCount(), p.status(),
-                    newStart, newEnd, p.topBidder()
+                    p.startTime(), newEnd, p.topBidder()
             );
         });
 
         dialog.showAndWait().ifPresent(updated -> {
-            if (updated != null) {
-                AppContext.updateProduct(username, updated);
-                refreshStats();
-                renderList(AppContext.getProducts(username));
-            }
+            if (updated == null) return;
+            AppContext.updateProduct(username, updated);
+            refreshStats();
+            renderList(AppContext.getProducts(username));
         });
     }
 
-    // ── Delete ────────────────────────────────────────────────
+    // =========================================================
+    // DELETE
+    // =========================================================
     private void handleDelete(AppContext.ProductRecord p) {
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Xác nhận xóa");
@@ -500,7 +467,9 @@ public class MyProductsController {
         });
     }
 
-    // ── Filter ────────────────────────────────────────────────
+    // =========================================================
+    // FILTER
+    // =========================================================
     @FXML private void handleFilter() { applyFilters(); }
     @FXML private void handleSearch() { applyFilters(); }
 
@@ -508,7 +477,8 @@ public class MyProductsController {
         String keyword = searchField.getText().trim().toLowerCase();
         String status  = statusFilter.getValue();
 
-        List<AppContext.ProductRecord> filtered = AppContext.getProducts(username).stream()
+        List<AppContext.ProductRecord> filtered =
+                AppContext.getProducts(username).stream()
             .filter(p -> {
                 if (status != null && !status.isEmpty()
                         && !"Tất cả".equals(status)
@@ -529,7 +499,9 @@ public class MyProductsController {
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    // ── Helpers ───────────────────────────────────────────────
+    // =========================================================
+    // HELPERS
+    // =========================================================
     private String productBadgeStyle(String status) {
         return switch (status) {
             case "ĐANG ĐẤU GIÁ" -> "badge-info";
