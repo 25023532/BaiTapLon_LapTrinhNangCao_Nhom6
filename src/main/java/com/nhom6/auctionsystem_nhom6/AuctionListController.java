@@ -5,6 +5,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import org.example.auction.AuctionSession;
 import org.example.user.User;
 
 import java.time.LocalDateTime;
@@ -28,16 +29,16 @@ public class AuctionListController {
     @FXML private ComboBox<String> categoryFilter;
     @FXML private TextField searchField;
 
-    private int currentTab = 0; // 0=all,1=running,2=upcoming,3=ended
+    private int currentTab = 0;
     private static final DateTimeFormatter DT_FMT =
             DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
 
-    // ── Model ─────────────────────────────────────────────────
     public record SessionRecord(
             String id, String itemName, String category,
             String sellerName, double startPrice, double currentPrice,
             int bidCount, String status,
-            LocalDateTime startTime, LocalDateTime endTime
+            LocalDateTime startTime, LocalDateTime endTime,
+            AuctionSession session   // null nếu chỉ từ ProductRecord
     ) {}
 
     private List<SessionRecord> allSessions = new ArrayList<>();
@@ -55,25 +56,38 @@ public class AuctionListController {
         renderList(allSessions);
     }
 
-    // ── Load: chỉ lấy dữ liệu thực từ AppContext ─────────────
+    // ── Load phiên từ cả 2 nguồn ─────────────────────────────
     private void loadSessions() {
         allSessions = new ArrayList<>();
+        User user = AppContext.getCurrentUser();
+        boolean isSeller = "SELLER".equalsIgnoreCase(user.getRole());
 
-        // Active session từ AppContext nếu có
-        if (AppContext.getActiveSession() != null) {
-            var s = AppContext.getActiveSession();
+        // ── NGUỒN 1: globalSessions (Seller đã registerSession) ──
+        for (AuctionSession s : AppContext.getGlobalSessions()) {
+            String status = switch (s.getStatus()) {
+                case RUNNING  -> "RUNNING";
+                case OPEN     -> "UPCOMING";
+                case FINISHED, CANCELED, PAID -> "ENDED";
+                default       -> "ENDED";
+            };
             allSessions.add(new SessionRecord(
-                    "S-001", s.getItemName(), "Laptop",
-                    "SellerLong", s.getStartingPrice(), s.getCurrentPrice(),
-                    s.getBidHistory().size(), s.getStatus().name(),
-                    LocalDateTime.now().minusHours(1), s.getEndTime()
+                    s.getSessionId(), s.getItemName(), "Chung",
+                    "Seller", s.getStartingPrice(), s.getCurrentPrice(),
+                    s.getBidHistory().size(), status,
+                    LocalDateTime.now().minusHours(1), s.getEndTime(),
+                    s   // giữ reference để Bidder join được
             ));
         }
 
-        // Sản phẩm seller đã đăng
-        User user = AppContext.getCurrentUser();
-        if ("SELLER".equalsIgnoreCase(user.getRole())) {
+        // ── NGUỒN 2: ProductRecord của Seller (chưa có AuctionSession) ──
+        if (isSeller) {
             for (AppContext.ProductRecord p : AppContext.getProducts(user.getUsername())) {
+                // Tránh trùng nếu đã có trong globalSessions
+                boolean alreadyIn = allSessions.stream()
+                        .anyMatch(s -> s.itemName().equals(p.name())
+                                && s.sellerName().equals(user.getUsername()));
+                if (alreadyIn) continue;
+
                 String status = switch (p.status()) {
                     case "ĐANG ĐẤU GIÁ" -> "RUNNING";
                     case "CHỜ DUYỆT"    -> "UPCOMING";
@@ -85,16 +99,13 @@ public class AuctionListController {
                         user.getUsername(),
                         p.startPrice(), p.currentPrice(),
                         p.bidCount(), status,
-                        LocalDateTime.now(), p.endTime()
+                        p.startTime(), p.endTime(),
+                        null   // chưa có AuctionSession thực
                 ));
             }
         }
-
-        // ── Dữ liệu mẫu đã được XÓA ──────────────────────────
-        // Danh sách chỉ hiển thị khi có sản phẩm thực được thêm vào
     }
 
-    // ── Stats ─────────────────────────────────────────────────
     private void refreshStats() {
         totalLabel.setText(String.valueOf(allSessions.size()));
         runningLabel.setText(String.valueOf(
@@ -105,30 +116,24 @@ public class AuctionListController {
                 allSessions.stream().filter(s -> "ENDED".equals(s.status())).count()));
     }
 
-    // ── Render ────────────────────────────────────────────────
     private void renderList(List<SessionRecord> list) {
         sessionListBox.getChildren().clear();
         if (list.isEmpty()) {
             VBox emptyBox = new VBox(12);
             emptyBox.setAlignment(Pos.CENTER);
             emptyBox.setPadding(new Insets(60, 0, 60, 0));
-
             Label icon = new Label("📭");
             icon.setStyle("-fx-font-size: 48px;");
-
             Label msg = new Label("Chưa có phiên đấu giá nào.");
             msg.setStyle("-fx-text-fill: #64748b; -fx-font-size: 15px; -fx-font-weight: bold;");
-
             Label hint = new Label("Hãy thêm sản phẩm để tạo phiên đấu giá.");
             hint.setStyle("-fx-text-fill: #475569; -fx-font-size: 13px;");
-
             emptyBox.getChildren().addAll(icon, msg, hint);
             sessionListBox.getChildren().add(emptyBox);
             return;
         }
-        for (SessionRecord s : list) {
+        for (SessionRecord s : list)
             sessionListBox.getChildren().add(buildSessionCard(s));
-        }
     }
 
     private HBox buildSessionCard(SessionRecord s) {
@@ -137,23 +142,19 @@ public class AuctionListController {
         card.getStyleClass().add("history-row");
         card.setPadding(new Insets(16, 20, 16, 20));
 
-        // Status icon + badge
+        // Status
         VBox leftBar = new VBox(6);
         leftBar.setAlignment(Pos.CENTER);
         leftBar.setMinWidth(52);
-
         Label icon = new Label(statusEmoji(s.status()));
         icon.setStyle("-fx-font-size: 22px;");
-
         Label statusBadge = new Label(statusText(s.status()));
         statusBadge.getStyleClass().addAll("history-badge", statusBadgeClass(s.status()));
-
         leftBar.getChildren().addAll(icon, statusBadge);
 
-        // Center info
+        // Info
         VBox info = new VBox(6);
         HBox.setHgrow(info, Priority.ALWAYS);
-
         Label name = new Label(s.itemName());
         name.getStyleClass().add("history-item-name");
 
@@ -176,55 +177,45 @@ public class AuctionListController {
         endT.getStyleClass().add("history-item-meta");
         id.getStyleClass().add("history-item-meta");
         metaRow2.getChildren().addAll(startT, endT, id);
-
         info.getChildren().addAll(name, metaRow1, metaRow2);
 
-        // Price box
+        // Price
         VBox priceBox = new VBox(4);
         priceBox.setAlignment(Pos.CENTER_RIGHT);
         priceBox.setMinWidth(160);
-
         Label startP = new Label("Khởi điểm: " + formatVND(s.startPrice()));
         startP.setStyle("-fx-text-fill: #64748b; -fx-font-size: 11px;");
-
         Label curP = new Label(formatVND(s.currentPrice()));
         curP.getStyleClass().add("history-item-price");
-
         double progress = s.startPrice() > 0
-                ? Math.min((s.currentPrice() - s.startPrice()) / s.startPrice(), 1.0)
-                : 0;
+                ? Math.min((s.currentPrice() - s.startPrice()) / s.startPrice(), 1.0) : 0;
         ProgressBar bar = new ProgressBar(progress);
         bar.setPrefWidth(150);
-        bar.setStyle("-fx-accent: #10b981; -fx-background-color: #1e293b;");
-
+        bar.setStyle("-fx-accent: #10b981;");
         Label progressLabel = new Label(String.format("+%.1f%%",
                 s.startPrice() > 0
-                ? (s.currentPrice() - s.startPrice()) / s.startPrice() * 100
-                : 0));
+                ? (s.currentPrice() - s.startPrice()) / s.startPrice() * 100 : 0));
         progressLabel.setStyle("-fx-text-fill: #10b981; -fx-font-size: 11px;");
-
         priceBox.getChildren().addAll(startP, curP, bar, progressLabel);
 
-        // Action buttons
+        // Actions
         VBox actions = new VBox(6);
         actions.setAlignment(Pos.CENTER);
         actions.setMinWidth(110);
-
         Button viewBtn = new Button("👁 Xem chi tiết");
         viewBtn.getStyleClass().add("btn-secondary");
         viewBtn.setOnAction(e -> handleViewSession(s));
-
         Button joinBtn = new Button("⚡ Tham gia");
         joinBtn.getStyleClass().add("btn-primary");
         joinBtn.setDisable(!"RUNNING".equals(s.status()));
         joinBtn.setOnAction(e -> handleJoinSession(s));
-
         actions.getChildren().addAll(viewBtn, joinBtn);
+
         card.getChildren().addAll(leftBar, info, priceBox, actions);
         return card;
     }
 
-    // ── Tab handlers ──────────────────────────────────────────
+    // ── Tab & Filter ──────────────────────────────────────────
     @FXML private void handleTabAll()      { setTab(0); }
     @FXML private void handleTabRunning()  { setTab(1); }
     @FXML private void handleTabUpcoming() { setTab(2); }
@@ -246,17 +237,14 @@ public class AuctionListController {
         String keyword  = searchField.getText().trim().toLowerCase();
         String status   = statusFilter.getValue();
         String category = categoryFilter.getValue();
-
         List<SessionRecord> filtered = allSessions.stream()
             .filter(s -> {
                 if (currentTab == 1 && !"RUNNING".equals(s.status()))  return false;
                 if (currentTab == 2 && !"UPCOMING".equals(s.status())) return false;
                 if (currentTab == 3 && !"ENDED".equals(s.status()))    return false;
-                if (status != null && !status.isEmpty()
-                        && !"Tất cả".equals(status)
+                if (status != null && !"Tất cả".equals(status)
                         && !status.equals(s.status())) return false;
-                if (category != null && !category.isEmpty()
-                        && !"Tất cả".equals(category)
+                if (category != null && !"Tất cả".equals(category)
                         && !category.equals(s.category())) return false;
                 if (!keyword.isEmpty()
                         && !s.itemName().toLowerCase().contains(keyword)
@@ -265,7 +253,6 @@ public class AuctionListController {
                 return true;
             })
             .collect(Collectors.toList());
-
         renderList(filtered);
     }
 
@@ -287,7 +274,17 @@ public class AuctionListController {
         alert.showAndWait();
     }
 
+    // ── JOIN: set activeSession rồi vào LiveAuction ──────────
     private void handleJoinSession(SessionRecord s) {
+        if (s.session() != null) {
+            // Có AuctionSession thực → Bidder join trực tiếp
+            AppContext.setActiveSession(s.session());
+        } else {
+            // Chỉ có ProductRecord → thông báo
+            showAlert("Thông báo",
+                    "Phiên này chưa được kích hoạt bởi Seller.\nVui lòng thử lại sau.");
+            return;
+        }
         try { HelloApplication.showLiveAuctionView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
@@ -297,7 +294,6 @@ public class AuctionListController {
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    // ── Helpers ───────────────────────────────────────────────
     private String statusEmoji(String s) {
         return switch (s) {
             case "RUNNING"  -> "🟢";
@@ -322,7 +318,13 @@ public class AuctionListController {
             default         -> "badge-neutral";
         };
     }
-    private String formatVND(double v) {
-        return String.format("₫ %,.0f", v);
+    private String formatVND(double v) { return String.format("₫ %,.0f", v); }
+
+    private void showAlert(String title, String msg) {
+        Alert a = new Alert(Alert.AlertType.WARNING);
+        a.setTitle(title);
+        a.setHeaderText(null);
+        a.setContentText(msg);
+        a.showAndWait();
     }
 }
