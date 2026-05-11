@@ -5,6 +5,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
+import javafx.scene.image.Image;
 
 public class HelloApplication extends Application {
 
@@ -13,6 +14,10 @@ public class HelloApplication extends Application {
     @Override
     public void start(Stage stage) throws Exception {
         primaryStage = stage;
+        Image icon = new Image(
+                getClass().getResourceAsStream(
+                        "/com/nhom6/auctionsystem_nhom6/images/logo.png"));
+        stage.getIcons().add(icon);
         FXMLLoader loader = new FXMLLoader(
                 getClass().getResource(
                         "/com/nhom6/auctionsystem_nhom6/login-view.fxml"));

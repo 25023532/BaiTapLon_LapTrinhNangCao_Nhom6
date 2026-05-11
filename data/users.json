@@ -46,5 +46,13 @@
     "role": "BIDDER",
     "email": "linhphongmin@gmail.com",
     "fullName": "Nguyen Huy Hai Phong"
+  },
+  {
+    "id": "72118D7E",
+    "username": "seller",
+    "hashedPassword": "08b47533d20677e592e470caf35514cdb1fa438853d358abd4c8e90d277273f4",
+    "role": "SELLER",
+    "email": "mixigaming@gmail.com",
+    "fullName": "Phung Thanh Do"
   }
 ]

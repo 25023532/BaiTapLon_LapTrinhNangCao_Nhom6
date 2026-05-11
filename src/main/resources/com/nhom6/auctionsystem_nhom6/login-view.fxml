@@ -2,6 +2,8 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.Insets?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.image.Image?>
 
 <BorderPane xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.nhom6.auctionsystem_nhom6.LoginController"
@@ -12,6 +14,14 @@
             <padding><Insets top="60" right="40" bottom="60" left="40"/></padding>
 
             <!-- Logo -->
+            <!-- Thêm vào trước Label text="AuctionSys" -->
+            <ImageView fitWidth="80" fitHeight="80" preserveRatio="true">
+                <image>
+                    <Image url="@images/logo.png"/>
+                </image>
+            </ImageView>
+
+            <Label text="AuctionSys" styleClass="login-logo"/>
             <Label text="AuctionSys" styleClass="login-logo"/>
             <Label text="Hệ thống Đấu giá Trực tuyến" styleClass="login-subtitle"/>
 
