@@ -12,22 +12,26 @@ import java.util.UUID;
 
 public class RegisterController {
 
-    @FXML private TextField     usernameField;
-    @FXML private TextField     fullNameField;
-    @FXML private TextField     emailField;
-    @FXML private PasswordField passwordField;
-    @FXML private PasswordField confirmField;
+    @FXML private TextField        usernameField;
+    @FXML private TextField        fullNameField;
+    @FXML private TextField        emailField;
+    @FXML private PasswordField    passwordField;
+    @FXML private PasswordField    confirmField;
     @FXML private ComboBox<String> roleBox;
-    @FXML private Label         errorLabel;
-    @FXML private Label         successLabel;
+    @FXML private Label            errorLabel;
+    @FXML private Label            successLabel;
 
+    // ✅ Lấy từ AppContext — đảm bảo dùng chung 1 instance với LoginController
     private final AuthService authService = AppContext.getAuthService();
 
     @FXML
     public void initialize() {
         errorLabel.setVisible(false);
         successLabel.setVisible(false);
-        roleBox.getItems().addAll("Người đấu giá (Bidder)", "Người bán (Seller)");
+
+        roleBox.getItems().addAll(
+                "Người đấu giá (Bidder)",
+                "Người bán (Seller)");
         roleBox.setValue("Người đấu giá (Bidder)");
 
         confirmField.setOnKeyPressed(e -> {
@@ -47,33 +51,28 @@ public class RegisterController {
         String confirm   = confirmField.getText();
         String roleValue = roleBox.getValue();
 
-        // ── Validate ─────────────────────────────────────────
+        // ── Validate ──────────────────────────────────────────
         if (username.isEmpty() || password.isEmpty() || confirm.isEmpty()) {
-            showError("Vui lòng điền đầy đủ các trường bắt buộc (*).");
-            return;
+            showError("Vui lòng điền đầy đủ các trường bắt buộc (*)."); return;
         }
         if (username.length() < 4) {
-            showError("Tên đăng nhập phải có ít nhất 4 ký tự.");
-            return;
+            showError("Tên đăng nhập phải có ít nhất 4 ký tự."); return;
         }
         if (password.length() < 6) {
-            showError("Mật khẩu phải có ít nhất 6 ký tự.");
-            return;
+            showError("Mật khẩu phải có ít nhất 6 ký tự."); return;
         }
         if (!password.equals(confirm)) {
             showError("Mật khẩu xác nhận không khớp.");
-            confirmField.clear();
-            return;
+            confirmField.clear(); return;
         }
         if (authService.isRegistered(username)) {
-            showError("Tên đăng nhập '" + username + "' đã tồn tại, vui lòng chọn tên khác.");
-            return;
+            showError("Tên đăng nhập '" + username + "' đã tồn tại."); return;
         }
 
-        // ── Tạo user ─────────────────────────────────────────
-        String id   = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        // ── Tạo user ──────────────────────────────────────────
+        String id = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         User newUser;
-        if (roleValue.contains("Seller")) {
+        if (roleValue != null && roleValue.contains("Seller")) {
             newUser = new Seller(id, username, password, email, fullName);
         } else {
             newUser = new Bidder(id, username, password, email, fullName);
@@ -90,11 +89,8 @@ public class RegisterController {
 
     @FXML
     private void handleBackToLogin() {
-        try {
-            HelloApplication.showLoginView();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        try { HelloApplication.showLoginView(); }
+        catch (Exception e) { e.printStackTrace(); }
     }
 
     private void clearForm() {
