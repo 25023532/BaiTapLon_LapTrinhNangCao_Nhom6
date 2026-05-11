@@ -12,7 +12,7 @@ public class AuctionSession {
     private final String itemName;
     private final double startingPrice;
     private final double minBidStep;
-    private LocalDateTime endTime; // BỎ final để có thể gia hạn
+    private LocalDateTime endTime;          // BỎ final để gia hạn được
 
     private AuctionStatus status;
     private double currentPrice;
@@ -22,12 +22,12 @@ public class AuctionSession {
     private final List<Observer> observers = new ArrayList<>();
     private final ReentrantLock lock = new ReentrantLock();
 
-    // ── Anti-sniping: THÊM MỚI ───────────────────────────────
-    private static final long TRIGGER_THRESHOLD_SECONDS = 30; // bid trong 30s cuối → gia hạn
-    private static final long EXTENSION_SECONDS = 30;         // gia hạn thêm 30s
-    private static final int  MAX_EXTENSIONS = 5;             // tối đa 5 lần
-    private int extensionCount = 0;
-    private boolean lastBidTriggeredExtension = false;
+    // ── Anti-sniping config ───────────────────────────────────
+    private static final long TRIGGER_SECONDS   = 30; // X: bid trong 30s cuối → gia hạn
+    private static final long EXTENSION_SECONDS = 70; // Y: kéo dài thêm 70s (ví dụ: 19:59:50 → 20:01:00)
+    private static final int  MAX_EXTENSIONS    = 5;  // tối đa 5 lần
+    private int     extensionCount              = 0;
+    private boolean lastBidTriggeredExtension   = false;
     // ─────────────────────────────────────────────────────────
 
     public AuctionSession(String sessionId, String itemName,
@@ -104,19 +104,17 @@ public class AuctionSession {
         } finally { lock.unlock(); }
     }
 
-    // ── placeBid — tích hợp Anti-sniping ─────────────────────
+    // ── placeBid + Anti-sniping ───────────────────────────────
     public boolean placeBid(Bid bid) throws AuctionClosedException, InvalidBidException {
         lock.lock();
         try {
-            lastBidTriggeredExtension = false; // reset mỗi lần
+            lastBidTriggeredExtension = false; // reset mỗi lần bid
 
-            // Kiểm tra trạng thái phiên
+            // Kiểm tra trạng thái
             if (status != AuctionStatus.RUNNING) {
                 throw new AuctionClosedException(
                         "Phiên [" + sessionId + "] không ở trạng thái RUNNING",
-                        sessionId,
-                        status.name()
-                );
+                        sessionId, status.name());
             }
 
             // Kiểm tra hết giờ
@@ -124,20 +122,16 @@ public class AuctionSession {
                 finish();
                 throw new AuctionClosedException(
                         "Phiên [" + sessionId + "] đã hết thời gian",
-                        sessionId,
-                        status.name()
-                );
+                        sessionId, status.name());
             }
 
-            // Kiểm tra số tiền hợp lệ
+            // Kiểm tra số tiền
             double minRequired = currentPrice + minBidStep;
             if (bid.getAmount() < minRequired) {
                 throw new InvalidBidException(
                         String.format("Bid %.2f không hợp lệ, phải >= %.2f",
                                 bid.getAmount(), minRequired),
-                        bid.getAmount(),
-                        minRequired
-                );
+                        bid.getAmount(), minRequired);
             }
 
             currentPrice = bid.getAmount();
@@ -147,9 +141,9 @@ public class AuctionSession {
             System.out.printf("Bid được chấp nhận: %s đặt %.2f%n",
                     bid.getBidderId(), bid.getAmount());
 
-            // ── Anti-sniping: kiểm tra và gia hạn ────────────
-            tryExtend();
-            // ─────────────────────────────────────────────────
+            // ── Anti-sniping: tự động gia hạn nếu bid vào phút chót ──
+            applyAntiSniping();
+            // ─────────────────────────────────────────────────────────
 
             notifyObservers(bid);
             return true;
@@ -158,44 +152,53 @@ public class AuctionSession {
     }
 
     /**
-     * Gia hạn phiên nếu bid xảy ra trong ngưỡng cuối.
-     * Gọi bên trong lock nên thread-safe.
+     * Nếu bid xảy ra trong TRIGGER_SECONDS giây cuối
+     * → tự động kéo dài thêm EXTENSION_SECONDS giây.
+     *
+     * Ví dụ theo tài liệu:
+     *   endTime = 20:00:00, bid lúc 19:59:50 (còn 10s < 30s)
+     *   → endTime mới = 20:00:00 + 70s = 20:01:10
      */
-    private void tryExtend() {
+    private void applyAntiSniping() {
         long secondsLeft = java.time.temporal.ChronoUnit.SECONDS
                 .between(LocalDateTime.now(), endTime);
 
-        // Chỉ gia hạn nếu còn trong ngưỡng cuối
-        if (secondsLeft < 0 || secondsLeft > TRIGGER_THRESHOLD_SECONDS) return;
+        // Chỉ kích hoạt nếu bid trong ngưỡng X giây cuối
+        if (secondsLeft < 0 || secondsLeft > TRIGGER_SECONDS) return;
 
-        // Kiểm tra giới hạn số lần gia hạn
+        // Kiểm tra giới hạn số lần
         if (extensionCount >= MAX_EXTENSIONS) {
-            System.out.println("[AntiSniping] Đã đạt giới hạn gia hạn tối đa: "
-                    + MAX_EXTENSIONS + " lần.");
+            System.out.printf("[Anti-sniping] Phiên [%s] đã đạt giới hạn %d lần, không gia hạn thêm.%n",
+                    sessionId, MAX_EXTENSIONS);
             return;
         }
 
-        // Gia hạn
+        LocalDateTime oldEndTime = endTime;
         endTime = endTime.plusSeconds(EXTENSION_SECONDS);
         extensionCount++;
         lastBidTriggeredExtension = true;
 
-        System.out.printf("[AntiSniping] Phiên [%s] được gia hạn lần %d! Kết thúc mới: %s%n",
-                sessionId, extensionCount, endTime);
+        System.out.printf(
+                "[Anti-sniping] Phiên [%s]: bid lúc %s (còn %ds < %ds) " +
+                "→ kéo dài từ %s đến %s (lần %d/%d)%n",
+                sessionId,
+                LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")),
+                secondsLeft, TRIGGER_SECONDS,
+                oldEndTime.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")),
+                endTime.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss")),
+                extensionCount, MAX_EXTENSIONS);
     }
 
     // ── Getters ───────────────────────────────────────────────
-    public String        getSessionId()                   { return sessionId; }
-    public String        getItemName()                    { return itemName; }
-    public double        getStartingPrice()               { return startingPrice; }
-    public double        getCurrentPrice()                { return currentPrice; }
-    public double        getMinBidStep()                  { return minBidStep; }
-    public AuctionStatus getStatus()                      { return status; }
-    public Bid           getHighestBid()                  { return highestBid; }
-    public List<Bid>     getBidHistory()                  { return new ArrayList<>(bidHistory); }
-    public LocalDateTime getEndTime()                     { return endTime; }
-
-    // Getter mới cho anti-sniping
-    public int     getExtensionCount()                    { return extensionCount; }
-    public boolean isLastBidTriggeredExtension()          { return lastBidTriggeredExtension; }
+    public String        getSessionId()                  { return sessionId; }
+    public String        getItemName()                   { return itemName; }
+    public double        getStartingPrice()              { return startingPrice; }
+    public double        getCurrentPrice()               { return currentPrice; }
+    public double        getMinBidStep()                 { return minBidStep; }
+    public AuctionStatus getStatus()                     { return status; }
+    public Bid           getHighestBid()                 { return highestBid; }
+    public List<Bid>     getBidHistory()                 { return new ArrayList<>(bidHistory); }
+    public LocalDateTime getEndTime()                    { return endTime; }
+    public int           getExtensionCount()             { return extensionCount; }
+    public boolean       isLastBidTriggeredExtension()   { return lastBidTriggeredExtension; }
 }
