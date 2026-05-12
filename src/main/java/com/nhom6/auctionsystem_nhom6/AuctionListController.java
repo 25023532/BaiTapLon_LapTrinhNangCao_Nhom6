@@ -1,10 +1,14 @@
 package com.nhom6.auctionsystem_nhom6;
 
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.util.Duration;
 import org.example.auction.AuctionSession;
 import org.example.user.User;
 
@@ -43,6 +47,9 @@ public class AuctionListController {
 
     private List<SessionRecord> allSessions = new ArrayList<>();
 
+    // =========================================================
+    // INITIALIZE
+    // =========================================================
     @FXML
     public void initialize() {
         statusFilter.getItems().addAll(
@@ -54,37 +61,48 @@ public class AuctionListController {
         loadSessions();
         refreshStats();
         renderList(allSessions);
+
+        // Tự động cập nhật trạng thái mỗi 30 giây
+        Timeline timeline = new Timeline(
+                new KeyFrame(Duration.seconds(30), e -> {
+                    loadSessions();
+                    refreshStats();
+                    applyFilters();
+                })
+        );
+        timeline.setCycleCount(Animation.INDEFINITE);
+        timeline.play();
     }
 
     // =========================================================
-    // LOAD — đọc từ globalSessions + ProductRecord của seller
+    // LOAD — tính trạng thái dựa theo thời gian thực
     // =========================================================
     private void loadSessions() {
         allSessions = new ArrayList<>();
-        User user    = AppContext.getCurrentUser();
+        User user        = AppContext.getCurrentUser();
         boolean isSeller = "SELLER".equalsIgnoreCase(user.getRole());
 
         // ── NGUỒN 1: globalSessions — MỌI user đều thấy ──────
-        // Tra category và sellerName từ ProductRecord của mọi seller
         for (AuctionSession s : AppContext.getGlobalSessions()) {
 
-            String status = switch (s.getStatus()) {
-                case RUNNING        -> "RUNNING";
-                case OPEN           -> "UPCOMING";
-                case FINISHED, PAID -> "ENDED";
-                case CANCELED       -> "ENDED";
-                default             -> "ENDED";
-            };
+            // Tính status theo thời gian thực
+            LocalDateTime now = LocalDateTime.now();
+            String status;
+            if (now.isBefore(s.getStartTime())) {
+                status = "UPCOMING";   // chưa đến giờ bắt đầu → Sắp diễn ra
+            } else if (now.isAfter(s.getEndTime())) {
+                status = "ENDED";      // đã qua giờ kết thúc → Đã kết thúc
+            } else {
+                status = "RUNNING";    // trong khoảng thời gian đấu giá → Đang diễn ra
+            }
 
             // Tra thông tin từ ProductRecord
             String category   = "Chung";
             String sellerName = AppContext.getSessionSeller(s.getSessionId());
-            LocalDateTime startTime = LocalDateTime.now().minusHours(1);
 
             for (AppContext.ProductRecord p : AppContext.getAllProducts()) {
                 if (p.id().equals(s.getSessionId())) {
-                    category  = p.category();
-                    startTime = p.startTime();
+                    category = p.category();
                     break;
                 }
             }
@@ -98,9 +116,9 @@ public class AuctionListController {
                     s.getCurrentPrice(),
                     s.getBidHistory().size(),
                     status,
-                    startTime,
+                    s.getStartTime(),
                     s.getEndTime(),
-                    s   // giữ reference → Bidder join được
+                    s
             ));
         }
 
@@ -115,12 +133,16 @@ public class AuctionListController {
                         .anyMatch(s -> s.id().equals(p.id()));
                 if (alreadyIn) continue;
 
-                String status = switch (p.status()) {
-                    case "ĐANG ĐẤU GIÁ" -> "RUNNING";
-                    case "CHỜ DUYỆT",
-                         "ĐÃ DUYỆT"    -> "UPCOMING";
-                    default             -> "ENDED";
-                };
+                // Tính status theo thời gian thực
+                LocalDateTime now2 = LocalDateTime.now();
+                String status;
+                if (now2.isBefore(p.startTime())) {
+                    status = "UPCOMING";   // chưa đến giờ bắt đầu → Sắp diễn ra
+                } else if (now2.isAfter(p.endTime())) {
+                    status = "ENDED";      // đã hết thời gian → Đã kết thúc
+                } else {
+                    status = "RUNNING";    // đang trong khoảng thời gian → Đang diễn ra
+                }
 
                 allSessions.add(new SessionRecord(
                         p.id(), p.name(), p.category(),
@@ -245,8 +267,7 @@ public class AuctionListController {
         Button joinBtn = new Button("⚡ Tham gia");
         joinBtn.getStyleClass().add("btn-primary");
         // Chỉ enable nếu RUNNING và có AuctionSession thực
-        joinBtn.setDisable(!"RUNNING".equals(s.status())
-                || s.session() == null);
+        joinBtn.setDisable(!"RUNNING".equals(s.status()) || s.session() == null);
         joinBtn.setOnAction(e -> handleJoinSession(s));
 
         actions.getChildren().addAll(viewBtn, joinBtn);
@@ -350,6 +371,7 @@ public class AuctionListController {
             default         -> "📋";
         };
     }
+
     private String statusText(String s) {
         return switch (s) {
             case "RUNNING"  -> "ĐANG DIỄN RA";
@@ -358,6 +380,7 @@ public class AuctionListController {
             default         -> s;
         };
     }
+
     private String statusBadgeClass(String s) {
         return switch (s) {
             case "RUNNING"  -> "badge-success";
@@ -366,6 +389,7 @@ public class AuctionListController {
             default         -> "badge-neutral";
         };
     }
+
     private String formatVND(double v) { return String.format("₫ %,.0f", v); }
 
     private void showAlert(String title, String msg) {
