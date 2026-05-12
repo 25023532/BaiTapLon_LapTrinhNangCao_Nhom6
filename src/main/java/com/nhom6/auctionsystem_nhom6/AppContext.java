@@ -25,18 +25,33 @@ public class AppContext {
     private static final AuthService authService = new AuthService();
 
     // =========================================================
-    // DANH SÁCH PHIÊN CHUNG — tất cả user đều thấy  ← THÊM MỚI
+    // DANH SÁCH PHIÊN CHUNG
     // =========================================================
     private static final List<AuctionSession> globalSessions =
             new CopyOnWriteArrayList<>();
 
-    /** Seller gọi khi tạo/bắt đầu phiên → Bidder thấy ngay */
-    public static void registerSession(AuctionSession session) {
-        globalSessions.removeIf(s -> s.getSessionId().equals(session.getSessionId()));
+    // Map sessionId → sellerUsername (để hiển thị tên seller)
+    private static final Map<String, String> sessionSellerMap =
+            new HashMap<>();
+
+    /**
+     * Seller gọi khi bắt đầu phiên.
+     * Lưu cả sellerUsername để Bidder biết ai tạo phiên.
+     */
+    public static void registerSession(AuctionSession session,
+                                        String sellerUsername) {
+        globalSessions.removeIf(s ->
+                s.getSessionId().equals(session.getSessionId()));
         globalSessions.add(session);
+        sessionSellerMap.put(session.getSessionId(), sellerUsername);
     }
 
-    /** Lấy tất cả phiên đang RUNNING (Bidder dùng) */
+    /** Tên seller của một session */
+    public static String getSessionSeller(String sessionId) {
+        return sessionSellerMap.getOrDefault(sessionId, "Seller");
+    }
+
+    /** Lấy tất cả phiên đang RUNNING */
     public static List<AuctionSession> getRunningSessions() {
         List<AuctionSession> result = new ArrayList<>();
         for (AuctionSession s : globalSessions) {
@@ -128,6 +143,8 @@ public class AppContext {
                     "Bidder07", "CHỜ XỬ LÝ", true,
                     LocalDateTime.now().minusHours(6)));
 
+            // Seed product — KHÔNG registerSession ở đây
+            // vì chưa có AuctionSession thực
             addProduct("sellerlong", new ProductRecord(
                     "PR001", "MacBook Pro M3", "Laptop",
                     22_000_000, 26_500_000, 12,
@@ -163,8 +180,12 @@ public class AppContext {
     // =========================================================
     // AUCTION SESSION
     // =========================================================
-    public static AuctionSession getActiveSession()             { return activeSession; }
-    public static void setActiveSession(AuctionSession session) { activeSession = session; }
+    public static AuctionSession getActiveSession() {
+        return activeSession;
+    }
+    public static void setActiveSession(AuctionSession session) {
+        activeSession = session;
+    }
 
     // =========================================================
     // AVATAR
@@ -191,21 +212,25 @@ public class AppContext {
 
     public static boolean deposit(String username, double amount) {
         if (amount <= 0) return false;
-        walletMap.put(username, walletMap.getOrDefault(username, 0.0) + amount);
+        walletMap.put(username,
+                walletMap.getOrDefault(username, 0.0) + amount);
         addTransaction(username, new TransactionRecord(
                 "TX-" + System.currentTimeMillis(), "NẠP TIỀN",
-                amount, "Nạp tiền vào ví", "THÀNH CÔNG", LocalDateTime.now()));
+                amount, "Nạp tiền vào ví", "THÀNH CÔNG",
+                LocalDateTime.now()));
         return true;
     }
 
-    public static boolean payment(String username, double amount, String description) {
+    public static boolean payment(String username, double amount,
+                                   String description) {
         if (amount <= 0) return false;
         double current = walletMap.getOrDefault(username, 0.0);
         if (current < amount) return false;
         walletMap.put(username, current - amount);
         addTransaction(username, new TransactionRecord(
                 "TX-" + System.currentTimeMillis(), "THANH TOÁN",
-                -amount, description, "THÀNH CÔNG", LocalDateTime.now()));
+                -amount, description, "THÀNH CÔNG",
+                LocalDateTime.now()));
         return true;
     }
 
@@ -219,7 +244,8 @@ public class AppContext {
     public static List<TransactionRecord> getTransactions(String username) {
         return transactionMap.computeIfAbsent(username, k -> new ArrayList<>());
     }
-    public static void addTransaction(String username, TransactionRecord record) {
+    public static void addTransaction(String username,
+                                       TransactionRecord record) {
         getTransactions(username).add(record);
     }
 
@@ -242,7 +268,8 @@ public class AppContext {
             LocalDateTime endTime, String topBidder) {
 
         public ProductRecord withUpdated(double newPrice, int newBidCount,
-                                          String newStatus, String newTopBidder) {
+                                          String newStatus,
+                                          String newTopBidder) {
             return new ProductRecord(id, name, category, startPrice,
                     newPrice, newBidCount, newStatus,
                     startTime, endTime, newTopBidder);
@@ -258,7 +285,8 @@ public class AppContext {
     public static void removeProduct(String username, String productId) {
         getProducts(username).removeIf(p -> p.id().equals(productId));
     }
-    public static void updateProduct(String username, ProductRecord updated) {
+    public static void updateProduct(String username,
+                                      ProductRecord updated) {
         List<ProductRecord> list = getProducts(username);
         for (int i = 0; i < list.size(); i++) {
             if (list.get(i).id().equals(updated.id())) {
@@ -268,7 +296,7 @@ public class AppContext {
         }
     }
 
-    /** Lấy tất cả sản phẩm của mọi seller */
+    /** Lấy tất cả sản phẩm của mọi seller — dùng để tra category */
     public static List<ProductRecord> getAllProducts() {
         List<ProductRecord> all = new ArrayList<>();
         productMap.values().forEach(all::addAll);
