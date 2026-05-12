@@ -435,4 +435,47 @@ public class MainController {
             if (i == history.size() - 1) row.getStyleClass().add("bid-row-top");
 
             Label name   = new Label(
-                    (i == hist
+                    (i == history.size() - 1 ? "👑 " : "") + b.getBidderId());
+            Label amount = new Label(formatVND(b.getAmount()));
+            Label time   = new Label(b.getTimestamp().format(TIME_FMT));
+            amount.getStyleClass().add("bid-amount");
+            time.getStyleClass().add("bid-time");
+            HBox.setHgrow(name, Priority.ALWAYS);
+            row.getChildren().addAll(name, amount, time);
+            bidHistoryBox.getChildren().add(row);
+        }
+    }
+
+    // =========================================================
+    // CHAT UI
+    // =========================================================
+    private void addChatMessage(String sender, String message,
+                                 boolean isSeller) {
+        VBox bubble = new VBox(2);
+        bubble.getStyleClass().add(
+                isSeller ? "chat-bubble-seller" : "chat-bubble-buyer");
+        Label senderLabel = new Label(sender);
+        senderLabel.getStyleClass().add("chat-sender");
+        Label msgLabel = new Label(message);
+        msgLabel.setWrapText(true);
+        msgLabel.getStyleClass().add("chat-message");
+        bubble.getChildren().addAll(senderLabel, msgLabel);
+        chatMessagesBox.getChildren().add(bubble);
+        Platform.runLater(() -> chatScrollPane.setVvalue(1.0));
+    }
+
+    // =========================================================
+    // UTIL
+    // =========================================================
+    private String formatVND(double amount) {
+        return String.format("₫ %,.0f", amount);
+    }
+
+    private void showAlert(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+}
