@@ -74,10 +74,10 @@ public class ProductManagementController {
         renderList(managedList);
     }
 
-    // Sync sản phẩm từ AppContext vào managedList (tránh trùng)
     private void syncFromAppContext(User user) {
         for (AppContext.ProductRecord p : AppContext.getProducts(user.getUsername())) {
-            boolean exists = managedList.stream().anyMatch(m -> m.id().equals(p.id()));
+            boolean exists = managedList.stream()
+                    .anyMatch(m -> m.id().equals(p.id()));
             if (!exists) {
                 String mStatus = switch (p.status()) {
                     case "ĐANG ĐẤU GIÁ" -> "ĐANG ĐẤU GIÁ";
@@ -101,11 +101,14 @@ public class ProductManagementController {
     private void refreshStats() {
         totalProductsLabel.setText(String.valueOf(managedList.size()));
         approvedLabel.setText(String.valueOf(
-                managedList.stream().filter(p -> "ĐÃ DUYỆT".equals(p.status())).count()));
+                managedList.stream()
+                        .filter(p -> "ĐÃ DUYỆT".equals(p.status())).count()));
         pendingLabel.setText(String.valueOf(
-                managedList.stream().filter(p -> "CHỜ DUYỆT".equals(p.status())).count()));
+                managedList.stream()
+                        .filter(p -> "CHỜ DUYỆT".equals(p.status())).count()));
         auctioningLabel.setText(String.valueOf(
-                managedList.stream().filter(p -> "ĐANG ĐẤU GIÁ".equals(p.status())).count()));
+                managedList.stream()
+                        .filter(p -> "ĐANG ĐẤU GIÁ".equals(p.status())).count()));
     }
 
     // =========================================================
@@ -117,7 +120,8 @@ public class ProductManagementController {
             Label empty = new Label(
                     "Chưa có sản phẩm nào. Nhấn \"＋ Thêm sản phẩm\" để bắt đầu.");
             empty.setStyle(
-                    "-fx-text-fill: #64748b; -fx-font-size: 14px; -fx-padding: 40 0 40 0;");
+                    "-fx-text-fill: #64748b; -fx-font-size: 14px; "
+                    + "-fx-padding: 40 0 40 0;");
             productListBox.getChildren().add(empty);
             return;
         }
@@ -131,7 +135,6 @@ public class ProductManagementController {
         row.getStyleClass().add("history-row");
         row.setPadding(new Insets(12, 20, 12, 20));
 
-        // Tên + meta
         VBox nameBox = new VBox(3);
         HBox.setHgrow(nameBox, Priority.ALWAYS);
         Label name = new Label(p.name());
@@ -148,8 +151,8 @@ public class ProductManagementController {
         cat.setMinWidth(110);
 
         Label price = new Label(formatVND(p.startPrice()));
-        price.setStyle(
-                "-fx-font-size: 13px; -fx-text-fill: #38bdf8; -fx-font-weight: bold;");
+        price.setStyle("-fx-font-size: 13px; -fx-text-fill: #38bdf8; "
+                + "-fx-font-weight: bold;");
         price.setMinWidth(140);
 
         Label seller = new Label(p.sellerName());
@@ -157,10 +160,10 @@ public class ProductManagementController {
         seller.setMinWidth(120);
 
         Label badge = new Label(p.status());
-        badge.getStyleClass().addAll("history-badge", managedBadgeStyle(p.status()));
+        badge.getStyleClass().addAll(
+                "history-badge", managedBadgeStyle(p.status()));
         badge.setMinWidth(130);
 
-        // Actions theo trạng thái
         HBox actions = new HBox(8);
         actions.setAlignment(Pos.CENTER);
         actions.setMinWidth(220);
@@ -226,8 +229,10 @@ public class ProductManagementController {
         dialog.setHeaderText("Nhập thông tin sản phẩm");
         dialog.getDialogPane().setPrefWidth(520);
 
-        ButtonType saveBtn = new ButtonType("Đăng bán", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(saveBtn, ButtonType.CANCEL);
+        ButtonType saveBtn =
+                new ButtonType("Đăng bán", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes()
+                .addAll(saveBtn, ButtonType.CANCEL);
 
         GridPane grid = new GridPane();
         grid.setHgap(12);
@@ -259,7 +264,8 @@ public class ProductManagementController {
                 LocalTime.now().plusMinutes(10).format(TIME_ONLY));
         startTimeField.setPrefWidth(80);
 
-        DatePicker endDatePicker = new DatePicker(LocalDate.now().plusDays(7));
+        DatePicker endDatePicker =
+                new DatePicker(LocalDate.now().plusDays(7));
         endDatePicker.setPrefWidth(185);
         TextField endTimeField = new TextField("23:59");
         endTimeField.setPrefWidth(80);
@@ -268,29 +274,39 @@ public class ProductManagementController {
         errLabel.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 12px;");
         errLabel.setWrapText(true);
 
-        HBox priceRow = new HBox(10, priceField, new Label("Bước giá:"), stepField);
+        HBox priceRow = new HBox(10, priceField,
+                new Label("Bước giá:"), stepField);
         priceRow.setAlignment(Pos.CENTER_LEFT);
-        HBox startRow = new HBox(8, startDatePicker, new Label("lúc"), startTimeField);
+        HBox startRow = new HBox(8, startDatePicker,
+                new Label("lúc"), startTimeField);
         startRow.setAlignment(Pos.CENTER_LEFT);
-        HBox endRow = new HBox(8, endDatePicker, new Label("lúc"), endTimeField);
+        HBox endRow = new HBox(8, endDatePicker,
+                new Label("lúc"), endTimeField);
         endRow.setAlignment(Pos.CENTER_LEFT);
 
-        String lStyle = "-fx-font-size:13px; -fx-font-weight:bold; -fx-text-fill:#1e293b;";
-        grid.add(new Label("Tên sản phẩm *")   {{ setStyle(lStyle); }}, 0, 0);
-        grid.add(nameField,  1, 0);
-        grid.add(new Label("Danh mục *")       {{ setStyle(lStyle); }}, 0, 1);
-        grid.add(catBox,     1, 1);
-        grid.add(new Label("Giá / Bước giá *") {{ setStyle(lStyle); }}, 0, 2);
-        grid.add(priceRow,   1, 2);
-        grid.add(new Label("Bắt đầu *")        {{ setStyle(lStyle); }}, 0, 3);
-        grid.add(startRow,   1, 3);
-        grid.add(new Label("Kết thúc *")       {{ setStyle(lStyle); }}, 0, 4);
-        grid.add(endRow,     1, 4);
-        grid.add(errLabel,   0, 5, 2, 1);
+        String lStyle =
+                "-fx-font-size:13px; -fx-font-weight:bold; -fx-text-fill:#1e293b;";
+        grid.add(new Label("Tên sản phẩm *")
+                {{ setStyle(lStyle); }},   0, 0);
+        grid.add(nameField,                1, 0);
+        grid.add(new Label("Danh mục *")
+                {{ setStyle(lStyle); }},   0, 1);
+        grid.add(catBox,                   1, 1);
+        grid.add(new Label("Giá / Bước giá *")
+                {{ setStyle(lStyle); }},   0, 2);
+        grid.add(priceRow,                 1, 2);
+        grid.add(new Label("Bắt đầu *")
+                {{ setStyle(lStyle); }},   0, 3);
+        grid.add(startRow,                 1, 3);
+        grid.add(new Label("Kết thúc *")
+                {{ setStyle(lStyle); }},   0, 4);
+        grid.add(endRow,                   1, 4);
+        grid.add(errLabel,                 0, 5, 2, 1);
 
         dialog.getDialogPane().setContent(grid);
 
-        javafx.scene.Node saveNode = dialog.getDialogPane().lookupButton(saveBtn);
+        javafx.scene.Node saveNode =
+                dialog.getDialogPane().lookupButton(saveBtn);
         saveNode.setDisable(true);
         nameField.textProperty().addListener((obs, o, n) ->
                 saveNode.setDisable(n.trim().isEmpty()));
@@ -301,37 +317,43 @@ public class ProductManagementController {
 
             String nameVal = nameField.getText().trim();
             if (nameVal.isEmpty()) {
-                errLabel.setText("⚠ Vui lòng nhập tên sản phẩm."); return null;
+                errLabel.setText("⚠ Vui lòng nhập tên sản phẩm.");
+                return null;
             }
 
             double price;
             try {
-                price = Double.parseDouble(
-                        priceField.getText().trim().replaceAll("[^0-9.]", ""));
+                price = Double.parseDouble(priceField.getText()
+                        .trim().replaceAll("[^0-9.]", ""));
                 if (price <= 0) throw new NumberFormatException();
             } catch (NumberFormatException ex) {
-                errLabel.setText("⚠ Giá khởi điểm không hợp lệ."); return null;
+                errLabel.setText("⚠ Giá khởi điểm không hợp lệ.");
+                return null;
             }
 
             double step;
             try {
-                step = Double.parseDouble(
-                        stepField.getText().trim().replaceAll("[^0-9.]", ""));
+                step = Double.parseDouble(stepField.getText()
+                        .trim().replaceAll("[^0-9.]", ""));
                 if (step <= 0) throw new NumberFormatException();
             } catch (NumberFormatException ex) {
-                errLabel.setText("⚠ Bước giá không hợp lệ."); return null;
+                errLabel.setText("⚠ Bước giá không hợp lệ.");
+                return null;
             }
 
             LocalDateTime startDT, endDT;
             try {
                 startDT = LocalDateTime.of(
                         startDatePicker.getValue(),
-                        LocalTime.parse(startTimeField.getText().trim(), TIME_ONLY));
+                        LocalTime.parse(
+                                startTimeField.getText().trim(), TIME_ONLY));
                 endDT = LocalDateTime.of(
                         endDatePicker.getValue(),
-                        LocalTime.parse(endTimeField.getText().trim(), TIME_ONLY));
+                        LocalTime.parse(
+                                endTimeField.getText().trim(), TIME_ONLY));
             } catch (DateTimeParseException | NullPointerException ex) {
-                errLabel.setText("⚠ Thời gian không hợp lệ (HH:mm)."); return null;
+                errLabel.setText("⚠ Thời gian không hợp lệ (HH:mm).");
+                return null;
             }
 
             if (!endDT.isAfter(startDT)) {
@@ -345,11 +367,12 @@ public class ProductManagementController {
                 return null;
             }
 
-            String catVal = catBox.getValue() == null ? "Khác" : catBox.getValue();
-            String id = "P-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+            String catVal = catBox.getValue() == null
+                    ? "Khác" : catBox.getValue();
+            String id = "P-" + UUID.randomUUID()
+                    .toString().substring(0, 6).toUpperCase();
 
-            // Lưu bước giá để dùng khi bắt đầu phiên
-            stepMap.put(id, step);
+            stepMap.put(id, step); // lưu bước giá
 
             return new ManagedProduct(
                     id, nameVal, catVal, username, price,
@@ -376,7 +399,6 @@ public class ProductManagementController {
     // =========================================================
     // HANDLERS
     // =========================================================
-
     private void handleApprove(ManagedProduct p) {
         replaceStatus(p, "ĐÃ DUYỆT");
         AppContext.updateProduct(username, new AppContext.ProductRecord(
@@ -396,8 +418,9 @@ public class ProductManagementController {
     }
 
     /**
-     * Seller bấm "⚡ Bắt đầu đấu giá" (từ trạng thái ĐÃ DUYỆT)
-     * → Tạo AuctionSession, registerSession → Bidder thấy ngay
+     * Seller bấm "⚡ Bắt đầu đấu giá" (từ ĐÃ DUYỆT)
+     * → Tạo AuctionSession thực + registerSession(session, username)
+     * → Bidder thấy ngay trong AuctionListController
      */
     private void handleStartAuction(ManagedProduct p) {
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
@@ -407,6 +430,7 @@ public class ProductManagementController {
                 "Xác nhận bắt đầu phiên đấu giá?\n"
                 + "Bắt đầu : " + p.auctionStart().format(DT_FMT)
                 + "\nKết thúc: " + p.auctionEnd().format(DT_FMT));
+
         confirm.showAndWait().ifPresent(btn -> {
             if (btn != ButtonType.OK) return;
 
@@ -417,7 +441,8 @@ public class ProductManagementController {
             }
 
             try {
-                double step = stepMap.getOrDefault(p.id(), p.startPrice() * 0.05);
+                double step = stepMap.getOrDefault(
+                        p.id(), p.startPrice() * 0.05);
                 if (step <= 0) step = 500_000;
 
                 AuctionSession session = new AuctionSession(
@@ -427,14 +452,16 @@ public class ProductManagementController {
                 );
                 session.start(); // OPEN → RUNNING
 
-                AppContext.registerSession(session); // Bidder thấy
-                AppContext.setActiveSession(session); // Seller vào live
+                // ── Đăng ký kèm sellerUsername → Bidder thấy ──
+                AppContext.registerSession(session, username);
+                AppContext.setActiveSession(session);
 
                 replaceStatus(p, "ĐANG ĐẤU GIÁ");
                 AppContext.updateProduct(username, new AppContext.ProductRecord(
                         p.id(), p.name(), p.category(),
                         p.startPrice(), p.startPrice(), 0,
-                        "ĐANG ĐẤU GIÁ", p.auctionStart(), p.auctionEnd(), "—"
+                        "ĐANG ĐẤU GIÁ",
+                        p.auctionStart(), p.auctionEnd(), "—"
                 ));
 
                 HelloApplication.showLiveAuctionView();
@@ -447,30 +474,26 @@ public class ProductManagementController {
     }
 
     /**
-     * Seller bấm "🔴 Vào phiên" (từ trạng thái ĐANG ĐẤU GIÁ)
-     * → Tìm session đã có, nếu chưa có thì tự tạo rồi vào
+     * Seller bấm "🔴 Vào phiên" (từ ĐANG ĐẤU GIÁ)
+     * → Tìm session đã có; nếu chưa có thì tự tạo + registerSession
      */
     private void handleGoLive(ManagedProduct p) {
-        // Tìm session đã tồn tại trong globalSessions
         AuctionSession existing = AppContext.getGlobalSessions().stream()
                 .filter(s -> s.getSessionId().equals(p.id()))
                 .findFirst()
                 .orElse(null);
 
         if (existing != null) {
-            // Đã có → vào thẳng
             AppContext.setActiveSession(existing);
         } else {
-            // Chưa có session (sản phẩm tạo trực tiếp status ĐANG ĐẤU GIÁ)
-            // → Tự tạo và register
             if (p.auctionEnd().isBefore(LocalDateTime.now())) {
                 showAlert("Hết hạn",
                         "Phiên đấu giá đã hết thời gian, không thể kích hoạt.");
                 return;
             }
-
             try {
-                double step = stepMap.getOrDefault(p.id(), p.startPrice() * 0.05);
+                double step = stepMap.getOrDefault(
+                        p.id(), p.startPrice() * 0.05);
                 if (step <= 0) step = 500_000;
 
                 AuctionSession newSession = new AuctionSession(
@@ -480,12 +503,14 @@ public class ProductManagementController {
                 );
                 newSession.start(); // OPEN → RUNNING
 
-                AppContext.registerSession(newSession); // Bidder thấy
+                // ── Đăng ký kèm sellerUsername → Bidder thấy ──
+                AppContext.registerSession(newSession, username);
                 AppContext.setActiveSession(newSession);
 
             } catch (Exception e) {
                 e.printStackTrace();
-                showAlert("Lỗi", "Không thể kích hoạt phiên: " + e.getMessage());
+                showAlert("Lỗi",
+                        "Không thể kích hoạt phiên: " + e.getMessage());
                 return;
             }
         }
@@ -522,7 +547,8 @@ public class ProductManagementController {
                 "ID          : " + p.id()
                 + "\nDanh mục  : " + p.category()
                 + "\nGiá KĐ   : " + formatVND(p.startPrice())
-                + "\nBước giá  : " + formatVND(stepMap.getOrDefault(p.id(), 0.0))
+                + "\nBước giá  : " + formatVND(
+                        stepMap.getOrDefault(p.id(), 0.0))
                 + "\nNgười bán : " + p.sellerName()
                 + "\nTrạng thái: " + p.status()
                 + "\nBắt đầu   : " + p.auctionStart().format(DT_FMT)
@@ -579,7 +605,8 @@ public class ProductManagementController {
                 if (!keyword.isEmpty()
                         && !p.name().toLowerCase().contains(keyword)
                         && !p.sellerName().toLowerCase().contains(keyword)
-                        && !p.id().toLowerCase().contains(keyword)) return false;
+                        && !p.id().toLowerCase().contains(keyword))
+                    return false;
                 return true;
             })
             .collect(Collectors.toList());
@@ -606,7 +633,9 @@ public class ProductManagementController {
         };
     }
 
-    private String formatVND(double v) { return String.format("₫ %,.0f", v); }
+    private String formatVND(double v) {
+        return String.format("₫ %,.0f", v);
+    }
 
     private void showAlert(String title, String msg) {
         Alert a = new Alert(Alert.AlertType.WARNING);
