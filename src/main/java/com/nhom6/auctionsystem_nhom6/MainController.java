@@ -68,6 +68,7 @@ public class MainController {
     @FXML private VBox       chatMessagesBox;
     @FXML private TextField  chatInput;
     @FXML private ScrollPane chatScrollPane;
+    @FXML private Label onlineCountLabel;
 
     // =========================================================
     // DATA
@@ -156,6 +157,8 @@ public class MainController {
         conn.setListener(this::handleServerMessage);
         if (!conn.isConnected()) {
             conn.connect(user.getUsername());
+        } else {
+            conn.sendJson("{\"action\":\"GET_ONLINE_COUNT\"}");
         }
     }
 
@@ -172,6 +175,16 @@ public class MainController {
                         addChatMessage(sender, message, false);
                     }
                 }
+
+                case "ONLINE_COUNT" -> {
+                    String count = extractJson(raw, "count");
+                    Platform.runLater(() -> {
+                        if (onlineCountLabel != null) {
+                            onlineCountLabel.setText("● Online " + count);
+                        }
+                    });
+                }
+
                 case "NEW_BID" -> {
                     String bidder = extractJson(raw, "username");
                     String amount = extractJson(raw, "amount");

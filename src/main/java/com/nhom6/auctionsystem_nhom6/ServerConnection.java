@@ -9,8 +9,8 @@ import java.net.Socket;
  */
 public class ServerConnection {
 
-    private static final String HOST = "127.0.0.1";
-    private static final int    PORT = 1234;
+    private static final String HOST = "yamabiko.proxy.rlwy.net";
+    private static final int    PORT = 10654;
 
     private static ServerConnection instance;
 
