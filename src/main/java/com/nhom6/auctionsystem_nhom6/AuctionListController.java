@@ -10,6 +10,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.util.Duration;
 import org.example.auction.AuctionSession;
+import org.example.auction.AuctionStatus;
 import org.example.user.User;
 
 import java.time.LocalDateTime;
@@ -75,8 +76,21 @@ public class AuctionListController {
     }
 
     // =========================================================
-    // LOAD — tính trạng thái dựa theo thời gian thực
+    // LOAD
     // =========================================================
+    /**
+     * Logic xác định trạng thái hiển thị từ AuctionSession:
+     *
+     *  · OPEN                       → "UPCOMING"  (Sắp diễn ra — chưa được seller start)
+     *  · RUNNING + endTime chưa qua → "RUNNING"   (Đang diễn ra)
+     *  · RUNNING + endTime đã qua   → "ENDED"     (Đã kết thúc)
+     *  · FINISHED / PAID / CANCELED → "ENDED"     (Đã kết thúc)
+     *
+     * Logic từ ProductRecord (chưa có AuctionSession thực):
+     *  · now < startTime → "UPCOMING"
+     *  · now > endTime   → "ENDED"
+     *  · còn lại         → "RUNNING"
+     */
     private void loadSessions() {
         allSessions = new ArrayList<>();
         User user        = AppContext.getCurrentUser();
@@ -85,24 +99,31 @@ public class AuctionListController {
         // ── NGUỒN 1: globalSessions — MỌI user đều thấy ──────
         for (AuctionSession s : AppContext.getGlobalSessions()) {
 
-            // Tính status theo thời gian thực
             LocalDateTime now = LocalDateTime.now();
             String status;
-            if (now.isBefore(s.getStartTime())) {
-                status = "UPCOMING";   // chưa đến giờ bắt đầu → Sắp diễn ra
-            } else if (now.isAfter(s.getEndTime())) {
-                status = "ENDED";      // đã qua giờ kết thúc → Đã kết thúc
+
+            // AuctionSession KHÔNG có getStartTime() — chỉ có getEndTime()
+            // Dùng AuctionStatus để phân biệt UPCOMING vs RUNNING
+            if (s.getStatus() == AuctionStatus.OPEN) {
+                // Seller chưa bấm start → Sắp diễn ra
+                status = "UPCOMING";
+            } else if (s.getStatus() == AuctionStatus.RUNNING) {
+                // Đang chạy — kiểm tra thêm thời gian kết thúc
+                status = now.isAfter(s.getEndTime()) ? "ENDED" : "RUNNING";
             } else {
-                status = "RUNNING";    // trong khoảng thời gian đấu giá → Đang diễn ra
+                // FINISHED / PAID / CANCELED
+                status = "ENDED";
             }
 
-            // Tra thông tin từ ProductRecord
+            // Tra thêm thông tin từ ProductRecord
             String category   = "Chung";
             String sellerName = AppContext.getSessionSeller(s.getSessionId());
+            LocalDateTime startTime = s.getEndTime().minusHours(1); // fallback
 
             for (AppContext.ProductRecord p : AppContext.getAllProducts()) {
                 if (p.id().equals(s.getSessionId())) {
-                    category = p.category();
+                    category  = p.category();
+                    startTime = p.startTime();
                     break;
                 }
             }
@@ -116,7 +137,7 @@ public class AuctionListController {
                     s.getCurrentPrice(),
                     s.getBidHistory().size(),
                     status,
-                    s.getStartTime(),
+                    startTime,
                     s.getEndTime(),
                     s
             ));
@@ -128,20 +149,19 @@ public class AuctionListController {
             for (AppContext.ProductRecord p :
                     AppContext.getProducts(user.getUsername())) {
 
-                // Bỏ qua nếu đã có session trong globalSessions
                 boolean alreadyIn = allSessions.stream()
                         .anyMatch(s -> s.id().equals(p.id()));
                 if (alreadyIn) continue;
 
-                // Tính status theo thời gian thực
+                // ProductRecord có startTime + endTime → tính theo thời gian thực
                 LocalDateTime now2 = LocalDateTime.now();
                 String status;
                 if (now2.isBefore(p.startTime())) {
-                    status = "UPCOMING";   // chưa đến giờ bắt đầu → Sắp diễn ra
+                    status = "UPCOMING";   // chưa đến giờ bắt đầu
                 } else if (now2.isAfter(p.endTime())) {
-                    status = "ENDED";      // đã hết thời gian → Đã kết thúc
+                    status = "ENDED";      // đã hết thời gian
                 } else {
-                    status = "RUNNING";    // đang trong khoảng thời gian → Đang diễn ra
+                    status = "RUNNING";    // đang trong khoảng thời gian
                 }
 
                 allSessions.add(new SessionRecord(
@@ -150,7 +170,7 @@ public class AuctionListController {
                         p.startPrice(), p.currentPrice(),
                         p.bidCount(), status,
                         p.startTime(), p.endTime(),
-                        null   // chưa có AuctionSession thực
+                        null
                 ));
             }
         }
