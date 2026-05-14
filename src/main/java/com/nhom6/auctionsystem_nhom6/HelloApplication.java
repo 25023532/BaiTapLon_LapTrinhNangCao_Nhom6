@@ -11,6 +11,8 @@ public class HelloApplication extends Application {
 
     private static Stage primaryStage;
 
+    private static String pendingCategory = null;
+
     @Override
     public void start(Stage stage) throws Exception {
         primaryStage = stage;
@@ -25,7 +27,7 @@ public class HelloApplication extends Application {
         Scene scene = new Scene(root, 1280, 800);
         scene.getStylesheets().add(
                 getClass().getResource(
-                        "/com/nhom6/auctionsystem_nhom6/styles/main.css")
+                                "/com/nhom6/auctionsystem_nhom6/styles/main.css")
                         .toExternalForm());
         stage.setTitle("AuctionSys – Hệ thống Đấu giá");
         stage.setScene(scene);
@@ -63,9 +65,14 @@ public class HelloApplication extends Application {
         load("wallet-view.fxml", "AuctionSys – Ví & Giao dịch");
     }
 
-    // ── NEW views ─────────────────────────────────────────────
     public static void showAuctionListView() throws Exception {
+        pendingCategory = null; // không lọc category
         load("auction-list-view.fxml", "AuctionSys – Danh sách phiên đấu giá");
+    }
+
+    public static void showAuctionListByCategory(String category) throws Exception {
+        pendingCategory = category;
+        load("auction-list-view.fxml", "AuctionSys – " + category);
     }
 
     public static void showProductManagementView() throws Exception {
@@ -74,6 +81,12 @@ public class HelloApplication extends Application {
 
     public static void showLiveAuctionView() throws Exception {
         load("live-auction-view.fxml", "AuctionSys – Đấu giá trực tiếp");
+    }
+
+    public static String getPendingCategory() {
+        String cat = pendingCategory;
+        pendingCategory = null;
+        return cat;
     }
 
     // ── Helper ────────────────────────────────────────────────

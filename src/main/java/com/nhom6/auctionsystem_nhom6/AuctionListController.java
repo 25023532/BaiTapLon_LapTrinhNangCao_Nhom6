@@ -73,6 +73,12 @@ public class AuctionListController {
         );
         timeline.setCycleCount(Animation.INDEFINITE);
         timeline.play();
+
+        String pending = HelloApplication.getPendingCategory();
+        if (pending != null && !pending.isEmpty()) {
+            categoryFilter.setValue(pending);
+            applyFilters();
+        }
     }
 
     // =========================================================

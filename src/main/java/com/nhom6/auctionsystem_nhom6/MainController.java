@@ -392,6 +392,36 @@ public class MainController {
         catch (Exception e) { e.printStackTrace(); }
     }
 
+    @FXML private void handleCategoryDienTu() {
+        try { HelloApplication.showAuctionListByCategory("Điện tử"); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleCategoryMayAnh() {
+        try { HelloApplication.showAuctionListByCategory("Máy ảnh"); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleCategoryLaptop() {
+        try { HelloApplication.showAuctionListByCategory("Laptop"); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleCategoryDienThoai() {
+        try { HelloApplication.showAuctionListByCategory("Điện thoại"); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleCategoryDongHo() {
+        try { HelloApplication.showAuctionListByCategory("Đồng hồ"); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleCategoryXeCo() {
+        try { HelloApplication.showAuctionListByCategory("Xe cộ"); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
     // =========================================================
     // PROFILE MENU
     // =========================================================
