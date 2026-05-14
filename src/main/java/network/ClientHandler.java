@@ -93,7 +93,6 @@ public class ClientHandler implements Runnable, Observer {
      * synchronized(writeLock) đảm bảo chỉ 1 thread ghi tại 1 thời điểm,
      * tránh các dòng JSON bị trộn lẫn nhau trên socket.
      */
-    @Override
     public void sendMessage(String message) {
         if (isClosed || out == null) return;
 
