@@ -6,6 +6,7 @@ import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.stage.Popup;
 import javafx.util.Duration;
 
 import org.example.auction.AuctionSession;
@@ -31,6 +32,10 @@ public class MainController {
     @FXML private TextField  searchField;
     @FXML private MenuButton profileMenuBtn;
     @FXML private MenuItem   ordersMenuItem;
+
+    // ── Notification bell ─────────────────────────────────────
+    @FXML private Button bellButton;
+    @FXML private Label  badgeLabel;
 
     // =========================================================
     // AUCTION CARD & EMPTY STATE
@@ -68,13 +73,17 @@ public class MainController {
     @FXML private VBox       chatMessagesBox;
     @FXML private TextField  chatInput;
     @FXML private ScrollPane chatScrollPane;
-    @FXML private Label onlineCountLabel;
+    @FXML private Label      onlineCountLabel;
 
     // =========================================================
     // DATA
     // =========================================================
     private AuctionSession session;
     private Timeline       countdownTimer;
+
+    // ── Notification ──────────────────────────────────────────
+    private final NotificationManager notifManager = new NotificationManager();
+    private       Popup               notifPopup;
 
     private static final DateTimeFormatter TIME_FMT =
             DateTimeFormatter.ofPattern("HH:mm:ss");
@@ -116,22 +125,22 @@ public class MainController {
             showAuctionCard(false);
         }
 
+        // ── Badge ẩn lúc đầu ─────────────────────────────────
+        updateBadge();
+
         // ── Kết nối server ────────────────────────────────────
         connectToServer(user);
     }
 
     // =========================================================
-    // ✅ RESOLVE SESSION
-    //    Ưu tiên: activeSession → session của Seller → session RUNNING đầu tiên
+    // RESOLVE SESSION
     // =========================================================
     private AuctionSession resolveSession(User user) {
-        // 1. Đã có activeSession → dùng luôn
         AuctionSession active = AppContext.getActiveSession();
         if (active != null) return active;
 
         String role = user.getRole() == null ? "" : user.getRole().toUpperCase();
 
-        // 2. Seller → tìm session mình đã tạo trong globalSessions
         if ("SELLER".equals(role)) {
             for (AuctionSession s : AppContext.getRunningSessions()) {
                 String sellerOfSession =
@@ -142,7 +151,6 @@ public class MainController {
             }
         }
 
-        // 3. Bidder / Admin → lấy session RUNNING đầu tiên có trong globalSessions
         List<AuctionSession> running = AppContext.getRunningSessions();
         if (!running.isEmpty()) return running.get(0);
 
@@ -172,16 +180,15 @@ public class MainController {
                     String message = extractJson(raw, "message");
                     User me = AppContext.getCurrentUser();
                     if (me != null && !sender.equals(me.getUsername())) {
-                        addChatMessage(sender, message, false);
+                        Platform.runLater(() -> addChatMessage(sender, message, false));
                     }
                 }
 
                 case "ONLINE_COUNT" -> {
                     String count = extractJson(raw, "count");
                     Platform.runLater(() -> {
-                        if (onlineCountLabel != null) {
+                        if (onlineCountLabel != null)
                             onlineCountLabel.setText("● Online " + count);
-                        }
                     });
                 }
 
@@ -191,17 +198,35 @@ public class MainController {
                     if (session != null) {
                         try {
                             double amt = Double.parseDouble(amount);
-                            currentPriceLabel.setText(
-                                    String.format("₫ %,.0f", amt));
-                            addChatMessage("System",
-                                    bidder + " đặt giá "
-                                    + String.format("₫ %,.0f", amt), false);
+                            Platform.runLater(() -> {
+                                currentPriceLabel.setText(String.format("₫ %,.0f", amt));
+                                addChatMessage("System",
+                                        bidder + " đặt giá " + String.format("₫ %,.0f", amt),
+                                        false);
+                            });
+
+                            // Thông báo outbid nếu mình đang tham gia
+                            User me = AppContext.getCurrentUser();
+                            if (me != null && !bidder.equals(me.getUsername())) {
+                                boolean iParticipating = session.getBidHistory()
+                                        .stream()
+                                        .anyMatch(b -> b.getBidderId().equals(me.getUsername()));
+                                if (iParticipating) {
+                                    pushNotification(
+                                            NotificationManager.NotifType.OUTBID,
+                                            "Bạn bị vượt giá!",
+                                            String.format("%s vừa đặt ₫%,.0f cho %s",
+                                                    bidder, amt, session.getItemName())
+                                    );
+                                }
+                            }
                         } catch (NumberFormatException ignored) {}
                     }
                 }
+
                 case "SYSTEM" -> {
                     String message = extractJson(raw, "message");
-                    addChatMessage("System", message, false);
+                    Platform.runLater(() -> addChatMessage("System", message, false));
                 }
             }
         } catch (Exception e) {
@@ -285,12 +310,27 @@ public class MainController {
             minsLabel.setText("00");
             secsLabel.setText("00");
             countdownTimer.stop();
+            // Thông báo phiên kết thúc
+            pushNotification(
+                    NotificationManager.NotifType.SYSTEM,
+                    "Phiên đấu giá kết thúc",
+                    "Phiên đấu giá \"" + session.getItemName() + "\" đã kết thúc."
+            );
             return;
         }
         long total = java.time.Duration.between(now, end).getSeconds();
         hoursLabel.setText(String.format("%02d", total / 3600));
         minsLabel.setText(String.format("%02d",  (total % 3600) / 60));
         secsLabel.setText(String.format("%02d",  total % 60));
+
+        // Cảnh báo còn đúng 5 phút
+        if (total == 300) {
+            pushNotification(
+                    NotificationManager.NotifType.AUCTION_ENDING_SOON,
+                    "Sắp hết giờ!",
+                    String.format("Còn 5 phút! Giá hiện tại: %s", formatVND(session.getCurrentPrice()))
+            );
+        }
     }
 
     // =========================================================
@@ -312,12 +352,20 @@ public class MainController {
                     user.getUsername(), newPrice);
             session.placeBid(bid);
 
-            // ✅ Cập nhật UI ngay lập tức
+            // Cập nhật UI
             currentPriceLabel.setText(formatVND(session.getCurrentPrice()));
             refreshBidHistory();
             addChatMessage("System",
                     user.getUsername() + " đã đặt giá " + formatVND(newPrice),
                     false);
+
+            // Thông báo đặt giá thành công
+            pushNotification(
+                    NotificationManager.NotifType.BID_PLACED,
+                    "Đặt giá thành công",
+                    String.format("Bạn đã đặt %s cho \"%s\"",
+                            formatVND(newPrice), session.getItemName())
+            );
 
             // Ghi lịch sử
             AppContext.addHistory(user.getUsername(), new AppContext.HistoryRecord(
@@ -333,12 +381,57 @@ public class MainController {
 
         } catch (InvalidBidException e) {
             showAlert("Bid không hợp lệ", e.getMessage());
+            pushNotification(
+                    NotificationManager.NotifType.SYSTEM,
+                    "Bid không hợp lệ",
+                    e.getMessage()
+            );
         } catch (AuctionClosedException e) {
             showAlert("Phiên đấu giá đã đóng", e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
             showAlert("Lỗi hệ thống", e.getMessage());
         }
+    }
+
+    // =========================================================
+    // NOTIFICATION BELL
+    // =========================================================
+    @FXML
+    private void handleBellClick() {
+        // Toggle: đang mở thì đóng
+        if (notifPopup != null && notifPopup.isShowing()) {
+            notifPopup.hide();
+            return;
+        }
+        // Đánh dấu đã đọc, reset badge
+        notifManager.markAllRead();
+        updateBadge();
+
+        // Hiện popup
+        notifPopup = NotificationPopup.show(bellButton, notifManager.getAll());
+    }
+
+    /**
+     * Thêm thông báo mới và cộng badge.
+     * Có thể gọi từ bất kỳ thread nào (tự wrap Platform.runLater).
+     */
+    public void pushNotification(NotificationManager.NotifType type,
+                                 String title, String body) {
+        Platform.runLater(() -> {
+            notifManager.add(new NotificationManager.NotifItem(
+                    type, title, body, LocalDateTime.now()));
+            updateBadge();
+        });
+    }
+
+    /** Cập nhật số đỏ trên icon chuông. */
+    private void updateBadge() {
+        if (badgeLabel == null) return;
+        int unread = notifManager.countUnread();
+        badgeLabel.setText(unread > 9 ? "9+" : String.valueOf(unread));
+        badgeLabel.setVisible(unread > 0);
+        badgeLabel.setManaged(unread > 0);
     }
 
     // =========================================================
@@ -493,7 +586,7 @@ public class MainController {
     // CHAT UI
     // =========================================================
     private void addChatMessage(String sender, String message,
-                                 boolean isSeller) {
+                                boolean isSeller) {
         VBox bubble = new VBox(2);
         bubble.getStyleClass().add(
                 isSeller ? "chat-bubble-seller" : "chat-bubble-buyer");
