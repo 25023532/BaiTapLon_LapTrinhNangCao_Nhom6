@@ -14,15 +14,13 @@
             <padding><Insets top="60" right="40" bottom="60" left="40"/></padding>
 
             <!-- Logo -->
-            <!-- Thêm vào trước Label text="AuctionSys" -->
-            <ImageView fitWidth="80" fitHeight="80" preserveRatio="true">
+            <ImageView fitWidth="100" fitHeight="100" preserveRatio="true">
                 <image>
                     <Image url="@images/logo.png"/>
                 </image>
             </ImageView>
 
-            <Label text="AuctionSys" styleClass="login-logo"/>
-            <Label text="AuctionSys" styleClass="login-logo"/>
+            <Label text="Auction System" styleClass="login-logo"/>
             <Label text="Hệ thống Đấu giá Trực tuyến" styleClass="login-subtitle"/>
 
             <!-- Form -->
@@ -50,7 +48,6 @@
                 <Button text="Tạo tài khoản mới" onAction="#handleRegister"
                         maxWidth="Infinity" styleClass="btn-secondary"/>
 
-                <!-- Hint tài khoản mẫu -->
                 <Label text="Demo: admin/admin123 · bidder07/bidder123"
                        styleClass="login-hint" wrapText="true"/>
             </VBox>

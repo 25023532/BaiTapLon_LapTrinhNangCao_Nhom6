@@ -374,3 +374,46 @@
     -fx-font-size: 12px; -fx-padding: 6 12 6 12;
 }
 .btn-quick:hover { -fx-background-color: #1d4ed8; -fx-text-fill: white; }
+
+/* ── Animated background ─────────────────────────────────── */
+.login-bg-animated {
+    -fx-background-color: linear-gradient(
+        from 0% 0% to 100% 100%,
+        #0a0f1e,
+        #0d1b3e,
+        #0f172a,
+        #1a1040
+    );
+    -fx-min-width: 9999px;
+    -fx-min-height: 9999px;
+}
+
+/* ── Particles ───────────────────────────────────────────── */
+.particle {
+    -fx-text-fill: rgba(99, 179, 237, 0.25);
+    -fx-font-size: 8px;
+    -fx-effect: dropshadow(gaussian, rgba(99,179,237,0.6), 12, 0.8, 0, 0);
+}
+
+/* ── Login card — kính mờ (glassmorphism) ────────────────── */
+.login-card {
+    -fx-background-color: rgba(30, 41, 59, 0.85);
+    -fx-background-radius: 16;
+    -fx-border-color: rgba(99, 179, 237, 0.18);
+    -fx-border-radius: 16;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(37,99,235,0.25), 32, 0, 0, 8);
+}
+
+/* ── Logo glow ───────────────────────────────────────────── */
+.login-logo {
+    -fx-text-fill: #f1f5f9;
+    -fx-font-size: 26px;
+    -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian, rgba(37,99,235,0.7), 16, 0, 0, 0);
+}
+
+.login-subtitle {
+    -fx-text-fill: #94a3b8;
+    -fx-font-size: 13px;
+}

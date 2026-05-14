@@ -82,27 +82,22 @@
                        HBox.hgrow="ALWAYS" styleClass="search-field"/>
 
             <Region HBox.hgrow="ALWAYS"/>
-            <StackPane alignment="TOP_RIGHT">
-                <Button fx:id="bellButton"
-                        text="🔔"
-                        styleClass="icon-btn"
-                        onAction="#handleBellClick"/>
-                <Label fx:id="badgeLabel"
-                       text="0"
-                       visible="false"
-                       managed="false"
-                       style="-fx-background-color: #ef4444;
-                  -fx-text-fill: white;
-                  -fx-font-size: 9px;
-                  -fx-font-weight: bold;
-                  -fx-background-radius: 10;
-                  -fx-padding: 1 4 1 4;
-                  -fx-min-width: 16;
-                  -fx-alignment: center;"
-                       StackPane.alignment="TOP_RIGHT"
-                       translateX="4"
-                       translateY="-4"/>
-            </StackPane>
+            <VBox alignment="CENTER" spacing="0">
+                <StackPane>
+                    <Button fx:id="bellButton" text="🔔" styleClass="icon-btn" onAction="#handleBellClick"/>
+                    <Label fx:id="badgeLabel" text="0"
+                           visible="false" managed="false"
+                           style="-fx-background-color:#ef4444;
+                      -fx-text-fill:white;
+                      -fx-font-size:9px;
+                      -fx-font-weight:bold;
+                      -fx-background-radius:10;
+                      -fx-padding:1 4 1 4;
+                      -fx-min-width:16;
+                      -fx-alignment:center;"
+                           StackPane.alignment="TOP_RIGHT"/>
+                </StackPane>
+            </VBox>
             <Separator orientation="VERTICAL"/>
 
             <VBox alignment="CENTER_RIGHT">
