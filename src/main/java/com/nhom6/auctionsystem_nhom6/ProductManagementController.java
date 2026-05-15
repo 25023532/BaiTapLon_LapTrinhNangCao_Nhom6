@@ -4,20 +4,22 @@ import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
+import javafx.stage.FileChooser;
 import org.example.auction.AuctionSession;
 import org.example.user.User;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class ProductManagementController {
@@ -38,9 +40,13 @@ public class ProductManagementController {
     private static final DateTimeFormatter TIME_ONLY =
             DateTimeFormatter.ofPattern("HH:mm");
 
-    // static → giữ dữ liệu giữa các lần navigate
+    // Thư mục lưu ảnh sản phẩm (trong resources hoặc thư mục chạy)
+    private static final String IMAGE_DIR = "product_images/";
+
     private static final List<ManagedProduct> managedList = new ArrayList<>();
     private static final Map<String, Double>  stepMap     = new HashMap<>();
+    // Map productId → đường dẫn ảnh
+    private static final Map<String, String>  imageMap    = new HashMap<>();
 
     public record ManagedProduct(
             String        id,
@@ -61,6 +67,9 @@ public class ProductManagementController {
     public void initialize() {
         User user = AppContext.getCurrentUser();
         username  = user.getUsername();
+
+        // Tạo thư mục lưu ảnh nếu chưa có
+        new File(IMAGE_DIR).mkdirs();
 
         statusFilter.getItems().addAll(
                 "Tất cả", "CHỜ DUYỆT", "ĐÃ DUYỆT",
@@ -121,7 +130,7 @@ public class ProductManagementController {
                     "Chưa có sản phẩm nào. Nhấn \"＋ Thêm sản phẩm\" để bắt đầu.");
             empty.setStyle(
                     "-fx-text-fill: #64748b; -fx-font-size: 14px; "
-                    + "-fx-padding: 40 0 40 0;");
+                            + "-fx-padding: 40 0 40 0;");
             productListBox.getChildren().add(empty);
             return;
         }
@@ -135,14 +144,44 @@ public class ProductManagementController {
         row.getStyleClass().add("history-row");
         row.setPadding(new Insets(12, 20, 12, 20));
 
+        // ── Ảnh thumbnail ────────────────────────────────────
+        ImageView thumb = new ImageView();
+        thumb.setFitWidth(48);
+        thumb.setFitHeight(48);
+        thumb.setPreserveRatio(true);
+        thumb.setStyle("-fx-background-radius: 6;");
+
+        String imgPath = imageMap.get(p.id());
+        if (imgPath != null && new File(imgPath).exists()) {
+            try {
+                thumb.setImage(new Image(
+                        new File(imgPath).toURI().toString()));
+            } catch (Exception ignored) {}
+        } else {
+            // Placeholder icon nếu chưa có ảnh
+            Label placeholder = new Label("📦");
+            placeholder.setStyle("-fx-font-size: 28px; -fx-min-width: 48px; "
+                    + "-fx-alignment: CENTER;");
+            row.getChildren().add(placeholder);
+        }
+        if (imgPath != null) {
+            StackPane thumbBox = new StackPane(thumb);
+            thumbBox.setMinWidth(56);
+            thumbBox.setStyle("-fx-background-color: #0f172a; "
+                    + "-fx-background-radius: 8; -fx-padding: 4;");
+            HBox.setMargin(thumbBox, new Insets(0, 12, 0, 0));
+            row.getChildren().add(thumbBox);
+        }
+
+        // ── Tên + meta ────────────────────────────────────────
         VBox nameBox = new VBox(3);
         HBox.setHgrow(nameBox, Priority.ALWAYS);
         Label name = new Label(p.name());
         name.getStyleClass().add("history-item-name");
         Label idLabel = new Label(
                 "ID: " + p.id()
-                + "  •  Bắt đầu: " + p.auctionStart().format(DT_FMT)
-                + "  •  Kết thúc: " + p.auctionEnd().format(DT_FMT));
+                        + "  •  Bắt đầu: " + p.auctionStart().format(DT_FMT)
+                        + "  •  Kết thúc: " + p.auctionEnd().format(DT_FMT));
         idLabel.getStyleClass().add("history-item-meta");
         nameBox.getChildren().addAll(name, idLabel);
 
@@ -164,17 +203,24 @@ public class ProductManagementController {
                 "history-badge", managedBadgeStyle(p.status()));
         badge.setMinWidth(130);
 
+        HBox actions = buildActions(p);
+        actions.setMinWidth(220);
+
+        row.getChildren().addAll(nameBox, cat, price, seller, badge, actions);
+        return row;
+    }
+
+    private HBox buildActions(ManagedProduct p) {
         HBox actions = new HBox(8);
         actions.setAlignment(Pos.CENTER);
-        actions.setMinWidth(220);
 
         switch (p.status()) {
             case "CHỜ DUYỆT" -> {
                 Button approveBtn = new Button("✅ Duyệt");
                 approveBtn.setStyle(
                         "-fx-background-color: #14532d; -fx-text-fill: #4ade80; "
-                        + "-fx-background-radius: 6; -fx-cursor: hand; "
-                        + "-fx-font-size: 12px; -fx-padding: 5 10 5 10;");
+                                + "-fx-background-radius: 6; -fx-cursor: hand; "
+                                + "-fx-font-size: 12px; -fx-padding: 5 10 5 10;");
                 approveBtn.setOnAction(e -> handleApprove(p));
 
                 Button rejectBtn = new Button("❌ Từ chối");
@@ -214,171 +260,333 @@ public class ProductManagementController {
                 actions.getChildren().add(viewBtn);
             }
         }
-
-        row.getChildren().addAll(nameBox, cat, price, seller, badge, actions);
-        return row;
+        return actions;
     }
 
     // =========================================================
-    // ADD PRODUCT
+    // ADD PRODUCT — có phần upload ảnh
     // =========================================================
     @FXML
     private void handleAdd() {
         Dialog<ManagedProduct> dialog = new Dialog<>();
         dialog.setTitle("Thêm sản phẩm mới");
-        dialog.setHeaderText("Nhập thông tin sản phẩm");
-        dialog.getDialogPane().setPrefWidth(520);
+        dialog.setHeaderText(null);
+        dialog.getDialogPane().setPrefWidth(620);
+        dialog.getDialogPane().setPrefHeight(620);
 
         ButtonType saveBtn =
-                new ButtonType("Đăng bán", ButtonBar.ButtonData.OK_DONE);
+                new ButtonType("✚  Đăng bán", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes()
                 .addAll(saveBtn, ButtonType.CANCEL);
 
-        GridPane grid = new GridPane();
-        grid.setHgap(12);
-        grid.setVgap(14);
-        grid.setPadding(new Insets(20));
+        dialog.getDialogPane().setStyle("""
+                -fx-background-color: #0f172a;
+                -fx-border-color: #334155;
+                -fx-border-width: 1;
+                """);
 
-        TextField nameField = new TextField();
-        nameField.setPromptText("Tên sản phẩm...");
-        nameField.setPrefWidth(320);
+        // ── CỘT TRÁI: Upload ảnh ─────────────────────────────
+        final String[] selectedImagePath = {null};
 
+        VBox leftPanel = new VBox(16);
+        leftPanel.setPrefWidth(200);
+        leftPanel.setMinWidth(200);
+        leftPanel.setPadding(new Insets(24, 20, 24, 24));
+        leftPanel.setAlignment(Pos.TOP_CENTER);
+        leftPanel.setStyle("""
+                -fx-background-color: #1e293b;
+                -fx-border-color: transparent #334155 transparent transparent;
+                -fx-border-width: 1;
+                """);
+
+        Label imgTitle = new Label("Ảnh sản phẩm");
+        imgTitle.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 11px; -fx-font-weight: bold;");
+
+        ImageView preview = new ImageView();
+        preview.setFitWidth(148);
+        preview.setFitHeight(148);
+        preview.setPreserveRatio(true);
+
+        StackPane previewBox = new StackPane();
+        previewBox.setPrefSize(160, 160);
+        previewBox.setMaxSize(160, 160);
+        previewBox.setStyle("""
+                -fx-background-color: #0f172a;
+                -fx-background-radius: 12;
+                -fx-border-color: #334155;
+                -fx-border-radius: 12;
+                -fx-border-width: 2;
+                -fx-cursor: hand;
+                """);
+
+        VBox emptyHint = new VBox(8);
+        emptyHint.setAlignment(Pos.CENTER);
+        Label camIcon = new Label("📷");
+        camIcon.setStyle("-fx-font-size: 36px;");
+        Label hintTxt = new Label("Chưa có ảnh\nClick để chọn");
+        hintTxt.setStyle("-fx-text-fill: #475569; -fx-font-size: 11px; -fx-text-alignment: CENTER;");
+        hintTxt.setWrapText(true);
+        emptyHint.getChildren().addAll(camIcon, hintTxt);
+        previewBox.getChildren().addAll(emptyHint, preview);
+
+        Label fileNameLabel = new Label("Chưa chọn file");
+        fileNameLabel.setStyle("-fx-text-fill: #475569; -fx-font-size: 10px;");
+        fileNameLabel.setWrapText(true);
+        fileNameLabel.setMaxWidth(160);
+
+        Button chooseImgBtn = new Button("📂  Chọn ảnh");
+        chooseImgBtn.setMaxWidth(Double.MAX_VALUE);
+        chooseImgBtn.setStyle("""
+                -fx-background-color: #1e3a5f;
+                -fx-text-fill: #38bdf8;
+                -fx-font-size: 12px;
+                -fx-font-weight: bold;
+                -fx-background-radius: 8;
+                -fx-border-color: #2563eb;
+                -fx-border-radius: 8;
+                -fx-border-width: 1;
+                -fx-cursor: hand;
+                -fx-padding: 8 0 8 0;
+                """);
+
+        Label fmtHint = new Label("PNG · JPG · WEBP · GIF");
+        fmtHint.setStyle("-fx-text-fill: #334155; -fx-font-size: 10px;");
+
+        Runnable openFileChooser = () -> {
+            FileChooser fc = new FileChooser();
+            fc.setTitle("Chọn ảnh sản phẩm");
+            fc.getExtensionFilters().add(new FileChooser.ExtensionFilter(
+                    "Ảnh", "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp"));
+            File file = fc.showOpenDialog(dialog.getDialogPane().getScene().getWindow());
+            if (file != null) {
+                selectedImagePath[0] = file.getAbsolutePath();
+                fileNameLabel.setText(file.getName());
+                try {
+                    Image img = new Image(file.toURI().toString(), 148, 148, true, true);
+                    preview.setImage(img);
+                    previewBox.getChildren().remove(emptyHint);
+                    previewBox.setStyle("""
+                            -fx-background-color: #0f172a;
+                            -fx-background-radius: 12;
+                            -fx-border-color: #2563eb;
+                            -fx-border-radius: 12;
+                            -fx-border-width: 2;
+                            -fx-cursor: hand;
+                            """);
+                } catch (Exception ex) {
+                    fileNameLabel.setText("⚠ Không đọc được ảnh");
+                }
+            }
+        };
+
+        chooseImgBtn.setOnAction(e -> openFileChooser.run());
+        previewBox.setOnMouseClicked(e -> openFileChooser.run());
+
+        leftPanel.getChildren().addAll(imgTitle, previewBox, chooseImgBtn, fileNameLabel, fmtHint);
+
+        // ── CỘT PHẢI: Form ────────────────────────────────────
+        VBox rightPanel = new VBox(0);
+        rightPanel.setPadding(new Insets(24, 24, 24, 24));
+        rightPanel.setStyle("-fx-background-color: #0f172a;");
+        HBox.setHgrow(rightPanel, Priority.ALWAYS);
+
+        Label formTitle = new Label("Thông tin sản phẩm");
+        formTitle.setStyle("-fx-text-fill: #f1f5f9; -fx-font-size: 15px; -fx-font-weight: bold;");
+        VBox.setMargin(formTitle, new Insets(0, 0, 16, 0));
+
+        VBox formFields = new VBox(12);
+
+        // Tên sản phẩm
+        TextField nameField = styledTextField("Tên sản phẩm...");
+        formFields.getChildren().add(fieldGroup("Tên sản phẩm *", nameField));
+
+        // Danh mục
         ComboBox<String> catBox = new ComboBox<>();
-        catBox.getItems().addAll(
-                "Laptop","Điện thoại","Máy ảnh",
-                "Điện tử","Đồng hồ","Xe cộ","Khác");
+        catBox.getItems().addAll("Laptop","Điện thoại","Máy ảnh","Điện tử","Đồng hồ","Xe cộ","Khác");
         catBox.setPromptText("Chọn danh mục");
-        catBox.setPrefWidth(320);
+        catBox.setMaxWidth(Double.MAX_VALUE);
+        catBox.setStyle("""
+                -fx-background-color: #1e293b;
+                -fx-border-color: #334155;
+                -fx-border-radius: 8;
+                -fx-background-radius: 8;
+                -fx-font-size: 13px;
+                -fx-cursor: hand;
+                """);
+        formFields.getChildren().add(fieldGroup("Danh mục *", catBox));
 
-        TextField priceField = new TextField();
-        priceField.setPromptText("VD: 5000000");
-        priceField.setPrefWidth(150);
+        // Giá + bước giá
+        TextField priceField = styledTextField("VD: 5,000,000");
+        TextField stepField  = styledTextField("VD: 500,000");
+        stepField.setText("500000");
+        HBox priceRow = new HBox(12, priceField, stepField);
+        HBox.setHgrow(priceField, Priority.ALWAYS);
+        HBox.setHgrow(stepField,  Priority.ALWAYS);
+        HBox priceLabels = new HBox(12);
+        Label lGia  = fieldLabel("Giá khởi điểm *");
+        Label lStep = fieldLabel("Bước giá tối thiểu *");
+        HBox.setHgrow(lGia,  Priority.ALWAYS);
+        HBox.setHgrow(lStep, Priority.ALWAYS);
+        priceLabels.getChildren().addAll(lGia, lStep);
+        VBox priceGroup = new VBox(6, priceLabels, priceRow);
+        formFields.getChildren().add(priceGroup);
 
-        TextField stepField = new TextField("500000");
-        stepField.setPromptText("Bước giá tối thiểu");
-        stepField.setPrefWidth(150);
+        // Thời gian bắt đầu
+        DatePicker startDate = styledDatePicker(LocalDate.now());
+        TextField startTime = styledTextField("");
+        startTime.setText(LocalTime.now().plusMinutes(10).format(TIME_ONLY));
+        startTime.setPrefWidth(80);
+        startTime.setMaxWidth(80);
+        Label startLbl = new Label("lúc");
+        startLbl.setStyle("-fx-text-fill: #64748b; -fx-padding: 8 0 0 0;");
+        HBox startRow = new HBox(10, startDate, startLbl, startTime);
+        HBox.setHgrow(startDate, Priority.ALWAYS);
+        formFields.getChildren().add(fieldGroup("Bắt đầu *", startRow));
 
-        DatePicker startDatePicker = new DatePicker(LocalDate.now());
-        startDatePicker.setPrefWidth(185);
-        TextField startTimeField = new TextField(
-                LocalTime.now().plusMinutes(10).format(TIME_ONLY));
-        startTimeField.setPrefWidth(80);
+        // Thời gian kết thúc
+        DatePicker endDate = styledDatePicker(LocalDate.now().plusDays(7));
+        TextField endTime = styledTextField("");
+        endTime.setText("23:59");
+        endTime.setPrefWidth(80);
+        endTime.setMaxWidth(80);
+        Label endLbl = new Label("lúc");
+        endLbl.setStyle("-fx-text-fill: #64748b; -fx-padding: 8 0 0 0;");
+        HBox endRow = new HBox(10, endDate, endLbl, endTime);
+        HBox.setHgrow(endDate, Priority.ALWAYS);
+        formFields.getChildren().add(fieldGroup("Kết thúc *", endRow));
 
-        DatePicker endDatePicker =
-                new DatePicker(LocalDate.now().plusDays(7));
-        endDatePicker.setPrefWidth(185);
-        TextField endTimeField = new TextField("23:59");
-        endTimeField.setPrefWidth(80);
-
+        // Error label
         Label errLabel = new Label();
-        errLabel.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 12px;");
+        errLabel.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 12px; -fx-padding: 4 0 0 0;");
         errLabel.setWrapText(true);
 
-        HBox priceRow = new HBox(10, priceField,
-                new Label("Bước giá:"), stepField);
-        priceRow.setAlignment(Pos.CENTER_LEFT);
-        HBox startRow = new HBox(8, startDatePicker,
-                new Label("lúc"), startTimeField);
-        startRow.setAlignment(Pos.CENTER_LEFT);
-        HBox endRow = new HBox(8, endDatePicker,
-                new Label("lúc"), endTimeField);
-        endRow.setAlignment(Pos.CENTER_LEFT);
+        rightPanel.getChildren().addAll(formTitle, formFields, errLabel);
+        VBox.setVgrow(formFields, Priority.ALWAYS);
 
-        String lStyle =
-                "-fx-font-size:13px; -fx-font-weight:bold; -fx-text-fill:#1e293b;";
-        grid.add(new Label("Tên sản phẩm *")
-                {{ setStyle(lStyle); }},   0, 0);
-        grid.add(nameField,                1, 0);
-        grid.add(new Label("Danh mục *")
-                {{ setStyle(lStyle); }},   0, 1);
-        grid.add(catBox,                   1, 1);
-        grid.add(new Label("Giá / Bước giá *")
-                {{ setStyle(lStyle); }},   0, 2);
-        grid.add(priceRow,                 1, 2);
-        grid.add(new Label("Bắt đầu *")
-                {{ setStyle(lStyle); }},   0, 3);
-        grid.add(startRow,                 1, 3);
-        grid.add(new Label("Kết thúc *")
-                {{ setStyle(lStyle); }},   0, 4);
-        grid.add(endRow,                   1, 4);
-        grid.add(errLabel,                 0, 5, 2, 1);
+        // Root layout
+        HBox root = new HBox(0);
+        root.setPrefHeight(520);
+        root.getChildren().addAll(leftPanel, rightPanel);
+        dialog.getDialogPane().setContent(root);
 
-        dialog.getDialogPane().setContent(grid);
+        // ✅ Chỉ 1 Platform.runLater duy nhất — sau khi đã có đủ biến
+        javafx.application.Platform.runLater(() -> {
+            javafx.scene.Node saveNode   = dialog.getDialogPane().lookupButton(saveBtn);
+            javafx.scene.Node cancelNode = dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
 
-        javafx.scene.Node saveNode =
-                dialog.getDialogPane().lookupButton(saveBtn);
-        saveNode.setDisable(true);
-        nameField.textProperty().addListener((obs, o, n) ->
-                saveNode.setDisable(n.trim().isEmpty()));
+            // Style buttons
+            saveNode.setStyle("""
+                    -fx-background-color: #2563eb;
+                    -fx-text-fill: white;
+                    -fx-font-weight: bold;
+                    -fx-font-size: 13px;
+                    -fx-background-radius: 8;
+                    -fx-padding: 8 20 8 20;
+                    -fx-cursor: hand;
+                    """);
+            cancelNode.setStyle("""
+                    -fx-background-color: #1e293b;
+                    -fx-text-fill: #94a3b8;
+                    -fx-font-size: 13px;
+                    -fx-background-radius: 8;
+                    -fx-border-color: #334155;
+                    -fx-border-radius: 8;
+                    -fx-border-width: 1;
+                    -fx-padding: 8 20 8 20;
+                    -fx-cursor: hand;
+                    """);
 
+            // Disable khi tên trống
+            saveNode.setDisable(nameField.getText().trim().isEmpty());
+            nameField.textProperty().addListener((obs, o, n) ->
+                    saveNode.setDisable(n.trim().isEmpty()));
+
+            // ✅ Chặn đóng dialog khi validation fail
+            saveNode.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+                errLabel.setText("");
+
+                if (nameField.getText().trim().isEmpty()) {
+                    errLabel.setText("⚠ Vui lòng nhập tên sản phẩm.");
+                    event.consume(); return;
+                }
+                if (catBox.getValue() == null) {
+                    errLabel.setText("⚠ Vui lòng chọn danh mục.");
+                    event.consume(); return;
+                }
+                try {
+                    double p = Double.parseDouble(
+                            priceField.getText().trim().replaceAll("[^0-9.]", ""));
+                    if (p <= 0) throw new NumberFormatException();
+                } catch (NumberFormatException ex) {
+                    errLabel.setText("⚠ Giá khởi điểm không hợp lệ.");
+                    event.consume(); return;
+                }
+                try {
+                    double s = Double.parseDouble(
+                            stepField.getText().trim().replaceAll("[^0-9.]", ""));
+                    if (s <= 0) throw new NumberFormatException();
+                } catch (NumberFormatException ex) {
+                    errLabel.setText("⚠ Bước giá không hợp lệ.");
+                    event.consume(); return;
+                }
+                if (startDate.getValue() == null || endDate.getValue() == null) {
+                    errLabel.setText("⚠ Vui lòng chọn ngày.");
+                    event.consume(); return;
+                }
+                try {
+                    LocalDateTime startDT = LocalDateTime.of(startDate.getValue(),
+                            LocalTime.parse(startTime.getText().trim(), TIME_ONLY));
+                    LocalDateTime endDT   = LocalDateTime.of(endDate.getValue(),
+                            LocalTime.parse(endTime.getText().trim(), TIME_ONLY));
+                    if (!endDT.isAfter(startDT)) {
+                        errLabel.setText("⚠ Thời gian kết thúc phải sau bắt đầu.");
+                        event.consume(); return;
+                    }
+                    String conflict = findTimeConflict(startDT, endDT, null);
+                    if (conflict != null) {
+                        errLabel.setText("⚠ Trùng thời gian với: \"" + conflict + "\"");
+                        event.consume();
+                    }
+                } catch (DateTimeParseException ex) {
+                    errLabel.setText("⚠ Thời gian không hợp lệ (HH:mm).");
+                    event.consume();
+                }
+            });
+        });
+
+        // Result converter
         dialog.setResultConverter(btn -> {
             if (btn != saveBtn) return null;
-            errLabel.setText("");
 
             String nameVal = nameField.getText().trim();
-            if (nameVal.isEmpty()) {
-                errLabel.setText("⚠ Vui lòng nhập tên sản phẩm.");
-                return null;
+            double price   = Double.parseDouble(
+                    priceField.getText().trim().replaceAll("[^0-9.]", ""));
+            double step    = Double.parseDouble(
+                    stepField.getText().trim().replaceAll("[^0-9.]", ""));
+            LocalDateTime startDT = LocalDateTime.of(startDate.getValue(),
+                    LocalTime.parse(startTime.getText().trim(), TIME_ONLY));
+            LocalDateTime endDT   = LocalDateTime.of(endDate.getValue(),
+                    LocalTime.parse(endTime.getText().trim(), TIME_ONLY));
+            String catVal = catBox.getValue() == null ? "Khác" : catBox.getValue();
+            String id     = "P-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+
+            stepMap.put(id, step);
+
+            // Copy ảnh
+            if (selectedImagePath[0] != null) {
+                try {
+                    File src  = new File(selectedImagePath[0]);
+                    String ext = src.getName().substring(src.getName().lastIndexOf('.'));
+                    Path dest  = Paths.get(IMAGE_DIR + id + ext);
+                    Files.copy(src.toPath(), dest, StandardCopyOption.REPLACE_EXISTING);
+                    imageMap.put(id, dest.toAbsolutePath().toString());
+                } catch (IOException ex) {
+                    System.err.println("Lưu ảnh thất bại: " + ex.getMessage());
+                }
             }
 
-            double price;
-            try {
-                price = Double.parseDouble(priceField.getText()
-                        .trim().replaceAll("[^0-9.]", ""));
-                if (price <= 0) throw new NumberFormatException();
-            } catch (NumberFormatException ex) {
-                errLabel.setText("⚠ Giá khởi điểm không hợp lệ.");
-                return null;
-            }
-
-            double step;
-            try {
-                step = Double.parseDouble(stepField.getText()
-                        .trim().replaceAll("[^0-9.]", ""));
-                if (step <= 0) throw new NumberFormatException();
-            } catch (NumberFormatException ex) {
-                errLabel.setText("⚠ Bước giá không hợp lệ.");
-                return null;
-            }
-
-            LocalDateTime startDT, endDT;
-            try {
-                startDT = LocalDateTime.of(
-                        startDatePicker.getValue(),
-                        LocalTime.parse(
-                                startTimeField.getText().trim(), TIME_ONLY));
-                endDT = LocalDateTime.of(
-                        endDatePicker.getValue(),
-                        LocalTime.parse(
-                                endTimeField.getText().trim(), TIME_ONLY));
-            } catch (DateTimeParseException | NullPointerException ex) {
-                errLabel.setText("⚠ Thời gian không hợp lệ (HH:mm).");
-                return null;
-            }
-
-            if (!endDT.isAfter(startDT)) {
-                errLabel.setText("⚠ Thời gian kết thúc phải sau bắt đầu.");
-                return null;
-            }
-
-            String conflict = findTimeConflict(startDT, endDT, null);
-            if (conflict != null) {
-                errLabel.setText("⚠ Trùng thời gian với: \"" + conflict + "\"");
-                return null;
-            }
-
-            String catVal = catBox.getValue() == null
-                    ? "Khác" : catBox.getValue();
-            String id = "P-" + UUID.randomUUID()
-                    .toString().substring(0, 6).toUpperCase();
-
-            stepMap.put(id, step); // lưu bước giá
-
-            return new ManagedProduct(
-                    id, nameVal, catVal, username, price,
-                    "CHỜ DUYỆT",
-                    LocalDateTime.now(), startDT, endDT
-            );
+            return new ManagedProduct(id, nameVal, catVal, username, price,
+                    "CHỜ DUYỆT", LocalDateTime.now(), startDT, endDT);
         });
 
         dialog.showAndWait().ifPresent(p -> {
@@ -387,8 +595,7 @@ public class ProductManagementController {
                 AppContext.addProduct(username, new AppContext.ProductRecord(
                         p.id(), p.name(), p.category(),
                         p.startPrice(), p.startPrice(), 0,
-                        "CHỜ DUYỆT",
-                        p.auctionStart(), p.auctionEnd(), "—"
+                        "CHỜ DUYỆT", p.auctionStart(), p.auctionEnd(), "—"
                 ));
                 refreshStats();
                 renderList(managedList);
@@ -396,8 +603,52 @@ public class ProductManagementController {
         });
     }
 
+    // ── UI Helper methods ─────────────────────────────────────
+    private TextField styledTextField(String prompt) {
+        TextField tf = new TextField();
+        tf.setPromptText(prompt);
+        tf.setMaxWidth(Double.MAX_VALUE);
+        tf.setStyle("""
+                -fx-background-color: #1e293b;
+                -fx-text-fill: #f1f5f9;
+                -fx-prompt-text-fill: #475569;
+                -fx-border-color: #334155;
+                -fx-border-radius: 8;
+                -fx-background-radius: 8;
+                -fx-padding: 8 12 8 12;
+                -fx-font-size: 13px;
+                """);
+        return tf;
+    }
+
+    private DatePicker styledDatePicker(LocalDate value) {
+        DatePicker dp = new DatePicker(value);
+        dp.setMaxWidth(Double.MAX_VALUE);
+        dp.setStyle("""
+                -fx-background-color: #1e293b;
+                -fx-border-color: #334155;
+                -fx-border-radius: 8;
+                -fx-background-radius: 8;
+                -fx-font-size: 13px;
+                """);
+        return dp;
+    }
+
+    private Label fieldLabel(String text) {
+        Label l = new Label(text);
+        l.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 11px; "
+                + "-fx-font-weight: bold;");
+        return l;
+    }
+
+    private VBox fieldGroup(String labelText, javafx.scene.Node field) {
+        VBox group = new VBox(6);
+        group.getChildren().addAll(fieldLabel(labelText), field);
+        return group;
+    }
+
     // =========================================================
-    // HANDLERS
+    // HANDLERS (giữ nguyên từ bản cũ)
     // =========================================================
     private void handleApprove(ManagedProduct p) {
         replaceStatus(p, "ĐÃ DUYỆT");
@@ -417,19 +668,14 @@ public class ProductManagementController {
         ));
     }
 
-    /**
-     * Seller bấm "⚡ Bắt đầu đấu giá" (từ ĐÃ DUYỆT)
-     * → Tạo AuctionSession thực + registerSession(session, username)
-     * → Bidder thấy ngay trong AuctionListController
-     */
     private void handleStartAuction(ManagedProduct p) {
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Bắt đầu đấu giá");
         confirm.setHeaderText(p.name());
         confirm.setContentText(
                 "Xác nhận bắt đầu phiên đấu giá?\n"
-                + "Bắt đầu : " + p.auctionStart().format(DT_FMT)
-                + "\nKết thúc: " + p.auctionEnd().format(DT_FMT));
+                        + "Bắt đầu : " + p.auctionStart().format(DT_FMT)
+                        + "\nKết thúc: " + p.auctionEnd().format(DT_FMT));
 
         confirm.showAndWait().ifPresent(btn -> {
             if (btn != ButtonType.OK) return;
@@ -450,9 +696,8 @@ public class ProductManagementController {
                         p.startPrice(), step,
                         p.auctionEnd()
                 );
-                session.start(); // OPEN → RUNNING
+                session.start();
 
-                // ── Đăng ký kèm sellerUsername → Bidder thấy ──
                 AppContext.registerSession(session, username);
                 AppContext.setActiveSession(session);
 
@@ -473,10 +718,6 @@ public class ProductManagementController {
         });
     }
 
-    /**
-     * Seller bấm "🔴 Vào phiên" (từ ĐANG ĐẤU GIÁ)
-     * → Tìm session đã có; nếu chưa có thì tự tạo + registerSession
-     */
     private void handleGoLive(ManagedProduct p) {
         AuctionSession existing = AppContext.getGlobalSessions().stream()
                 .filter(s -> s.getSessionId().equals(p.id()))
@@ -501,9 +742,8 @@ public class ProductManagementController {
                         p.startPrice(), step,
                         p.auctionEnd()
                 );
-                newSession.start(); // OPEN → RUNNING
+                newSession.start();
 
-                // ── Đăng ký kèm sellerUsername → Bidder thấy ──
                 AppContext.registerSession(newSession, username);
                 AppContext.setActiveSession(newSession);
 
@@ -543,16 +783,28 @@ public class ProductManagementController {
         Alert a = new Alert(Alert.AlertType.INFORMATION);
         a.setTitle("Chi tiết sản phẩm");
         a.setHeaderText(p.name());
+
+        // Hiện ảnh trong dialog xem chi tiết nếu có
+        String imgPath = imageMap.get(p.id());
+        if (imgPath != null && new File(imgPath).exists()) {
+            try {
+                ImageView iv = new ImageView(
+                        new Image(new File(imgPath).toURI().toString(),
+                                180, 180, true, true));
+                a.setGraphic(iv);
+            } catch (Exception ignored) {}
+        }
+
         a.setContentText(
                 "ID          : " + p.id()
-                + "\nDanh mục  : " + p.category()
-                + "\nGiá KĐ   : " + formatVND(p.startPrice())
-                + "\nBước giá  : " + formatVND(
+                        + "\nDanh mục  : " + p.category()
+                        + "\nGiá KĐ   : " + formatVND(p.startPrice())
+                        + "\nBước giá  : " + formatVND(
                         stepMap.getOrDefault(p.id(), 0.0))
-                + "\nNgười bán : " + p.sellerName()
-                + "\nTrạng thái: " + p.status()
-                + "\nBắt đầu   : " + p.auctionStart().format(DT_FMT)
-                + "\nKết thúc  : " + p.auctionEnd().format(DT_FMT)
+                        + "\nNgười bán : " + p.sellerName()
+                        + "\nTrạng thái: " + p.status()
+                        + "\nBắt đầu   : " + p.auctionStart().format(DT_FMT)
+                        + "\nKết thúc  : " + p.auctionEnd().format(DT_FMT)
         );
         a.showAndWait();
     }
@@ -570,14 +822,14 @@ public class ProductManagementController {
     }
 
     private String findTimeConflict(LocalDateTime newStart,
-                                     LocalDateTime newEnd,
-                                     String excludeId) {
+                                    LocalDateTime newEnd,
+                                    String excludeId) {
         for (ManagedProduct p : managedList) {
             if (excludeId != null && excludeId.equals(p.id())) continue;
             if (!"ĐANG ĐẤU GIÁ".equals(p.status())
                     && !"ĐÃ DUYỆT".equals(p.status())) continue;
             boolean overlap = newStart.isBefore(p.auctionEnd())
-                           && newEnd.isAfter(p.auctionStart());
+                    && newEnd.isAfter(p.auctionStart());
             if (overlap) return p.name();
         }
         return null;
@@ -595,21 +847,21 @@ public class ProductManagementController {
         String category = categoryFilter.getValue();
 
         List<ManagedProduct> filtered = managedList.stream()
-            .filter(p -> {
-                if (status != null && !"Tất cả".equals(status)
-                        && !status.isEmpty()
-                        && !status.equals(p.status())) return false;
-                if (category != null && !"Tất cả".equals(category)
-                        && !category.isEmpty()
-                        && !category.equals(p.category())) return false;
-                if (!keyword.isEmpty()
-                        && !p.name().toLowerCase().contains(keyword)
-                        && !p.sellerName().toLowerCase().contains(keyword)
-                        && !p.id().toLowerCase().contains(keyword))
-                    return false;
-                return true;
-            })
-            .collect(Collectors.toList());
+                .filter(p -> {
+                    if (status != null && !"Tất cả".equals(status)
+                            && !status.isEmpty()
+                            && !status.equals(p.status())) return false;
+                    if (category != null && !"Tất cả".equals(category)
+                            && !category.isEmpty()
+                            && !category.equals(p.category())) return false;
+                    if (!keyword.isEmpty()
+                            && !p.name().toLowerCase().contains(keyword)
+                            && !p.sellerName().toLowerCase().contains(keyword)
+                            && !p.id().toLowerCase().contains(keyword))
+                        return false;
+                    return true;
+                })
+                .collect(Collectors.toList());
 
         renderList(filtered);
     }

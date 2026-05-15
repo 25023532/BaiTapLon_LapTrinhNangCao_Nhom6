@@ -4,7 +4,15 @@
 
 /* ── Root & Background ──────────────────────────────────── */
 .main-root  { -fx-background-color: #0f172a; }
-.login-root { -fx-background-color: #0f172a; }
+.login-root {
+    -fx-background-color: linear-gradient(
+        from 0% 0% to 100% 100%,
+        #020818,
+        #0a1628,
+        #0f172a,
+        #0d1f3c
+    );
+}
 .stack-pane { -fx-background-color: transparent; }
 
 /* ── Sidebar ────────────────────────────────────────────── */
@@ -245,8 +253,20 @@
     -fx-background-color: #1e293b; -fx-background-radius: 16;
     -fx-border-color: #334155; -fx-border-radius: 16; -fx-border-width: 1;
 }
-.login-card .label { -fx-text-fill: #f1f5f9; -fx-font-size: 13px; }
-.login-logo     { -fx-text-fill: #f1f5f9; -fx-font-size: 22px; -fx-font-weight: bold; }
+.login-card {
+    -fx-background-color: rgba(15, 25, 50, 0.75);
+    -fx-background-radius: 16;
+    -fx-border-color: rgba(59, 130, 246, 0.35);
+    -fx-border-radius: 16;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(37,99,235,0.4), 40, 0, 0, 0);
+}
+.login-logo {
+    -fx-text-fill: #f1f5f9;
+    -fx-font-size: 30px;
+    -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian, rgba(99,179,237,0.8), 20, 0, 0, 0);
+}
 .login-title    { -fx-text-fill: #f1f5f9; -fx-font-size: 20px; -fx-font-weight: bold; -fx-padding: 0 0 8 0; }
 .login-subtitle { -fx-text-fill: #cbd5e1; -fx-font-size: 13px; }
 .login-input {
