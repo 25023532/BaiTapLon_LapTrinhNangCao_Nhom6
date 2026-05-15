@@ -24,21 +24,17 @@
             <VBox styleClass="sidebar-nav" spacing="2">
                 <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
 
-                <!-- Tổng quan: không cần navigate -->
                 <Button text="⊞  Tổng quan"
                         maxWidth="Infinity" styleClass="nav-btn,nav-active"/>
 
-                <!-- ✅ Danh sách phiên -->
                 <Button text="☰  Danh sách phiên"
                         maxWidth="Infinity" styleClass="nav-btn"
                         onAction="#handleAuctionList"/>
 
-                <!-- ✅ Đấu giá trực tiếp -->
                 <Button text="⚡  Đấu giá trực tiếp"
                         maxWidth="Infinity" styleClass="nav-btn"
                         onAction="#handleLiveAuction"/>
 
-                <!-- ✅ Quản lý sản phẩm -->
                 <Button text="📦  Quản lý sản phẩm"
                         maxWidth="Infinity" styleClass="nav-btn"
                         onAction="#handleProductManagement"/>
@@ -46,15 +42,9 @@
                 <Button text="🛒  Đơn hàng của tôi"
                         maxWidth="Infinity" styleClass="nav-btn"/>
 
-                <!-- Ví & Giao dịch -->
                 <Button text="💳  Ví &amp; Giao dịch"
                         maxWidth="Infinity" styleClass="nav-btn"
                         onAction="#handleWallet"/>
-
-                <Button text="★  Đánh giá"
-                        maxWidth="Infinity" styleClass="nav-btn"/>
-                <Button text="?  Trợ giúp"
-                        maxWidth="Infinity" styleClass="nav-btn"/>
             </VBox>
 
             <VBox styleClass="sidebar-cats" spacing="2">
