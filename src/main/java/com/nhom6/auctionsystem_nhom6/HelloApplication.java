@@ -9,26 +9,29 @@ import javafx.scene.image.Image;
 
 public class HelloApplication extends Application {
 
-    private static Stage primaryStage;
-
+    private static Stage  primaryStage;
     private static String pendingCategory = null;
 
     @Override
     public void start(Stage stage) throws Exception {
         primaryStage = stage;
+
         Image icon = new Image(
                 getClass().getResourceAsStream(
                         "/com/nhom6/auctionsystem_nhom6/images/logo.png"));
         stage.getIcons().add(icon);
+
         FXMLLoader loader = new FXMLLoader(
                 getClass().getResource(
                         "/com/nhom6/auctionsystem_nhom6/login-view.fxml"));
         BorderPane root = loader.load();
+
         Scene scene = new Scene(root, 1280, 800);
         scene.getStylesheets().add(
                 getClass().getResource(
-                                "/com/nhom6/auctionsystem_nhom6/styles/main.css")
+                        "/com/nhom6/auctionsystem_nhom6/styles/main.css")
                         .toExternalForm());
+
         stage.setTitle("AuctionSys – Hệ thống Đấu giá");
         stage.setScene(scene);
         stage.setMinWidth(900);
@@ -36,7 +39,9 @@ public class HelloApplication extends Application {
         stage.show();
     }
 
-    // ── Existing views ────────────────────────────────────────
+    // =========================================================
+    // VIEWS
+    // =========================================================
     public static void showMainView() throws Exception {
         load("main-view.fxml", "AuctionSys – Trang chủ");
     }
@@ -66,7 +71,7 @@ public class HelloApplication extends Application {
     }
 
     public static void showAuctionListView() throws Exception {
-        pendingCategory = null; // không lọc category
+        pendingCategory = null;
         load("auction-list-view.fxml", "AuctionSys – Danh sách phiên đấu giá");
     }
 
@@ -83,13 +88,24 @@ public class HelloApplication extends Application {
         load("live-auction-view.fxml", "AuctionSys – Đấu giá trực tiếp");
     }
 
+    /** Mở màn hình lịch sử phiên đấu giá đã kết thúc. */
+    public static void showAuctionSessionHistoryView() throws Exception {
+        load("auction-session-history-view.fxml",
+                "AuctionSys – Lịch sử phiên đấu giá");
+    }
+
+    // =========================================================
+    // PENDING CATEGORY
+    // =========================================================
     public static String getPendingCategory() {
         String cat = pendingCategory;
         pendingCategory = null;
         return cat;
     }
 
-    // ── Helper ────────────────────────────────────────────────
+    // =========================================================
+    // HELPER
+    // =========================================================
     private static void load(String fxml, String title) throws Exception {
         FXMLLoader loader = new FXMLLoader(
                 HelloApplication.class.getResource(
