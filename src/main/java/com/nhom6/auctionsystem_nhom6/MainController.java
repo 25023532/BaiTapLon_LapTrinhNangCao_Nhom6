@@ -31,7 +31,7 @@ public class MainController {
     @FXML private Label      walletLabel;
     @FXML private TextField  searchField;
     @FXML private MenuButton profileMenuBtn;
-    @FXML private MenuItem   ordersMenuItem;
+    @FXML private MenuItem   sessionHistoryMenuItem; // ĐÃ ĐỔI: ordersMenuItem → sessionHistoryMenuItem
 
     // ── Notification bell ─────────────────────────────────────
     @FXML private Button bellButton;
@@ -80,6 +80,8 @@ public class MainController {
     // =========================================================
     private AuctionSession session;
     private Timeline       countdownTimer;
+    // Lưu thời điểm phiên bắt đầu để ghi vào lịch sử
+    private LocalDateTime  sessionStartTime;
 
     // ── Notification ──────────────────────────────────────────
     private final NotificationManager notifManager = new NotificationManager();
@@ -117,6 +119,7 @@ public class MainController {
 
         if (session != null) {
             AppContext.setActiveSession(session);
+            sessionStartTime = LocalDateTime.now(); // ghi nhận thời điểm bắt đầu
             showAuctionCard(true);
             loadAuctionInfo();
             refreshBidHistory();
@@ -205,7 +208,6 @@ public class MainController {
                                         false);
                             });
 
-                            // Thông báo outbid nếu mình đang tham gia
                             User me = AppContext.getCurrentUser();
                             if (me != null && !bidder.equals(me.getUsername())) {
                                 boolean iParticipating = session.getBidHistory()
@@ -261,19 +263,8 @@ public class MainController {
     // ROLE MENU
     // =========================================================
     private void applyRoleMenu(User user) {
-        if (ordersMenuItem == null) return;
-        String role = user.getRole() == null ? "" : user.getRole().toUpperCase();
-        switch (role) {
-            case "BIDDER":
-                profileMenuBtn.getItems().remove(ordersMenuItem);
-                break;
-            case "SELLER":
-                ordersMenuItem.setText("📦  Sản phẩm đăng bán");
-                ordersMenuItem.setOnAction(e -> handleMyProducts());
-                break;
-            default:
-                break;
-        }
+        // sessionHistoryMenuItem hiển thị cho mọi role, không cần remove
+        // (khác với ordersMenuItem cũ chỉ dành cho SELLER)
     }
 
     // =========================================================
@@ -310,7 +301,10 @@ public class MainController {
             minsLabel.setText("00");
             secsLabel.setText("00");
             countdownTimer.stop();
-            // Thông báo phiên kết thúc
+
+            // ── LƯU PHIÊN VÀO LỊCH SỬ KHI KẾT THÚC ─────────
+            saveSessionToHistory();
+
             pushNotification(
                     NotificationManager.NotifType.SYSTEM,
                     "Phiên đấu giá kết thúc",
@@ -323,7 +317,6 @@ public class MainController {
         minsLabel.setText(String.format("%02d",  (total % 3600) / 60));
         secsLabel.setText(String.format("%02d",  total % 60));
 
-        // Cảnh báo còn đúng 5 phút
         if (total == 300) {
             pushNotification(
                     NotificationManager.NotifType.AUCTION_ENDING_SOON,
@@ -331,6 +324,21 @@ public class MainController {
                     String.format("Còn 5 phút! Giá hiện tại: %s", formatVND(session.getCurrentPrice()))
             );
         }
+    }
+
+    // =========================================================
+    // LƯU PHIÊN VÀO LỊCH SỬ  ←← THÊM MỚI
+    // =========================================================
+    /**
+     * Gọi khi countdown về 0. Lưu phiên cho tất cả người liên quan
+     * (seller + bidders) qua AppContext.finalizeSession().
+     */
+    private void saveSessionToHistory() {
+        if (session == null) return;
+        LocalDateTime start = sessionStartTime != null
+                ? sessionStartTime
+                : session.getEndTime().minusHours(1); // fallback
+        AppContext.finalizeSession(session, start);
     }
 
     // =========================================================
@@ -352,14 +360,12 @@ public class MainController {
                     user.getUsername(), newPrice);
             session.placeBid(bid);
 
-            // Cập nhật UI
             currentPriceLabel.setText(formatVND(session.getCurrentPrice()));
             refreshBidHistory();
             addChatMessage("System",
                     user.getUsername() + " đã đặt giá " + formatVND(newPrice),
                     false);
 
-            // Thông báo đặt giá thành công
             pushNotification(
                     NotificationManager.NotifType.BID_PLACED,
                     "Đặt giá thành công",
@@ -367,14 +373,12 @@ public class MainController {
                             formatVND(newPrice), session.getItemName())
             );
 
-            // Ghi lịch sử
             AppContext.addHistory(user.getUsername(), new AppContext.HistoryRecord(
                     "BID-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase(),
                     session.getItemName(), newPrice,
                     AppContext.getSessionSeller(session.getSessionId()),
                     "CHỜ XỬ LÝ", true, LocalDateTime.now()));
 
-            // Gửi server
             ServerConnection conn = ServerConnection.getInstance();
             if (conn.isConnected())
                 conn.sendBid(user.getUsername(), session.getItemName(), newPrice);
@@ -399,23 +403,15 @@ public class MainController {
     // =========================================================
     @FXML
     private void handleBellClick() {
-        // Toggle: đang mở thì đóng
         if (notifPopup != null && notifPopup.isShowing()) {
             notifPopup.hide();
             return;
         }
-        // Đánh dấu đã đọc, reset badge
         notifManager.markAllRead();
         updateBadge();
-
-        // Hiện popup
         notifPopup = NotificationPopup.show(bellButton, notifManager.getAll());
     }
 
-    /**
-     * Thêm thông báo mới và cộng badge.
-     * Có thể gọi từ bất kỳ thread nào (tự wrap Platform.runLater).
-     */
     public void pushNotification(NotificationManager.NotifType type,
                                  String title, String body) {
         Platform.runLater(() -> {
@@ -425,7 +421,6 @@ public class MainController {
         });
     }
 
-    /** Cập nhật số đỏ trên icon chuông. */
     private void updateBadge() {
         if (badgeLabel == null) return;
         int unread = notifManager.countUnread();
@@ -485,6 +480,12 @@ public class MainController {
         catch (Exception e) { e.printStackTrace(); }
     }
 
+    /** ĐÃ THÊM: Mở màn hình lịch sử phiên đấu giá */
+    @FXML private void handleAuctionSessionHistory() {
+        try { HelloApplication.showAuctionSessionHistoryView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
     @FXML private void handleCategoryDienTu() {
         try { HelloApplication.showAuctionListByCategory("Điện tử"); }
         catch (Exception e) { e.printStackTrace(); }
@@ -525,16 +526,6 @@ public class MainController {
 
     @FXML private void handleHistory() {
         try { HelloApplication.showHistoryView(); }
-        catch (Exception e) { e.printStackTrace(); }
-    }
-
-    @FXML private void handleOrders() {
-        try { HelloApplication.showHistoryView(); }
-        catch (Exception e) { e.printStackTrace(); }
-    }
-
-    private void handleMyProducts() {
-        try { HelloApplication.showMyProductsView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
 
