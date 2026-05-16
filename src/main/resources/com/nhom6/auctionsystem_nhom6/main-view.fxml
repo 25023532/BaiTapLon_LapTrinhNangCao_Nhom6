@@ -39,8 +39,10 @@
                         maxWidth="Infinity" styleClass="nav-btn"
                         onAction="#handleProductManagement"/>
 
-                <Button text="🛒  Đơn hàng của tôi"
-                        maxWidth="Infinity" styleClass="nav-btn"/>
+                <!-- ĐÃ ĐỔI: Đơn hàng của tôi → Lịch sử phiên đấu giá -->
+                <Button text="📋  Lịch sử phiên đấu giá"
+                        maxWidth="Infinity" styleClass="nav-btn"
+                        onAction="#handleAuctionSessionHistory"/>
 
                 <Button text="💳  Ví &amp; Giao dịch"
                         maxWidth="Infinity" styleClass="nav-btn"
@@ -107,12 +109,13 @@
                     </HBox>
                 </graphic>
                 <items>
-                    <MenuItem text="👤  Hồ sơ"     onAction="#handleProfile"/>
-                    <MenuItem text="📋  Lịch sử"   onAction="#handleHistory"/>
-                    <MenuItem fx:id="ordersMenuItem"
-                              text="🛒  Đơn hàng"  onAction="#handleOrders"/>
+                    <MenuItem text="👤  Hồ sơ"              onAction="#handleProfile"/>
+                    <MenuItem text="📋  Lịch sử bid"        onAction="#handleHistory"/>
+                    <!-- ĐÃ ĐỔI: Đơn hàng → Lịch sử phiên -->
+                    <MenuItem fx:id="sessionHistoryMenuItem"
+                              text="🏛️  Lịch sử phiên đấu giá" onAction="#handleAuctionSessionHistory"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="🚪  Đăng xuất" onAction="#handleLogout"/>
+                    <MenuItem text="🚪  Đăng xuất"          onAction="#handleLogout"/>
                 </items>
             </MenuButton>
         </HBox>
