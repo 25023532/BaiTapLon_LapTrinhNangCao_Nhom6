@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.nhom6.auctionsystem_nhom6.AuctionSessionHistoryController"
+            style="-fx-background-color: #0f172a;">
+
+    <!-- ══ HEADER ══ -->
+    <top>
+        <HBox styleClass="header" spacing="12" alignment="CENTER_LEFT">
+            <padding><Insets top="0" right="20" bottom="0" left="20"/></padding>
+            <Button text="← Quay lại" onAction="#handleBack" styleClass="btn-secondary"/>
+            <Label text="🏛️  Lịch sử phiên đấu giá"
+                   style="-fx-font-size:18px; -fx-font-weight:bold; -fx-text-fill:#e2e8f0;"/>
+        </HBox>
+    </top>
+
+    <!-- ══ CONTENT ══ -->
+    <center>
+        <VBox spacing="16">
+            <padding><Insets top="20" right="20" bottom="20" left="20"/></padding>
+
+            <!-- ── Thống kê nhanh ── -->
+            <HBox spacing="12">
+                <!-- Tổng phiên -->
+                <VBox styleClass="info-card" HBox.hgrow="ALWAYS" alignment="CENTER" spacing="4">
+                    <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+                    <Label fx:id="totalSessionsLabel" text="0"
+                           style="-fx-font-size:28px; -fx-font-weight:bold; -fx-text-fill:#60a5fa;"/>
+                    <Label fx:id="totalSessionsDesc" text="Phiên tham gia"
+                           style="-fx-font-size:12px; -fx-text-fill:#94a3b8;"/>
+                </VBox>
+                <!-- Thắng / Thành công -->
+                <VBox styleClass="info-card" HBox.hgrow="ALWAYS" alignment="CENTER" spacing="4">
+                    <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+                    <Label fx:id="wonSessionsLabel" text="0"
+                           style="-fx-font-size:28px; -fx-font-weight:bold; -fx-text-fill:#34d399;"/>
+                    <Label fx:id="wonSessionsDesc" text="Phiên thắng giá"
+                           style="-fx-font-size:12px; -fx-text-fill:#94a3b8;"/>
+                </VBox>
+                <!-- Tổng tiền -->
+                <VBox styleClass="info-card" HBox.hgrow="ALWAYS" alignment="CENTER" spacing="4">
+                    <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+                    <Label fx:id="totalSpentLabel" text="₫ 0"
+                           style="-fx-font-size:22px; -fx-font-weight:bold; -fx-text-fill:#f59e0b;"/>
+                    <Label fx:id="totalSpentDesc" text="Tổng tiền đặt giá"
+                           style="-fx-font-size:12px; -fx-text-fill:#94a3b8;"/>
+                </VBox>
+                <!-- Đã bán (ẩn nếu không phải seller, xử lý trong controller) -->
+                <VBox fx:id="soldCard" styleClass="info-card" HBox.hgrow="ALWAYS"
+                      alignment="CENTER" spacing="4">
+                    <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+                    <Label fx:id="totalSoldLabel" text="0"
+                           style="-fx-font-size:28px; -fx-font-weight:bold; -fx-text-fill:#a78bfa;"/>
+                    <Label fx:id="totalSoldDesc" text="Sản phẩm đã bán"
+                           style="-fx-font-size:12px; -fx-text-fill:#94a3b8;"/>
+                </VBox>
+            </HBox>
+
+            <!-- ── Bộ lọc ── -->
+            <HBox styleClass="info-card" spacing="12" alignment="CENTER_LEFT">
+                <padding><Insets top="12" right="16" bottom="12" left="16"/></padding>
+                <TextField fx:id="searchField"
+                           promptText="Tìm theo tên sản phẩm, người bán, người thắng..."
+                           HBox.hgrow="ALWAYS"
+                           styleClass="search-field"
+                           onAction="#handleSearch"/>
+                <ComboBox fx:id="resultFilter" promptText="Kết quả"
+                          onAction="#handleFilter" prefWidth="180"/>
+                <ComboBox fx:id="roleFilter" promptText="Vai trò"
+                          onAction="#handleFilter" prefWidth="130"/>
+            </HBox>
+
+            <!-- ── Danh sách phiên ── -->
+            <VBox styleClass="info-card" VBox.vgrow="ALWAYS" spacing="0">
+                <padding><Insets top="0" right="0" bottom="0" left="0"/></padding>
+                <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" prefHeight="500"
+                            styleClass="bid-scroll">
+                    <VBox fx:id="sessionListBox" spacing="0"/>
+                </ScrollPane>
+            </VBox>
+
+        </VBox>
+    </center>
+
+</BorderPane>
