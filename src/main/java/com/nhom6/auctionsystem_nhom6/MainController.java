@@ -32,10 +32,9 @@ public class MainController {
     @FXML private TextField  searchField;
     @FXML private MenuButton profileMenuBtn;
 
-    // Menu items được điều chỉnh theo role trong applyRoleMenu()
-    // Tên fx:id phải khớp chính xác với main-view.fxml
-    @FXML private MenuItem menuItemHistory;    // BIDDER→"Lịch sử mua hàng" | SELLER→"Lịch sử bán hàng"
-    @FXML private MenuItem menuItemMyProducts; // SELLER: hiện | BIDDER: bị xóa
+    // Được điều chỉnh động theo role trong applyRoleMenu()
+    @FXML private MenuItem menuItemHistory;     // BIDDER → "Lịch sử mua hàng" | SELLER → "Lịch sử bán hàng"
+    @FXML private MenuItem menuItemMyProducts;  // SELLER: giữ | BIDDER: bị xóa
 
     // ── Notification bell ─────────────────────────────────────
     @FXML private Button bellButton;
@@ -84,7 +83,7 @@ public class MainController {
     // =========================================================
     private AuctionSession session;
     private Timeline       countdownTimer;
-    private LocalDateTime  sessionStartTime; // lưu để ghi vào lịch sử phiên
+    private LocalDateTime  sessionStartTime;
 
     // ── Notification ──────────────────────────────────────────
     private final NotificationManager notifManager = new NotificationManager();
@@ -143,11 +142,11 @@ public class MainController {
     /**
      * Điều chỉnh menu profile theo role:
      *
-     *  BIDDER → menuItemHistory  = "🛒  Lịch sử mua hàng"
-     *           menuItemMyProducts bị xóa khỏi menu
+     *  BIDDER → menuItemHistory   = "🛒  Lịch sử mua hàng"
+     *           menuItemMyProducts bị xóa
      *
-     *  SELLER → menuItemHistory  = "📦  Lịch sử bán hàng"
-     *           menuItemMyProducts giữ nguyên + gắn action
+     *  SELLER → menuItemHistory   = "📦  Lịch sử bán hàng"
+     *           menuItemMyProducts giữ nguyên
      *
      *  Khác   → cả hai bị xóa
      */
@@ -163,8 +162,7 @@ public class MainController {
             case "SELLER" -> {
                 if (menuItemHistory != null)
                     menuItemHistory.setText("📦  Lịch sử bán hàng");
-                if (menuItemMyProducts != null)
-                    menuItemMyProducts.setOnAction(e -> handleMyProducts());
+                // menuItemMyProducts giữ nguyên — onAction="#handleMyProducts" đã khai báo trong FXML
             }
             default -> {
                 if (menuItemHistory != null)
@@ -524,28 +522,19 @@ public class MainController {
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    /**
-     * Dùng chung cho BIDDER (lịch sử mua hàng) và SELLER (lịch sử bán hàng).
-     * HistoryController tự phân biệt role để hiển thị đúng nội dung.
-     */
     @FXML private void handleHistory() {
         try { HelloApplication.showHistoryView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
 
     /**
-     * Chỉ SELLER mới gọi được — mở màn hình sản phẩm đăng bán.
-     * Không có @FXML vì được gắn động qua setOnAction trong applyRoleMenu().
+     * ✅ FIX: Thêm @FXML để FXMLLoader tìm thấy method này
+     *    khi FXML khai báo onAction="#handleMyProducts"
      */
+    @FXML
     private void handleMyProducts() {
         try { HelloApplication.showMyProductsView(); }
         catch (Exception e) { e.printStackTrace(); }
-    }
-
-    @FXML private void handleMyProducts_fxml() {
-        // Handler dự phòng nếu FXML gọi trực tiếp onAction="#handleMyProducts"
-        // (không dùng trong phiên bản này — action được gắn động)
-        handleMyProducts();
     }
 
     @FXML private void handleWallet() {
