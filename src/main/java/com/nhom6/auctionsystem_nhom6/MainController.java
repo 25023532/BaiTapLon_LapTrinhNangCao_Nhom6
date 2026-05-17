@@ -31,7 +31,8 @@ public class MainController {
     @FXML private Label      walletLabel;
     @FXML private TextField  searchField;
     @FXML private MenuButton profileMenuBtn;
-    @FXML private MenuItem   sessionHistoryMenuItem; // ĐÃ ĐỔI: ordersMenuItem → sessionHistoryMenuItem
+    @FXML private MenuItem   historyMenuItem;   // text đổi theo role
+    @FXML private MenuItem   productsMenuItem;  // chỉ hiện với SELLER
 
     // ── Notification bell ─────────────────────────────────────
     @FXML private Button bellButton;
@@ -262,9 +263,43 @@ public class MainController {
     // =========================================================
     // ROLE MENU
     // =========================================================
+    /**
+     * Điều chỉnh menu profile theo role của user:
+     *
+     * BIDDER:
+     *   - "Lịch sử mua hàng"  (historyMenuItem)
+     *   - Ẩn "Sản phẩm đăng bán" (productsMenuItem)
+     *
+     * SELLER:
+     *   - "Lịch sử bán hàng"  (historyMenuItem)
+     *   - Hiện "Sản phẩm đăng bán" (productsMenuItem)
+     */
     private void applyRoleMenu(User user) {
-        // sessionHistoryMenuItem hiển thị cho mọi role, không cần remove
-        // (khác với ordersMenuItem cũ chỉ dành cho SELLER)
+        String role = user.getRole() == null ? "" : user.getRole().toUpperCase();
+
+        switch (role) {
+            case "BIDDER" -> {
+                if (historyMenuItem  != null)
+                    historyMenuItem.setText("🛒  Lịch sử mua hàng");
+                // Ẩn mục sản phẩm đăng bán — bidder không có
+                if (productsMenuItem != null)
+                    profileMenuBtn.getItems().remove(productsMenuItem);
+            }
+            case "SELLER" -> {
+                if (historyMenuItem  != null)
+                    historyMenuItem.setText("📦  Lịch sử bán hàng");
+                // Giữ nguyên productsMenuItem, chỉ đảm bảo đúng action
+                if (productsMenuItem != null)
+                    productsMenuItem.setOnAction(e -> handleMyProducts());
+            }
+            default -> {
+                // ADMIN hoặc role khác: ẩn cả hai mục đặc thù
+                if (historyMenuItem  != null)
+                    profileMenuBtn.getItems().remove(historyMenuItem);
+                if (productsMenuItem != null)
+                    profileMenuBtn.getItems().remove(productsMenuItem);
+            }
+        }
     }
 
     // =========================================================
@@ -526,6 +561,11 @@ public class MainController {
 
     @FXML private void handleHistory() {
         try { HelloApplication.showHistoryView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    private void handleMyProducts() {
+        try { HelloApplication.showMyProductsView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
 
