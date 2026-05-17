@@ -39,7 +39,6 @@
                         maxWidth="Infinity" styleClass="nav-btn"
                         onAction="#handleProductManagement"/>
 
-                <!-- ĐÃ ĐỔI: Đơn hàng của tôi → Lịch sử phiên đấu giá -->
                 <Button text="📋  Lịch sử phiên đấu giá"
                         maxWidth="Infinity" styleClass="nav-btn"
                         onAction="#handleAuctionSessionHistory"/>
@@ -74,28 +73,31 @@
                        HBox.hgrow="ALWAYS" styleClass="search-field"/>
 
             <Region HBox.hgrow="ALWAYS"/>
+
             <VBox alignment="CENTER" spacing="0">
                 <StackPane>
                     <Button fx:id="bellButton" text="🔔" styleClass="icon-btn" onAction="#handleBellClick"/>
                     <Label fx:id="badgeLabel" text="0"
                            visible="false" managed="false"
                            style="-fx-background-color:#ef4444;
-                      -fx-text-fill:white;
-                      -fx-font-size:9px;
-                      -fx-font-weight:bold;
-                      -fx-background-radius:10;
-                      -fx-padding:1 4 1 4;
-                      -fx-min-width:16;
-                      -fx-alignment:center;"
+                                  -fx-text-fill:white;
+                                  -fx-font-size:9px;
+                                  -fx-font-weight:bold;
+                                  -fx-background-radius:10;
+                                  -fx-padding:1 4 1 4;
+                                  -fx-min-width:16;
+                                  -fx-alignment:center;"
                            StackPane.alignment="TOP_RIGHT"/>
                 </StackPane>
             </VBox>
+
             <Separator orientation="VERTICAL"/>
 
             <VBox alignment="CENTER_RIGHT">
                 <Label text="Số dư (VNĐ)" styleClass="wallet-label"/>
                 <Label fx:id="walletLabel" styleClass="wallet-amount"/>
             </VBox>
+
             <Separator orientation="VERTICAL"/>
 
             <MenuButton fx:id="profileMenuBtn" styleClass="profile-menu-btn">
@@ -109,15 +111,32 @@
                     </HBox>
                 </graphic>
                 <items>
-                    <MenuItem text="👤  Hồ sơ"              onAction="#handleProfile"/>
-                    <MenuItem text="📋  Lịch sử bid"        onAction="#handleHistory"/>
-                    <!-- ĐÃ ĐỔI: Đơn hàng → Lịch sử phiên -->
-                    <MenuItem fx:id="sessionHistoryMenuItem"
-                              text="🏛️  Lịch sử phiên đấu giá" onAction="#handleAuctionSessionHistory"/>
+                    <!-- Luôn hiện -->
+                    <MenuItem text="👤  Hồ sơ" onAction="#handleProfile"/>
+
+                    <!--
+                        Controller sẽ đổi text theo role:
+                        BIDDER → "🛒  Lịch sử mua hàng"
+                        SELLER → "📦  Lịch sử bán hàng"
+                    -->
+                    <MenuItem fx:id="historyMenuItem"
+                              text="📋  Lịch sử"
+                              onAction="#handleHistory"/>
+
+                    <!--
+                        Controller sẽ xử lý theo role:
+                        BIDDER → ẩn item này
+                        SELLER → hiện "🏪  Sản phẩm đăng bán"
+                    -->
+                    <MenuItem fx:id="productsMenuItem"
+                              text="🏪  Sản phẩm đăng bán"
+                              onAction="#handleMyProducts"/>
+
                     <SeparatorMenuItem/>
-                    <MenuItem text="🚪  Đăng xuất"          onAction="#handleLogout"/>
+                    <MenuItem text="🚪  Đăng xuất" onAction="#handleLogout"/>
                 </items>
             </MenuButton>
+
         </HBox>
     </top>
 
@@ -203,8 +222,7 @@
                       visible="true"
                       managed="true">
                     <padding><Insets top="36" right="40" bottom="36" left="40"/></padding>
-                    <Label text="🏷️"
-                           style="-fx-font-size:48px;"/>
+                    <Label text="🏷️" style="-fx-font-size:48px;"/>
                     <Label text="Chưa có phiên đấu giá nào đang diễn ra"
                            style="-fx-font-size:15px; -fx-font-weight:bold; -fx-text-fill:#94a3b8;"/>
                     <Label text="Khi có sản phẩm được đăng, thông tin sẽ hiển thị tại đây."
