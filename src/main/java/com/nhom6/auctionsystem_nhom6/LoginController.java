@@ -26,6 +26,7 @@ public class LoginController {
     private void handleLogin() {
         String username = usernameField.getText().trim();
         String password = passwordField.getText();
+
         errorLabel.setVisible(false);
 
         if (username.isEmpty() || password.isEmpty()) {
@@ -42,16 +43,17 @@ public class LoginController {
 
         AppContext.setCurrentUser(user);
 
-        // ✅ Kết nối server với username thực (gửi JSON LOGIN đúng format)
+        // Kết nối server với username thực
         ServerConnection conn = ServerConnection.getInstance();
         if (!conn.isConnected()) {
-            conn.connect(username); // connect() đã tự gửi {"action":"LOGIN","username":"..."}
+            conn.connect(username);
         }
 
         try {
             HelloApplication.showMainView();
         } catch (Exception e) {
             showError("Lỗi khi mở giao diện: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
