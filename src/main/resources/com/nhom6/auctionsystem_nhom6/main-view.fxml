@@ -76,7 +76,8 @@
 
             <VBox alignment="CENTER" spacing="0">
                 <StackPane>
-                    <Button fx:id="bellButton" text="🔔" styleClass="icon-btn" onAction="#handleBellClick"/>
+                    <Button fx:id="bellButton" text="🔔" styleClass="icon-btn"
+                            onAction="#handleBellClick"/>
                     <Label fx:id="badgeLabel" text="0"
                            visible="false" managed="false"
                            style="-fx-background-color:#ef4444;
@@ -100,6 +101,15 @@
 
             <Separator orientation="VERTICAL"/>
 
+            <!--
+                profileMenuBtn: các MenuItem được điều chỉnh động trong
+                MainController.applyRoleMenu() theo role của user đăng nhập.
+
+                menuItemHistory   → BIDDER: "🛒 Lịch sử mua hàng"
+                                    SELLER: "📦 Lịch sử bán hàng"
+                menuItemMyProducts→ BIDDER: bị xóa khỏi menu
+                                    SELLER: giữ nguyên "🏪 Sản phẩm đăng bán"
+            -->
             <MenuButton fx:id="profileMenuBtn" styleClass="profile-menu-btn">
                 <graphic>
                     <HBox spacing="8" alignment="CENTER">
@@ -111,29 +121,17 @@
                     </HBox>
                 </graphic>
                 <items>
-                    <!-- Luôn hiện -->
-                    <MenuItem text="👤  Hồ sơ" onAction="#handleProfile"/>
-
-                    <!--
-                        Controller sẽ đổi text theo role:
-                        BIDDER → "🛒  Lịch sử mua hàng"
-                        SELLER → "📦  Lịch sử bán hàng"
-                    -->
-                    <MenuItem fx:id="historyMenuItem"
+                    <MenuItem text="👤  Hồ sơ"
+                              onAction="#handleProfile"/>
+                    <MenuItem fx:id="menuItemHistory"
                               text="📋  Lịch sử"
                               onAction="#handleHistory"/>
-
-                    <!--
-                        Controller sẽ xử lý theo role:
-                        BIDDER → ẩn item này
-                        SELLER → hiện "🏪  Sản phẩm đăng bán"
-                    -->
-                    <MenuItem fx:id="productsMenuItem"
+                    <MenuItem fx:id="menuItemMyProducts"
                               text="🏪  Sản phẩm đăng bán"
                               onAction="#handleMyProducts"/>
-
                     <SeparatorMenuItem/>
-                    <MenuItem text="🚪  Đăng xuất" onAction="#handleLogout"/>
+                    <MenuItem text="🚪  Đăng xuất"
+                              onAction="#handleLogout"/>
                 </items>
             </MenuButton>
 
@@ -150,7 +148,7 @@
                 <Label text="🏷️  Sản phẩm đấu giá hiện tại"
                        style="-fx-font-size:16px; -fx-font-weight:bold; -fx-text-fill:#e2e8f0;"/>
 
-                <!-- Auction Card (ẩn mặc định) -->
+                <!-- Auction Card (ẩn mặc định, hiện khi có phiên) -->
                 <HBox fx:id="auctionCard"
                       styleClass="auction-card"
                       spacing="24"
@@ -213,7 +211,7 @@
                     </VBox>
                 </HBox>
 
-                <!-- Empty State (hiện mặc định) -->
+                <!-- Empty State (hiện mặc định khi chưa có phiên) -->
                 <VBox fx:id="emptyAuctionBox"
                       styleClass="auction-card"
                       alignment="CENTER"
