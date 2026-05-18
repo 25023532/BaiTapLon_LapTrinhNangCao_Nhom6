@@ -310,14 +310,15 @@ public class ProductManagementController {
         StackPane previewBox = new StackPane();
         previewBox.setPrefSize(160, 160);
         previewBox.setMaxSize(160, 160);
-        previewBox.setStyle("""
-                -fx-background-color: #0f172a;
-                -fx-background-radius: 12;
-                -fx-border-color: #334155;
-                -fx-border-radius: 12;
-                -fx-border-width: 2;
-                -fx-cursor: hand;
-                """);
+       catBox.setStyle("""
+        -fx-background-color: #1e293b;
+        -fx-border-color: #334155;
+        -fx-border-radius: 8;
+        -fx-background-radius: 8;
+        -fx-font-size: 13px;
+        -fx-cursor: hand;
+        -fx-text-fill: #f1f5f9;
+        """);
 
         VBox emptyHint = new VBox(8);
         emptyHint.setAlignment(Pos.CENTER);
