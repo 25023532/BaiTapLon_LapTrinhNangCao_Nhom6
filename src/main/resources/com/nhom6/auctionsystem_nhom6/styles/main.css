@@ -273,9 +273,44 @@
 }
 .login-input:focused { -fx-border-color: #2563eb; }
 .login-error { -fx-text-fill: #ef4444; -fx-font-size: 12px; }
-.login-hint  { -fx-text-fill: #64748b; -fx-font-size: 11px; -fx-padding: 4 0 0 0; }
+.login-hint  { -fx-text-fill: #94a3b8; -fx-font-size: 11px; -fx-padding: 4 0 0 0; }
 
-.form-label { -fx-text-fill: #f1f5f9; -fx-font-size: 13px; -fx-font-weight: bold; }
+/* ══════════════════════════════════════════════════════════
+   FIX: Label nhãn form trong login-card và register-card
+   Áp dụng toàn bộ label bên trong card → không cần gán
+   styleClass="form-label" từng cái trong FXML nữa.
+   ══════════════════════════════════════════════════════════ */
+
+/* Label thường bên trong login-card (Tên đăng nhập, Mật khẩu...) */
+.login-card .label {
+    -fx-text-fill: #cbd5e1;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+
+/* Nhưng giữ nguyên màu riêng của các label đặc biệt */
+.login-card .login-title    { -fx-text-fill: #f1f5f9; -fx-font-size: 20px; -fx-font-weight: bold; }
+.login-card .login-error    { -fx-text-fill: #ef4444; }
+.login-card .login-hint     { -fx-text-fill: #94a3b8; -fx-font-size: 11px; -fx-font-weight: normal; }
+.login-card .success-label  { -fx-text-fill: #10b981; }
+
+/* Tương tự cho register-card (màn hình đăng ký) */
+.register-card .label {
+    -fx-text-fill: #cbd5e1;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+.register-card .login-title   { -fx-text-fill: #f1f5f9; -fx-font-size: 20px; -fx-font-weight: bold; }
+.register-card .error-label   { -fx-text-fill: #ef4444; }
+.register-card .success-label { -fx-text-fill: #10b981; }
+.register-card .login-hint    { -fx-text-fill: #94a3b8; -fx-font-size: 11px; -fx-font-weight: normal; }
+
+/* ── Form label & field (dùng chung toàn app) ────────────── */
+.form-label {
+    -fx-text-fill: #cbd5e1;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
 .form-field {
     -fx-background-color: #0f172a; -fx-text-fill: #f1f5f9;
     -fx-prompt-text-fill: #475569; -fx-border-color: #334155;
@@ -361,11 +396,7 @@
 
 /* ══════════════════════════════════════════════════════════
    COMBOBOX — FIX CHỮ TRẮNG KHI CHỌN ITEM (TOÀN CỤC)
-   Áp dụng cho TẤT CẢ ComboBox trong app, đặc biệt dialog
-   Thêm sản phẩm mới.
    ══════════════════════════════════════════════════════════ */
-
-/* Nền và border của ComboBox */
 .combo-box,
 .combo-box-base {
     -fx-background-color: #1e293b;
@@ -375,29 +406,15 @@
     -fx-font-size: 13px;
     -fx-cursor: hand;
 }
-
-/* Mũi tên dropdown */
-.combo-box .arrow-button {
-    -fx-background-color: transparent;
-}
-.combo-box .arrow {
-    -fx-background-color: #94a3b8;
-}
-
-/* ── Item đã chọn hiển thị trên button (button cell) ────── */
+.combo-box .arrow-button { -fx-background-color: transparent; }
+.combo-box .arrow        { -fx-background-color: #94a3b8; }
 .combo-box .list-cell {
     -fx-text-fill: #e2e8f0;
     -fx-background-color: transparent;
     -fx-font-size: 13px;
     -fx-padding: 4 8 4 8;
 }
-
-/* Prompt text khi chưa chọn */
-.combo-box .list-cell:empty {
-    -fx-text-fill: #475569;
-}
-
-/* ── Popup dropdown list ─────────────────────────────────── */
+.combo-box .list-cell:empty { -fx-text-fill: #475569; }
 .combo-box-popup .list-view {
     -fx-background-color: #1e293b;
     -fx-border-color: #334155;
@@ -406,33 +423,24 @@
     -fx-background-radius: 8;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 12, 0, 0, 4);
 }
-
-/* Từng item trong dropdown */
 .combo-box-popup .list-view .list-cell {
     -fx-text-fill: #e2e8f0;
     -fx-background-color: #1e293b;
     -fx-font-size: 13px;
     -fx-padding: 8 14 8 14;
 }
-
-/* Hover item */
 .combo-box-popup .list-view .list-cell:hover {
     -fx-background-color: #334155;
     -fx-text-fill: #f1f5f9;
 }
-
-/* Item đang được chọn (selected) */
 .combo-box-popup .list-view .list-cell:selected {
     -fx-background-color: #1d4ed8;
     -fx-text-fill: white;
 }
-
 .combo-box-popup .list-view .list-cell:selected:hover {
     -fx-background-color: #2563eb;
     -fx-text-fill: white;
 }
-
-/* Fix chữ đen trong button cell — override JavaFX default */
 .combo-box > .list-cell {
     -fx-text-fill: #e2e8f0 !important;
     -fx-background-color: transparent !important;
@@ -447,7 +455,7 @@
 }
 .profile-scroll { -fx-background-color: #0f172a; -fx-background: #0f172a; -fx-border-color: transparent; }
 
-/* ── Table header (Product Management) ───────────────────── */
+/* ── Table header ────────────────────────────────────────── */
 .table-header-row {
     -fx-background-color: #0f172a; -fx-background-radius: 8;
     -fx-border-color: #334155;    -fx-border-radius: 8; -fx-border-width: 1;
@@ -460,8 +468,6 @@
     -fx-font-weight: bold; -fx-font-size: 12px;
     -fx-padding: 3 10 3 10; -fx-background-radius: 20;
 }
-
-/* Nút tăng giá nhanh */
 .btn-quick {
     -fx-background-color: #1e3a5f; -fx-text-fill: #38bdf8;
     -fx-border-color: #2563eb; -fx-border-radius: 6; -fx-border-width: 1;
