@@ -33,19 +33,18 @@ public class ProductManagementController {
     @FXML private ComboBox<String> categoryFilter;
     @FXML private TextField searchField;
 
-    private String username;
+    private String  username;
+    private boolean isAdmin;   // ← KEY: phân biệt Admin vs Seller
 
     private static final DateTimeFormatter DT_FMT =
             DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
     private static final DateTimeFormatter TIME_ONLY =
             DateTimeFormatter.ofPattern("HH:mm");
 
-    // Thư mục lưu ảnh sản phẩm (trong resources hoặc thư mục chạy)
     private static final String IMAGE_DIR = "product_images/";
 
     private static final List<ManagedProduct> managedList = new ArrayList<>();
     private static final Map<String, Double>  stepMap     = new HashMap<>();
-    // Map productId → đường dẫn ảnh
     private static final Map<String, String>  imageMap    = new HashMap<>();
 
     public record ManagedProduct(
@@ -67,8 +66,8 @@ public class ProductManagementController {
     public void initialize() {
         User user = AppContext.getCurrentUser();
         username  = user.getUsername();
+        isAdmin   = "ADMIN".equalsIgnoreCase(user.getRole());  // ← xác định role
 
-        // Tạo thư mục lưu ảnh nếu chưa có
         new File(IMAGE_DIR).mkdirs();
 
         statusFilter.getItems().addAll(
@@ -78,11 +77,19 @@ public class ProductManagementController {
                 "Tất cả", "Laptop", "Điện thoại", "Máy ảnh",
                 "Điện tử", "Đồng hồ", "Xe cộ", "Khác");
 
-        syncFromAppContext(user);
+        if (isAdmin) {
+            // Admin thấy sản phẩm của TẤT CẢ seller
+            syncAllSellersFromAppContext();
+        } else {
+            // Seller chỉ thấy sản phẩm của mình
+            syncFromAppContext(user);
+        }
+
         refreshStats();
         renderList(managedList);
     }
 
+    // ── Sync sản phẩm của seller hiện tại ────────────────────
     private void syncFromAppContext(User user) {
         for (AppContext.ProductRecord p : AppContext.getProducts(user.getUsername())) {
             boolean exists = managedList.stream()
@@ -97,6 +104,32 @@ public class ProductManagementController {
                 managedList.add(new ManagedProduct(
                         p.id(), p.name(), p.category(),
                         user.getUsername(), p.startPrice(),
+                        mStatus, LocalDateTime.now(),
+                        p.startTime(), p.endTime()
+                ));
+            }
+        }
+    }
+
+    // ── Admin: sync sản phẩm của tất cả seller ───────────────
+    private void syncAllSellersFromAppContext() {
+        for (AppContext.ProductRecord p : AppContext.getAllProducts()) {
+            boolean exists = managedList.stream()
+                    .anyMatch(m -> m.id().equals(p.id()));
+            if (!exists) {
+                // Tìm seller name từ sessionSellerMap hoặc dùng "—"
+                String sellerName = AppContext.getSessionSeller(p.id());
+                if (sellerName == null || sellerName.isBlank()) sellerName = "—";
+
+                String mStatus = switch (p.status()) {
+                    case "ĐANG ĐẤU GIÁ" -> "ĐANG ĐẤU GIÁ";
+                    case "ĐÃ BÁN"        -> "ĐÃ BÁN";
+                    case "CHỜ DUYỆT"     -> "CHỜ DUYỆT";
+                    default              -> p.status();
+                };
+                managedList.add(new ManagedProduct(
+                        p.id(), p.name(), p.category(),
+                        sellerName, p.startPrice(),
                         mStatus, LocalDateTime.now(),
                         p.startTime(), p.endTime()
                 ));
@@ -158,7 +191,6 @@ public class ProductManagementController {
                         new File(imgPath).toURI().toString()));
             } catch (Exception ignored) {}
         } else {
-            // Placeholder icon nếu chưa có ảnh
             Label placeholder = new Label("📦");
             placeholder.setStyle("-fx-font-size: 28px; -fx-min-width: 48px; "
                     + "-fx-alignment: CENTER;");
@@ -210,37 +242,67 @@ public class ProductManagementController {
         return row;
     }
 
+    // =========================================================
+    // BUILD ACTIONS — PHÂN QUYỀN SELLER vs ADMIN
+    // =========================================================
     private HBox buildActions(ManagedProduct p) {
         HBox actions = new HBox(8);
         actions.setAlignment(Pos.CENTER);
 
         switch (p.status()) {
+
             case "CHỜ DUYỆT" -> {
-                Button approveBtn = new Button("✅ Duyệt");
-                approveBtn.setStyle(
-                        "-fx-background-color: #14532d; -fx-text-fill: #4ade80; "
-                                + "-fx-background-radius: 6; -fx-cursor: hand; "
-                                + "-fx-font-size: 12px; -fx-padding: 5 10 5 10;");
-                approveBtn.setOnAction(e -> handleApprove(p));
+                if (isAdmin) {
+                    // ✅ ADMIN: thấy nút Duyệt + Từ chối
+                    Button approveBtn = new Button("✅ Duyệt");
+                    approveBtn.setStyle(
+                            "-fx-background-color: #14532d; -fx-text-fill: #4ade80; "
+                                    + "-fx-background-radius: 6; -fx-cursor: hand; "
+                                    + "-fx-font-size: 12px; -fx-padding: 5 10 5 10;");
+                    approveBtn.setOnAction(e -> handleApprove(p));
 
-                Button rejectBtn = new Button("❌ Từ chối");
-                rejectBtn.getStyleClass().add("btn-danger");
-                rejectBtn.setOnAction(e -> handleReject(p));
+                    Button rejectBtn = new Button("❌ Từ chối");
+                    rejectBtn.getStyleClass().add("btn-danger");
+                    rejectBtn.setOnAction(e -> handleReject(p));
 
-                actions.getChildren().addAll(approveBtn, rejectBtn);
+                    actions.getChildren().addAll(approveBtn, rejectBtn);
+                } else {
+                    // ⛔ SELLER: chỉ thấy label "Chờ Admin duyệt" + nút Xóa
+                    Label waitLabel = new Label("⏳ Chờ Admin duyệt");
+                    waitLabel.setStyle(
+                            "-fx-text-fill: #94a3b8; -fx-font-size: 12px; "
+                                    + "-fx-font-style: italic;");
+
+                    Button deleteBtn = new Button("🗑 Xóa");
+                    deleteBtn.getStyleClass().add("btn-danger");
+                    deleteBtn.setOnAction(e -> handleDelete(p));
+
+                    actions.getChildren().addAll(waitLabel, deleteBtn);
+                }
             }
+
             case "ĐÃ DUYỆT" -> {
-                Button startBtn = new Button("⚡ Bắt đầu đấu giá");
-                startBtn.getStyleClass().add("btn-primary");
-                startBtn.setStyle("-fx-font-size: 12px; -fx-padding: 5 10 5 10;");
-                startBtn.setOnAction(e -> handleStartAuction(p));
+                if (isAdmin) {
+                    // ADMIN: chỉ xem
+                    Button viewBtn = new Button("👁 Xem");
+                    viewBtn.getStyleClass().add("btn-secondary");
+                    viewBtn.setOnAction(e -> handleView(p));
+                    actions.getChildren().add(viewBtn);
+                } else {
+                    // SELLER: bắt đầu đấu giá + sửa
+                    Button startBtn = new Button("⚡ Bắt đầu đấu giá");
+                    startBtn.getStyleClass().add("btn-primary");
+                    startBtn.setStyle("-fx-font-size: 12px; -fx-padding: 5 10 5 10;");
+                    startBtn.setOnAction(e -> handleStartAuction(p));
 
-                Button editBtn = new Button("✏️ Sửa");
-                editBtn.getStyleClass().add("btn-secondary");
-                editBtn.setOnAction(e -> handleEdit(p));
+                    Button editBtn = new Button("✏️ Sửa");
+                    editBtn.getStyleClass().add("btn-secondary");
+                    editBtn.setOnAction(e -> handleEdit(p));
 
-                actions.getChildren().addAll(startBtn, editBtn);
+                    actions.getChildren().addAll(startBtn, editBtn);
+                }
             }
+
             case "ĐANG ĐẤU GIÁ" -> {
                 Button liveBtn = new Button("🔴 Vào phiên");
                 liveBtn.getStyleClass().add("btn-primary");
@@ -253,7 +315,9 @@ public class ProductManagementController {
 
                 actions.getChildren().addAll(liveBtn, viewBtn);
             }
+
             default -> {
+                // ĐÃ BÁN / TỪ CHỐI / HẾT HẠN
                 Button viewBtn = new Button("👁 Xem");
                 viewBtn.getStyleClass().add("btn-secondary");
                 viewBtn.setOnAction(e -> handleView(p));
@@ -396,11 +460,9 @@ public class ProductManagementController {
 
         VBox formFields = new VBox(12);
 
-        // Tên sản phẩm
         TextField nameField = styledTextField("Tên sản phẩm...");
         formFields.getChildren().add(fieldGroup("Tên sản phẩm *", nameField));
 
-        // Danh mục
         ComboBox<String> catBox = new ComboBox<>();
         catBox.getItems().addAll("Laptop","Điện thoại","Máy ảnh","Điện tử","Đồng hồ","Xe cộ","Khác");
         catBox.setPromptText("Chọn danh mục");
@@ -412,10 +474,10 @@ public class ProductManagementController {
                 -fx-background-radius: 8;
                 -fx-font-size: 13px;
                 -fx-cursor: hand;
+                -fx-text-fill: #f1f5f9;
                 """);
         formFields.getChildren().add(fieldGroup("Danh mục *", catBox));
 
-        // Giá + bước giá
         TextField priceField = styledTextField("VD: 5,000,000");
         TextField stepField  = styledTextField("VD: 500,000");
         stepField.setText("500000");
@@ -431,7 +493,6 @@ public class ProductManagementController {
         VBox priceGroup = new VBox(6, priceLabels, priceRow);
         formFields.getChildren().add(priceGroup);
 
-        // Thời gian bắt đầu
         DatePicker startDate = styledDatePicker(LocalDate.now());
         TextField startTime = styledTextField("");
         startTime.setText(LocalTime.now().plusMinutes(10).format(TIME_ONLY));
@@ -443,7 +504,6 @@ public class ProductManagementController {
         HBox.setHgrow(startDate, Priority.ALWAYS);
         formFields.getChildren().add(fieldGroup("Bắt đầu *", startRow));
 
-        // Thời gian kết thúc
         DatePicker endDate = styledDatePicker(LocalDate.now().plusDays(7));
         TextField endTime = styledTextField("");
         endTime.setText("23:59");
@@ -455,7 +515,6 @@ public class ProductManagementController {
         HBox.setHgrow(endDate, Priority.ALWAYS);
         formFields.getChildren().add(fieldGroup("Kết thúc *", endRow));
 
-        // Error label
         Label errLabel = new Label();
         errLabel.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 12px; -fx-padding: 4 0 0 0;");
         errLabel.setWrapText(true);
@@ -463,18 +522,15 @@ public class ProductManagementController {
         rightPanel.getChildren().addAll(formTitle, formFields, errLabel);
         VBox.setVgrow(formFields, Priority.ALWAYS);
 
-        // Root layout
         HBox root = new HBox(0);
         root.setPrefHeight(520);
         root.getChildren().addAll(leftPanel, rightPanel);
         dialog.getDialogPane().setContent(root);
 
-        // ✅ Chỉ 1 Platform.runLater duy nhất — sau khi đã có đủ biến
         javafx.application.Platform.runLater(() -> {
             javafx.scene.Node saveNode   = dialog.getDialogPane().lookupButton(saveBtn);
             javafx.scene.Node cancelNode = dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
 
-            // Style buttons
             saveNode.setStyle("""
                     -fx-background-color: #2563eb;
                     -fx-text-fill: white;
@@ -496,15 +552,12 @@ public class ProductManagementController {
                     -fx-cursor: hand;
                     """);
 
-            // Disable khi tên trống
             saveNode.setDisable(nameField.getText().trim().isEmpty());
             nameField.textProperty().addListener((obs, o, n) ->
                     saveNode.setDisable(n.trim().isEmpty()));
 
-            // ✅ Chặn đóng dialog khi validation fail
             saveNode.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
                 errLabel.setText("");
-
                 if (nameField.getText().trim().isEmpty()) {
                     errLabel.setText("⚠ Vui lòng nhập tên sản phẩm.");
                     event.consume(); return;
@@ -554,7 +607,6 @@ public class ProductManagementController {
             });
         });
 
-        // Result converter
         dialog.setResultConverter(btn -> {
             if (btn != saveBtn) return null;
 
@@ -572,7 +624,6 @@ public class ProductManagementController {
 
             stepMap.put(id, step);
 
-            // Copy ảnh
             if (selectedImagePath[0] != null) {
                 try {
                     File src  = new File(selectedImagePath[0]);
@@ -585,8 +636,12 @@ public class ProductManagementController {
                 }
             }
 
+            // Seller đăng → CHỜ DUYỆT (phải chờ Admin duyệt)
+            // Admin thêm  → ĐÃ DUYỆT  (tự duyệt luôn)
+            String initialStatus = isAdmin ? "ĐÃ DUYỆT" : "CHỜ DUYỆT";
+
             return new ManagedProduct(id, nameVal, catVal, username, price,
-                    "CHỜ DUYỆT", LocalDateTime.now(), startDT, endDT);
+                    initialStatus, LocalDateTime.now(), startDT, endDT);
         });
 
         dialog.showAndWait().ifPresent(p -> {
@@ -595,7 +650,7 @@ public class ProductManagementController {
                 AppContext.addProduct(username, new AppContext.ProductRecord(
                         p.id(), p.name(), p.category(),
                         p.startPrice(), p.startPrice(), 0,
-                        "CHỜ DUYỆT", p.auctionStart(), p.auctionEnd(), "—"
+                        p.status(), p.auctionStart(), p.auctionEnd(), "—"
                 ));
                 refreshStats();
                 renderList(managedList);
@@ -603,7 +658,9 @@ public class ProductManagementController {
         });
     }
 
-    // ── UI Helper methods ─────────────────────────────────────
+    // =========================================================
+    // HELPERS — UI
+    // =========================================================
     private TextField styledTextField(String prompt) {
         TextField tf = new TextField();
         tf.setPromptText(prompt);
@@ -648,26 +705,30 @@ public class ProductManagementController {
     }
 
     // =========================================================
-    // HANDLERS (giữ nguyên từ bản cũ)
+    // HANDLERS
     // =========================================================
+
+    /** Chỉ Admin mới gọi được — đã đảm bảo bằng buildActions() */
     private void handleApprove(ManagedProduct p) {
         replaceStatus(p, "ĐÃ DUYỆT");
-        AppContext.updateProduct(username, new AppContext.ProductRecord(
+        AppContext.updateProduct(p.sellerName(), new AppContext.ProductRecord(
                 p.id(), p.name(), p.category(),
                 p.startPrice(), p.startPrice(), 0,
                 "ĐÃ DUYỆT", p.auctionStart(), p.auctionEnd(), "—"
         ));
     }
 
+    /** Chỉ Admin mới gọi được — đã đảm bảo bằng buildActions() */
     private void handleReject(ManagedProduct p) {
         replaceStatus(p, "TỪ CHỐI");
-        AppContext.updateProduct(username, new AppContext.ProductRecord(
+        AppContext.updateProduct(p.sellerName(), new AppContext.ProductRecord(
                 p.id(), p.name(), p.category(),
                 p.startPrice(), p.startPrice(), 0,
                 "TỪ CHỐI", p.auctionStart(), p.auctionEnd(), "—"
         ));
     }
 
+    /** Chỉ Seller mới gọi được — đã đảm bảo bằng buildActions() */
     private void handleStartAuction(ManagedProduct p) {
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Bắt đầu đấu giá");
@@ -749,8 +810,7 @@ public class ProductManagementController {
 
             } catch (Exception e) {
                 e.printStackTrace();
-                showAlert("Lỗi",
-                        "Không thể kích hoạt phiên: " + e.getMessage());
+                showAlert("Lỗi", "Không thể kích hoạt phiên: " + e.getMessage());
                 return;
             }
         }
@@ -779,12 +839,26 @@ public class ProductManagementController {
         });
     }
 
+    private void handleDelete(ManagedProduct p) {
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Xác nhận xóa");
+        confirm.setHeaderText("Xóa: " + p.name());
+        confirm.setContentText("Bạn có chắc muốn xóa sản phẩm này không?");
+        confirm.showAndWait().ifPresent(btn -> {
+            if (btn == ButtonType.OK) {
+                managedList.remove(p);
+                AppContext.removeProduct(username, p.id());
+                refreshStats();
+                renderList(managedList);
+            }
+        });
+    }
+
     private void handleView(ManagedProduct p) {
         Alert a = new Alert(Alert.AlertType.INFORMATION);
         a.setTitle("Chi tiết sản phẩm");
         a.setHeaderText(p.name());
 
-        // Hiện ảnh trong dialog xem chi tiết nếu có
         String imgPath = imageMap.get(p.id());
         if (imgPath != null && new File(imgPath).exists()) {
             try {

@@ -26,7 +26,6 @@ public class LoginController {
     private void handleLogin() {
         String username = usernameField.getText().trim();
         String password = passwordField.getText();
-
         errorLabel.setVisible(false);
 
         if (username.isEmpty() || password.isEmpty()) {
@@ -50,7 +49,12 @@ public class LoginController {
         }
 
         try {
-            HelloApplication.showMainView();
+            // ── Điều hướng theo vai trò ───────────────────────
+            if ("ADMIN".equals(user.getRole())) {
+                HelloApplication.showAdminView();
+            } else {
+                HelloApplication.showMainView();
+            }
         } catch (Exception e) {
             showError("Lỗi khi mở giao diện: " + e.getMessage());
             e.printStackTrace();

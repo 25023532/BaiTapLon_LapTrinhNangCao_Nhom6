@@ -35,9 +35,25 @@
                         maxWidth="Infinity" styleClass="nav-btn"
                         onAction="#handleLiveAuction"/>
 
-                <Button text="📦  Quản lý sản phẩm"
+                <!--
+                    SELLER: Đăng bán sản phẩm → MyProductsController
+                    fx:id để controller ẩn/hiện theo role.
+                -->
+                <Button fx:id="btnSellerProducts"
+                        text="🏷️  Đăng bán sản phẩm"
                         maxWidth="Infinity" styleClass="nav-btn"
-                        onAction="#handleProductManagement"/>
+                        onAction="#handleSellerProducts"
+                        visible="false" managed="false"/>
+
+                <!--
+                    ADMIN: Quản lý sản phẩm → ProductManagementController
+                    fx:id để controller ẩn/hiện theo role.
+                -->
+                <Button fx:id="btnAdminProducts"
+                        text="📦  Quản lý sản phẩm"
+                        maxWidth="Infinity" styleClass="nav-btn"
+                        onAction="#handleAdminProducts"
+                        visible="false" managed="false"/>
 
                 <Button text="📋  Lịch sử phiên đấu giá"
                         maxWidth="Infinity" styleClass="nav-btn"
@@ -125,9 +141,6 @@
                     <MenuItem fx:id="menuItemHistory"
                               text="📋  Lịch sử"
                               onAction="#handleHistory"/>
-                    <MenuItem fx:id="menuItemMyProducts"
-                              text="🏪  Sản phẩm đăng bán"
-                              onAction="#handleMyProducts"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="🚪  Đăng xuất"
                               onAction="#handleLogout"/>
@@ -162,7 +175,8 @@
 
                     <VBox spacing="12" HBox.hgrow="ALWAYS">
                         <Label fx:id="productTitleLabel" styleClass="product-title"/>
-                        <Label fx:id="productDescLabel"  styleClass="product-desc" wrapText="true"/>
+                        <Label fx:id="productDescLabel"  styleClass="product-desc"
+                               wrapText="true"/>
 
                         <HBox spacing="24">
                             <VBox styleClass="price-cell">
@@ -185,20 +199,24 @@
 
                         <HBox alignment="CENTER_LEFT" spacing="24">
                             <VBox>
-                                <Label text="THỜI GIAN CÒN LẠI" styleClass="countdown-label"/>
+                                <Label text="THỜI GIAN CÒN LẠI"
+                                       styleClass="countdown-label"/>
                                 <HBox spacing="4" alignment="CENTER_LEFT">
                                     <VBox alignment="CENTER">
-                                        <Label fx:id="hoursLabel" text="00" styleClass="countdown-num"/>
+                                        <Label fx:id="hoursLabel" text="00"
+                                               styleClass="countdown-num"/>
                                         <Label text="GIỜ"  styleClass="countdown-unit"/>
                                     </VBox>
                                     <Label text=":" styleClass="countdown-sep"/>
                                     <VBox alignment="CENTER">
-                                        <Label fx:id="minsLabel" text="00" styleClass="countdown-num"/>
+                                        <Label fx:id="minsLabel" text="00"
+                                               styleClass="countdown-num"/>
                                         <Label text="PHÚT" styleClass="countdown-unit"/>
                                     </VBox>
                                     <Label text=":" styleClass="countdown-sep"/>
                                     <VBox alignment="CENTER">
-                                        <Label fx:id="secsLabel" text="00" styleClass="countdown-num"/>
+                                        <Label fx:id="secsLabel" text="00"
+                                               styleClass="countdown-num"/>
                                         <Label text="GIÂY" styleClass="countdown-unit"/>
                                     </VBox>
                                 </HBox>
@@ -221,7 +239,8 @@
                     <padding><Insets top="36" right="40" bottom="36" left="40"/></padding>
                     <Label text="🏷️" style="-fx-font-size:48px;"/>
                     <Label text="Chưa có phiên đấu giá nào đang diễn ra"
-                           style="-fx-font-size:15px; -fx-font-weight:bold; -fx-text-fill:#94a3b8;"/>
+                           style="-fx-font-size:15px; -fx-font-weight:bold;
+                                  -fx-text-fill:#94a3b8;"/>
                     <Label text="Khi có sản phẩm được đăng, thông tin sẽ hiển thị tại đây."
                            style="-fx-font-size:13px; -fx-text-fill:#64748b;"
                            wrapText="true"/>
@@ -232,7 +251,8 @@
                     <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
                     <Label text="Lịch sử bid" styleClass="card-title"/>
                     <Separator/>
-                    <ScrollPane fitToWidth="true" prefHeight="200" styleClass="bid-scroll">
+                    <ScrollPane fitToWidth="true" prefHeight="200"
+                                styleClass="bid-scroll">
                         <VBox fx:id="bidHistoryBox" spacing="6"/>
                     </ScrollPane>
                     <Hyperlink text="Xem tất cả lịch sử →"
@@ -262,8 +282,10 @@
                     <padding><Insets top="12" right="16" bottom="12" left="16"/></padding>
                     <Label text="💬 CHAT TRỰC TUYẾN" styleClass="chat-title"/>
                     <Region HBox.hgrow="ALWAYS"/>
-                    <Label fx:id="onlineCountLabel" text="● Online ..." styleClass="chat-online"/>
-                    <Button text="✕" onAction="#handleToggleChat" styleClass="btn-close-chat"/>
+                    <Label fx:id="onlineCountLabel" text="● Online ..."
+                           styleClass="chat-online"/>
+                    <Button text="✕" onAction="#handleToggleChat"
+                            styleClass="btn-close-chat"/>
                 </HBox>
 
                 <ScrollPane fx:id="chatScrollPane"
@@ -272,7 +294,9 @@
                             prefHeight="360"
                             styleClass="chat-scroll">
                     <VBox fx:id="chatMessagesBox" spacing="8">
-                        <padding><Insets top="12" right="12" bottom="12" left="12"/></padding>
+                        <padding>
+                            <Insets top="12" right="12" bottom="12" left="12"/>
+                        </padding>
                     </VBox>
                 </ScrollPane>
 
@@ -283,7 +307,8 @@
                                HBox.hgrow="ALWAYS"
                                styleClass="chat-input"
                                onAction="#handleSendChat"/>
-                    <Button text="➤" onAction="#handleSendChat" styleClass="btn-send"/>
+                    <Button text="➤" onAction="#handleSendChat"
+                            styleClass="btn-send"/>
                 </HBox>
             </VBox>
 

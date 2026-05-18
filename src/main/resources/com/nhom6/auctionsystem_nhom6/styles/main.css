@@ -157,8 +157,8 @@
 .card-title { -fx-text-fill: #f1f5f9; -fx-font-weight: bold; -fx-font-size: 14px; }
 
 /* ── Bid History ─────────────────────────────────────────── */
-.bid-scroll { -fx-background-color: transparent; -fx-background: transparent; -fx-border-color: transparent; }
-.bid-row    { -fx-background-color: #0f172a; -fx-background-radius: 6; -fx-padding: 8 10 8 10; }
+.bid-scroll  { -fx-background-color: transparent; -fx-background: transparent; -fx-border-color: transparent; }
+.bid-row     { -fx-background-color: #0f172a; -fx-background-radius: 6; -fx-padding: 8 10 8 10; }
 .bid-row-top { -fx-background-color: #1e3a5f; }
 .bid-amount  { -fx-text-fill: #10b981; -fx-font-weight: bold; }
 .bid-time    { -fx-text-fill: #64748b; }
@@ -250,10 +250,6 @@
 
 /* ── Login Screen ────────────────────────────────────────── */
 .login-card {
-    -fx-background-color: #1e293b; -fx-background-radius: 16;
-    -fx-border-color: #334155; -fx-border-radius: 16; -fx-border-width: 1;
-}
-.login-card {
     -fx-background-color: rgba(15, 25, 50, 0.75);
     -fx-background-radius: 16;
     -fx-border-color: rgba(59, 130, 246, 0.35);
@@ -263,12 +259,12 @@
 }
 .login-logo {
     -fx-text-fill: #f1f5f9;
-    -fx-font-size: 30px;
+    -fx-font-size: 26px;
     -fx-font-weight: bold;
-    -fx-effect: dropshadow(gaussian, rgba(99,179,237,0.8), 20, 0, 0, 0);
+    -fx-effect: dropshadow(gaussian, rgba(37,99,235,0.7), 16, 0, 0, 0);
 }
 .login-title    { -fx-text-fill: #f1f5f9; -fx-font-size: 20px; -fx-font-weight: bold; -fx-padding: 0 0 8 0; }
-.login-subtitle { -fx-text-fill: #cbd5e1; -fx-font-size: 13px; }
+.login-subtitle { -fx-text-fill: #94a3b8; -fx-font-size: 13px; }
 .login-input {
     -fx-background-color: #0f172a; -fx-text-fill: #f1f5f9;
     -fx-prompt-text-fill: #475569; -fx-border-color: #334155;
@@ -279,8 +275,8 @@
 .login-error { -fx-text-fill: #ef4444; -fx-font-size: 12px; }
 .login-hint  { -fx-text-fill: #64748b; -fx-font-size: 11px; -fx-padding: 4 0 0 0; }
 
-.form-label  { -fx-text-fill: #f1f5f9; -fx-font-size: 13px; -fx-font-weight: bold; }
-.form-field  {
+.form-label { -fx-text-fill: #f1f5f9; -fx-font-size: 13px; -fx-font-weight: bold; }
+.form-field {
     -fx-background-color: #0f172a; -fx-text-fill: #f1f5f9;
     -fx-prompt-text-fill: #475569; -fx-border-color: #334155;
     -fx-border-radius: 8; -fx-background-radius: 8;
@@ -349,8 +345,8 @@
     -fx-font-size: 13px; -fx-padding: 10 20 10 20;
     -fx-cursor: hand; -fx-background-radius: 6;
 }
-.tab-btn:hover  { -fx-background-color: #243447; -fx-text-fill: #e2e8f0; }
-.tab-active     { -fx-background-color: #1d4ed8; -fx-text-fill: white; -fx-background-radius: 6; }
+.tab-btn:hover    { -fx-background-color: #243447; -fx-text-fill: #e2e8f0; }
+.tab-active       { -fx-background-color: #1d4ed8; -fx-text-fill: white; -fx-background-radius: 6; }
 .tab-active:hover { -fx-background-color: #2563eb; -fx-text-fill: white; }
 
 /* ── Filter ComboBox ─────────────────────────────────────── */
@@ -362,6 +358,85 @@
 .filter-combo .list-cell    { -fx-text-fill: #e2e8f0; -fx-background-color: #1e293b; -fx-font-size: 13px; }
 .filter-combo .list-view    { -fx-background-color: #1e293b; -fx-border-color: #334155; }
 .filter-combo .list-view .list-cell:hover { -fx-background-color: #334155; }
+
+/* ══════════════════════════════════════════════════════════
+   COMBOBOX — FIX CHỮ TRẮNG KHI CHỌN ITEM (TOÀN CỤC)
+   Áp dụng cho TẤT CẢ ComboBox trong app, đặc biệt dialog
+   Thêm sản phẩm mới.
+   ══════════════════════════════════════════════════════════ */
+
+/* Nền và border của ComboBox */
+.combo-box,
+.combo-box-base {
+    -fx-background-color: #1e293b;
+    -fx-border-color: #334155;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-font-size: 13px;
+    -fx-cursor: hand;
+}
+
+/* Mũi tên dropdown */
+.combo-box .arrow-button {
+    -fx-background-color: transparent;
+}
+.combo-box .arrow {
+    -fx-background-color: #94a3b8;
+}
+
+/* ── Item đã chọn hiển thị trên button (button cell) ────── */
+.combo-box .list-cell {
+    -fx-text-fill: #e2e8f0;
+    -fx-background-color: transparent;
+    -fx-font-size: 13px;
+    -fx-padding: 4 8 4 8;
+}
+
+/* Prompt text khi chưa chọn */
+.combo-box .list-cell:empty {
+    -fx-text-fill: #475569;
+}
+
+/* ── Popup dropdown list ─────────────────────────────────── */
+.combo-box-popup .list-view {
+    -fx-background-color: #1e293b;
+    -fx-border-color: #334155;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 12, 0, 0, 4);
+}
+
+/* Từng item trong dropdown */
+.combo-box-popup .list-view .list-cell {
+    -fx-text-fill: #e2e8f0;
+    -fx-background-color: #1e293b;
+    -fx-font-size: 13px;
+    -fx-padding: 8 14 8 14;
+}
+
+/* Hover item */
+.combo-box-popup .list-view .list-cell:hover {
+    -fx-background-color: #334155;
+    -fx-text-fill: #f1f5f9;
+}
+
+/* Item đang được chọn (selected) */
+.combo-box-popup .list-view .list-cell:selected {
+    -fx-background-color: #1d4ed8;
+    -fx-text-fill: white;
+}
+
+.combo-box-popup .list-view .list-cell:selected:hover {
+    -fx-background-color: #2563eb;
+    -fx-text-fill: white;
+}
+
+/* Fix chữ đen trong button cell — override JavaFX default */
+.combo-box > .list-cell {
+    -fx-text-fill: #e2e8f0 !important;
+    -fx-background-color: transparent !important;
+}
 
 /* ── Profile avatar large ─────────────────────────────────  */
 .profile-avatar-large {
@@ -413,27 +488,4 @@
     -fx-text-fill: rgba(99, 179, 237, 0.25);
     -fx-font-size: 8px;
     -fx-effect: dropshadow(gaussian, rgba(99,179,237,0.6), 12, 0.8, 0, 0);
-}
-
-/* ── Login card — kính mờ (glassmorphism) ────────────────── */
-.login-card {
-    -fx-background-color: rgba(30, 41, 59, 0.85);
-    -fx-background-radius: 16;
-    -fx-border-color: rgba(99, 179, 237, 0.18);
-    -fx-border-radius: 16;
-    -fx-border-width: 1;
-    -fx-effect: dropshadow(gaussian, rgba(37,99,235,0.25), 32, 0, 0, 8);
-}
-
-/* ── Logo glow ───────────────────────────────────────────── */
-.login-logo {
-    -fx-text-fill: #f1f5f9;
-    -fx-font-size: 26px;
-    -fx-font-weight: bold;
-    -fx-effect: dropshadow(gaussian, rgba(37,99,235,0.7), 16, 0, 0, 0);
-}
-
-.login-subtitle {
-    -fx-text-fill: #94a3b8;
-    -fx-font-size: 13px;
 }
