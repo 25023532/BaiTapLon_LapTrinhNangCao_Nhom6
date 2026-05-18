@@ -4,6 +4,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.input.KeyCode;
 import org.example.service.AuthService;
+import org.example.user.Admin;
 import org.example.user.Bidder;
 import org.example.user.Seller;
 import org.example.user.User;
@@ -21,7 +22,6 @@ public class RegisterController {
     @FXML private Label            errorLabel;
     @FXML private Label            successLabel;
 
-    // ✅ Lấy từ AppContext — đảm bảo dùng chung 1 instance với LoginController
     private final AuthService authService = AppContext.getAuthService();
 
     @FXML
@@ -31,7 +31,8 @@ public class RegisterController {
 
         roleBox.getItems().addAll(
                 "Người đấu giá (Bidder)",
-                "Người bán (Seller)");
+                "Người bán (Seller)",
+                "Quản trị viên (Admin)");   // ← thêm Admin
         roleBox.setValue("Người đấu giá (Bidder)");
 
         confirmField.setOnKeyPressed(e -> {
@@ -69,11 +70,13 @@ public class RegisterController {
             showError("Tên đăng nhập '" + username + "' đã tồn tại."); return;
         }
 
-        // ── Tạo user ──────────────────────────────────────────
+        // ── Tạo user theo role ────────────────────────────────
         String id = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         User newUser;
         if (roleValue != null && roleValue.contains("Seller")) {
             newUser = new Seller(id, username, password, email, fullName);
+        } else if (roleValue != null && roleValue.contains("Admin")) {
+            newUser = new Admin(id, username, password, email, fullName);
         } else {
             newUser = new Bidder(id, username, password, email, fullName);
         }
