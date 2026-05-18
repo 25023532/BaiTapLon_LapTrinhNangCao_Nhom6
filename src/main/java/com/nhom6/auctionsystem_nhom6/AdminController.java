@@ -15,30 +15,64 @@ import java.util.List;
 
 public class AdminController {
 
-    @FXML private Label totalUsersLabel;
-    @FXML private Label totalProductsLabel;
-    @FXML private Label pendingLabel;
-    @FXML private Label activeSessionsLabel;
-    @FXML private Label adminNameLabel;
-    @FXML private VBox  contentBox;
+    // ── Header / Stats ────────────────────────────────────────
+    @FXML private Label      totalUsersLabel;
+    @FXML private Label      totalProductsLabel;
+    @FXML private Label      pendingLabel;
+    @FXML private Label      activeSessionsLabel;
+
+    // ── Profile dropdown ──────────────────────────────────────
+    @FXML private MenuButton adminMenuBtn;
+    @FXML private Label      adminNameLabel;
+    @FXML private Label      adminAvatarLabel;
+
+    // ── Content ───────────────────────────────────────────────
+    @FXML private VBox contentBox;
 
     private final AuthService authService = AppContext.getAuthService();
-
     private String currentTab = "users";
 
+    // =========================================================
+    // INITIALIZE
+    // =========================================================
     @FXML
     public void initialize() {
         User me = AppContext.getCurrentUser();
-        adminNameLabel.setText("👤 " + me.getUsername());
+
+        // ── Avatar + tên ──────────────────────────────────────
+        String name = me.getUsername();
+        adminNameLabel.setText(name);
+        String avatar = name.length() >= 2
+                ? name.substring(0, 2).toUpperCase()
+                : name.toUpperCase();
+        adminAvatarLabel.setText(avatar);
+
         refreshStats();
         showUsers();
+    }
+
+    // =========================================================
+    // PROFILE HANDLERS
+    // =========================================================
+
+    /** Mở màn hình hồ sơ cá nhân */
+    @FXML
+    private void handleProfile() {
+        try { HelloApplication.showProfileView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML
+    private void handleLogout() {
+        AppContext.logout();
+        try { HelloApplication.showLoginView(); }
+        catch (Exception e) { e.printStackTrace(); }
     }
 
     // =========================================================
     // THỐNG KÊ
     // =========================================================
     private void refreshStats() {
-        // getAllUsers() trả về Map → chuyển sang List
         List<User> users = new ArrayList<>(authService.getAllUsers().values());
         totalUsersLabel.setText(String.valueOf(users.size()));
 
@@ -49,8 +83,6 @@ public class AdminController {
                 .filter(p -> "CHỜ DUYỆT".equals(p.status())).count();
         pendingLabel.setText(String.valueOf(pending));
 
-        // FIX: AuctionStatus không có ENDED
-        // → đếm phiên đang RUNNING (mọi trạng thái khác đều là đã kết thúc)
         long activeSessions = AppContext.getGlobalSessions().stream()
                 .filter(s -> s.getStatus() == AuctionStatus.RUNNING).count();
         activeSessionsLabel.setText(String.valueOf(activeSessions));
@@ -64,7 +96,8 @@ public class AdminController {
         currentTab = "users";
         contentBox.getChildren().clear();
 
-        HBox header = buildTableHeader("Tên đăng nhập", "Họ tên", "Email", "Vai trò", "Hành động");
+        HBox header = buildTableHeader(
+                "Tên đăng nhập", "Họ tên", "Email", "Vai trò", "Hành động");
         contentBox.getChildren().add(header);
 
         List<User> users = new ArrayList<>(authService.getAllUsers().values());
@@ -80,11 +113,14 @@ public class AdminController {
             row.setPadding(new Insets(10, 20, 10, 20));
 
             Label username = colLabel(u.getUsername(), 160, true);
-            Label fullName = colLabel(u.getFullName().isEmpty() ? "—" : u.getFullName(), 180, false);
-            Label email    = colLabel(u.getEmail().isEmpty() ? "—" : u.getEmail(), 200, false);
+            Label fullName = colLabel(
+                    u.getFullName().isEmpty() ? "—" : u.getFullName(), 180, false);
+            Label email    = colLabel(
+                    u.getEmail().isEmpty() ? "—" : u.getEmail(), 200, false);
 
             Label roleBadge = new Label(u.getRole());
-            roleBadge.getStyleClass().addAll("history-badge", roleBadgeStyle(u.getRole()));
+            roleBadge.getStyleClass().addAll(
+                    "history-badge", roleBadgeStyle(u.getRole()));
             roleBadge.setMinWidth(120);
 
             Button deleteBtn = new Button("🗑 Xóa");
@@ -104,22 +140,31 @@ public class AdminController {
 
     // =========================================================
     // TAB: SẢN PHẨM
+    // Chỉ hiển thị sản phẩm CHỜ DUYỆT để Admin xét duyệt.
+    // Nếu không có sản phẩm nào chờ → hiện trạng thái rỗng.
     // =========================================================
     @FXML
     public void showProducts() {
         currentTab = "products";
         contentBox.getChildren().clear();
 
-        HBox header = buildTableHeader("Tên sản phẩm", "Danh mục", "Người bán", "Trạng thái", "Hành động");
+        HBox header = buildTableHeader(
+                "Tên sản phẩm", "Danh mục", "Người bán", "Trạng thái", "Hành động");
         contentBox.getChildren().add(header);
 
-        List<AppContext.ProductRecord> products = AppContext.getAllProducts();
-        if (products.isEmpty()) {
-            contentBox.getChildren().add(emptyLabel("Chưa có sản phẩm nào."));
+        // Lọc CHỈ lấy sản phẩm CHỜ DUYỆT
+        List<AppContext.ProductRecord> pending = AppContext.getAllProducts().stream()
+                .filter(p -> "CHỜ DUYỆT".equals(p.status()))
+                .toList();
+
+        if (pending.isEmpty()) {
+            contentBox.getChildren().add(
+                    emptyLabel("✅  Không có sản phẩm nào đang chờ duyệt."));
+            refreshStats();
             return;
         }
 
-        for (AppContext.ProductRecord p : products) {
+        for (AppContext.ProductRecord p : pending) {
             HBox row = new HBox(0);
             row.setAlignment(Pos.CENTER_LEFT);
             row.getStyleClass().add("history-row");
@@ -128,37 +173,28 @@ public class AdminController {
             Label name     = colLabel(p.name(), 200, true);
             Label category = colLabel(p.category(), 120, false);
 
-            // FIX: ProductRecord không có field sellerUsername vì seller được lưu
-            //      làm KEY trong productMap. Dùng helper getSellerForProduct() để tra cứu.
             String sellerName = AppContext.getSellerForProduct(p.id());
             Label seller = colLabel(sellerName, 140, false);
 
             Label statusBadge = new Label(p.status());
-            statusBadge.getStyleClass().addAll("history-badge", productBadgeStyle(p.status()));
+            statusBadge.getStyleClass().addAll(
+                    "history-badge", "badge-warn");   // CHỜ DUYỆT luôn là warn
             statusBadge.setMinWidth(130);
 
-            HBox actions = new HBox(8);
+            // Admin luôn thấy nút Duyệt + Từ chối (đây chỉ là CHỜ DUYỆT)
+            Button approveBtn = new Button("✅ Duyệt");
+            approveBtn.setStyle(
+                    "-fx-background-color: #14532d; -fx-text-fill: #4ade80; "
+                    + "-fx-background-radius: 6; -fx-cursor: hand; "
+                    + "-fx-font-size: 12px; -fx-padding: 5 10 5 10;");
+            approveBtn.setOnAction(e -> handleApproveProduct(p, sellerName));
+
+            Button rejectBtn = new Button("❌ Từ chối");
+            rejectBtn.getStyleClass().add("btn-danger");
+            rejectBtn.setOnAction(e -> handleRejectProduct(p, sellerName));
+
+            HBox actions = new HBox(8, approveBtn, rejectBtn);
             actions.setAlignment(Pos.CENTER);
-
-            if ("CHỜ DUYỆT".equals(p.status())) {
-                Button approveBtn = new Button("✅ Duyệt");
-                approveBtn.setStyle(
-                        "-fx-background-color: #14532d; -fx-text-fill: #4ade80; "
-                                + "-fx-background-radius: 6; -fx-cursor: hand; "
-                                + "-fx-font-size: 12px; -fx-padding: 5 10 5 10;");
-                approveBtn.setOnAction(e -> handleApproveProduct(p, sellerName));
-
-                Button rejectBtn = new Button("❌ Từ chối");
-                rejectBtn.getStyleClass().add("btn-danger");
-                rejectBtn.setOnAction(e -> handleRejectProduct(p, sellerName));
-
-                actions.getChildren().addAll(approveBtn, rejectBtn);
-            } else {
-                Button viewBtn = new Button("👁 Xem");
-                viewBtn.getStyleClass().add("btn-secondary");
-                viewBtn.setOnAction(e -> handleViewProduct(p, sellerName));
-                actions.getChildren().add(viewBtn);
-            }
 
             row.getChildren().addAll(name, category, seller, statusBadge, actions);
             contentBox.getChildren().add(row);
@@ -175,7 +211,8 @@ public class AdminController {
         currentTab = "sessions";
         contentBox.getChildren().clear();
 
-        HBox header = buildTableHeader("ID Phiên", "Tên sản phẩm", "Giá hiện tại", "Trạng thái", "Hành động");
+        HBox header = buildTableHeader(
+                "ID Phiên", "Tên sản phẩm", "Giá hiện tại", "Trạng thái", "Hành động");
         contentBox.getChildren().add(header);
 
         List<AuctionSession> sessions = AppContext.getGlobalSessions();
@@ -195,8 +232,6 @@ public class AdminController {
             Label priceLabel = colLabel(formatVND(s.getCurrentPrice()), 140, false);
             priceLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
 
-            // FIX: không dùng AuctionStatus.ENDED vì không tồn tại
-            // → phiên đang chạy khi status == RUNNING, mọi trạng thái khác = kết thúc
             boolean isRunning = s.getStatus() == AuctionStatus.RUNNING;
             String statusTxt  = isRunning ? "ĐANG DIỄN RA" : "ĐÃ KẾT THÚC";
             Label statusBadge = new Label(statusTxt);
@@ -213,7 +248,8 @@ public class AdminController {
             HBox actions = new HBox(8, enterBtn);
             actions.setAlignment(Pos.CENTER);
 
-            row.getChildren().addAll(idLabel, nameLabel, priceLabel, statusBadge, actions);
+            row.getChildren().addAll(
+                    idLabel, nameLabel, priceLabel, statusBadge, actions);
             contentBox.getChildren().add(row);
         }
     }
@@ -228,7 +264,6 @@ public class AdminController {
         confirm.setContentText("Bạn có chắc muốn xóa tài khoản này?");
         confirm.showAndWait().ifPresent(btn -> {
             if (btn == ButtonType.OK) {
-                // AuthService dùng unregister() thay vì deleteUser()
                 authService.unregister(u.getUsername());
                 showUsers();
                 refreshStats();
@@ -242,7 +277,7 @@ public class AdminController {
                 p.startPrice(), p.currentPrice(), p.bidCount(),
                 "ĐÃ DUYỆT", p.startTime(), p.endTime(), p.topBidder()
         ));
-        showProducts();
+        showProducts();   // reload — sản phẩm vừa duyệt sẽ biến mất khỏi danh sách
     }
 
     private void handleRejectProduct(AppContext.ProductRecord p, String sellerName) {
@@ -251,7 +286,7 @@ public class AdminController {
                 p.startPrice(), p.currentPrice(), p.bidCount(),
                 "TỪ CHỐI", p.startTime(), p.endTime(), p.topBidder()
         ));
-        showProducts();
+        showProducts();   // reload — sản phẩm bị từ chối cũng biến mất
     }
 
     private void handleViewProduct(AppContext.ProductRecord p, String sellerName) {
@@ -260,11 +295,11 @@ public class AdminController {
         a.setHeaderText(p.name());
         a.setContentText(
                 "ID         : " + p.id()
-                        + "\nDanh mục  : " + p.category()
-                        + "\nGiá KĐ   : " + formatVND(p.startPrice())
-                        + "\nGiá hiện  : " + formatVND(p.currentPrice())
-                        + "\nNgười bán : " + sellerName
-                        + "\nTrạng thái: " + p.status()
+                + "\nDanh mục  : " + p.category()
+                + "\nGiá KĐ   : " + formatVND(p.startPrice())
+                + "\nGiá hiện  : " + formatVND(p.currentPrice())
+                + "\nNgười bán : " + sellerName
+                + "\nTrạng thái: " + p.status()
         );
         a.showAndWait();
     }
@@ -272,13 +307,6 @@ public class AdminController {
     private void handleEnterSession(AuctionSession s) {
         AppContext.setActiveSession(s);
         try { HelloApplication.showLiveAuctionView(); }
-        catch (Exception e) { e.printStackTrace(); }
-    }
-
-    @FXML
-    private void handleLogout() {
-        AppContext.setCurrentUser(null);
-        try { HelloApplication.showLoginView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
 
@@ -305,7 +333,8 @@ public class AdminController {
         l.setMinWidth(minWidth);
         HBox.setHgrow(l, Priority.ALWAYS);
         if (bold) {
-            l.setStyle("-fx-text-fill: #e2e8f0; -fx-font-weight: bold; -fx-font-size: 13px;");
+            l.setStyle("-fx-text-fill: #e2e8f0; "
+                    + "-fx-font-weight: bold; -fx-font-size: 13px;");
         } else {
             l.getStyleClass().add("history-item-meta");
         }
@@ -314,7 +343,8 @@ public class AdminController {
 
     private Label emptyLabel(String text) {
         Label l = new Label(text);
-        l.setStyle("-fx-text-fill: #64748b; -fx-font-size: 14px; -fx-padding: 40 0 40 0;");
+        l.setStyle("-fx-text-fill: #64748b; "
+                + "-fx-font-size: 14px; -fx-padding: 40 0 40 0;");
         return l;
     }
 
@@ -323,17 +353,6 @@ public class AdminController {
             case "ADMIN"  -> "badge-danger";
             case "SELLER" -> "badge-info";
             default       -> "badge-neutral";
-        };
-    }
-
-    private String productBadgeStyle(String status) {
-        return switch (status) {
-            case "ĐÃ DUYỆT"       -> "badge-info";
-            case "ĐANG ĐẤU GIÁ"  -> "badge-success";
-            case "CHỜ DUYỆT"      -> "badge-warn";
-            case "ĐÃ BÁN"         -> "badge-success";
-            case "TỪ CHỐI"        -> "badge-danger";
-            default               -> "badge-neutral";
         };
     }
 
