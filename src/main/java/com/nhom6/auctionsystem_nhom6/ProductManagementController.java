@@ -40,12 +40,10 @@ public class ProductManagementController {
     private static final DateTimeFormatter TIME_ONLY =
             DateTimeFormatter.ofPattern("HH:mm");
 
-    // Thư mục lưu ảnh sản phẩm (trong resources hoặc thư mục chạy)
     private static final String IMAGE_DIR = "product_images/";
 
     private static final List<ManagedProduct> managedList = new ArrayList<>();
     private static final Map<String, Double>  stepMap     = new HashMap<>();
-    // Map productId → đường dẫn ảnh
     private static final Map<String, String>  imageMap    = new HashMap<>();
 
     public record ManagedProduct(
@@ -68,7 +66,6 @@ public class ProductManagementController {
         User user = AppContext.getCurrentUser();
         username  = user.getUsername();
 
-        // Tạo thư mục lưu ảnh nếu chưa có
         new File(IMAGE_DIR).mkdirs();
 
         statusFilter.getItems().addAll(
@@ -158,7 +155,6 @@ public class ProductManagementController {
                         new File(imgPath).toURI().toString()));
             } catch (Exception ignored) {}
         } else {
-            // Placeholder icon nếu chưa có ảnh
             Label placeholder = new Label("📦");
             placeholder.setStyle("-fx-font-size: 28px; -fx-min-width: 48px; "
                     + "-fx-alignment: CENTER;");
@@ -310,15 +306,14 @@ public class ProductManagementController {
         StackPane previewBox = new StackPane();
         previewBox.setPrefSize(160, 160);
         previewBox.setMaxSize(160, 160);
-       catBox.setStyle("""
-        -fx-background-color: #1e293b;
-        -fx-border-color: #334155;
-        -fx-border-radius: 8;
-        -fx-background-radius: 8;
-        -fx-font-size: 13px;
-        -fx-cursor: hand;
-        -fx-text-fill: #f1f5f9;
-        """);
+        previewBox.setStyle("""
+                -fx-background-color: #0f172a;
+                -fx-background-radius: 12;
+                -fx-border-color: #334155;
+                -fx-border-radius: 12;
+                -fx-border-width: 2;
+                -fx-cursor: hand;
+                """);
 
         VBox emptyHint = new VBox(8);
         emptyHint.setAlignment(Pos.CENTER);
@@ -401,7 +396,7 @@ public class ProductManagementController {
         TextField nameField = styledTextField("Tên sản phẩm...");
         formFields.getChildren().add(fieldGroup("Tên sản phẩm *", nameField));
 
-        // Danh mục
+        // Danh mục — khai báo và set style ngay tại đây ✅
         ComboBox<String> catBox = new ComboBox<>();
         catBox.getItems().addAll("Laptop","Điện thoại","Máy ảnh","Điện tử","Đồng hồ","Xe cộ","Khác");
         catBox.setPromptText("Chọn danh mục");
@@ -413,6 +408,7 @@ public class ProductManagementController {
                 -fx-background-radius: 8;
                 -fx-font-size: 13px;
                 -fx-cursor: hand;
+                -fx-text-fill: #f1f5f9;
                 """);
         formFields.getChildren().add(fieldGroup("Danh mục *", catBox));
 
@@ -470,12 +466,11 @@ public class ProductManagementController {
         root.getChildren().addAll(leftPanel, rightPanel);
         dialog.getDialogPane().setContent(root);
 
-        // ✅ Chỉ 1 Platform.runLater duy nhất — sau khi đã có đủ biến
+        // ✅ Chỉ 1 Platform.runLater duy nhất
         javafx.application.Platform.runLater(() -> {
             javafx.scene.Node saveNode   = dialog.getDialogPane().lookupButton(saveBtn);
             javafx.scene.Node cancelNode = dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
 
-            // Style buttons
             saveNode.setStyle("""
                     -fx-background-color: #2563eb;
                     -fx-text-fill: white;
@@ -497,12 +492,10 @@ public class ProductManagementController {
                     -fx-cursor: hand;
                     """);
 
-            // Disable khi tên trống
             saveNode.setDisable(nameField.getText().trim().isEmpty());
             nameField.textProperty().addListener((obs, o, n) ->
                     saveNode.setDisable(n.trim().isEmpty()));
 
-            // ✅ Chặn đóng dialog khi validation fail
             saveNode.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
                 errLabel.setText("");
 
@@ -573,7 +566,6 @@ public class ProductManagementController {
 
             stepMap.put(id, step);
 
-            // Copy ảnh
             if (selectedImagePath[0] != null) {
                 try {
                     File src  = new File(selectedImagePath[0]);
@@ -649,7 +641,7 @@ public class ProductManagementController {
     }
 
     // =========================================================
-    // HANDLERS (giữ nguyên từ bản cũ)
+    // HANDLERS
     // =========================================================
     private void handleApprove(ManagedProduct p) {
         replaceStatus(p, "ĐÃ DUYỆT");
@@ -785,7 +777,6 @@ public class ProductManagementController {
         a.setTitle("Chi tiết sản phẩm");
         a.setHeaderText(p.name());
 
-        // Hiện ảnh trong dialog xem chi tiết nếu có
         String imgPath = imageMap.get(p.id());
         if (imgPath != null && new File(imgPath).exists()) {
             try {
