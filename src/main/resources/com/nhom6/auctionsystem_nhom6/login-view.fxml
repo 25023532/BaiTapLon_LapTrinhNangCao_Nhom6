@@ -4,11 +4,9 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.image.Image?>
-
 <BorderPane xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.nhom6.auctionsystem_nhom6.LoginController"
             styleClass="login-root">
-
     <center>
         <VBox alignment="CENTER" spacing="16" maxWidth="380">
             <padding><Insets top="60" right="40" bottom="60" left="40"/></padding>
@@ -19,35 +17,34 @@
                     <Image url="@images/logo.png"/>
                 </image>
             </ImageView>
-
-            <Label text="Auction System" styleClass="login-logo"/>
+            <Label text="Auction System"            styleClass="login-logo"/>
             <Label text="Hệ thống Đấu giá Trực tuyến" styleClass="login-subtitle"/>
 
-            <!-- Form -->
+            <!-- Form card -->
             <VBox spacing="10" styleClass="login-card">
                 <padding><Insets top="32" right="32" bottom="32" left="32"/></padding>
 
                 <Label text="Đăng nhập" styleClass="login-title"/>
 
-                <Label text="Tên đăng nhập"/>
-                <TextField fx:id="usernameField" promptText="Nhập tên đăng nhập..."
+                <!-- FIX: thêm styleClass="form-label" để chữ sáng -->
+                <Label text="Tên đăng nhập" styleClass="form-label"/>
+                <TextField fx:id="usernameField"
+                           promptText="Nhập tên đăng nhập..."
                            styleClass="login-input"/>
 
-                <Label text="Mật khẩu"/>
-                <PasswordField fx:id="passwordField" promptText="Nhập mật khẩu..."
+                <Label text="Mật khẩu" styleClass="form-label"/>
+                <PasswordField fx:id="passwordField"
+                               promptText="Nhập mật khẩu..."
                                styleClass="login-input"/>
 
-                <Label fx:id="errorLabel" styleClass="login-error" visible="false"
-                       wrapText="true"/>
+                <Label fx:id="errorLabel" styleClass="login-error"
+                       visible="false" wrapText="true"/>
 
                 <Button text="Đăng nhập" onAction="#handleLogin"
                         maxWidth="Infinity" styleClass="btn-primary"/>
-
                 <Separator/>
-
                 <Button text="Tạo tài khoản mới" onAction="#handleRegister"
                         maxWidth="Infinity" styleClass="btn-secondary"/>
-
                 <Label text="Demo: admin/admin123 · bidder07/bidder123"
                        styleClass="login-hint" wrapText="true"/>
             </VBox>
