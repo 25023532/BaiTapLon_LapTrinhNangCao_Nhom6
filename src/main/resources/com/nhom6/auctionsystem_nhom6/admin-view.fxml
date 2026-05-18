@@ -22,15 +22,16 @@
             </VBox>
 
             <Label text="QUẢN LÝ" styleClass="cat-title"/>
-            <Button fx:id="btnUsers"    text="👥  Người dùng"   maxWidth="Infinity"
+            <Button fx:id="btnUsers"    text="👥  Người dùng"    maxWidth="Infinity"
                     styleClass="nav-btn" onAction="#showUsers"/>
-            <Button fx:id="btnProducts" text="📦  Sản phẩm"     maxWidth="Infinity"
+            <Button fx:id="btnProducts" text="📦  Sản phẩm"      maxWidth="Infinity"
                     styleClass="nav-btn" onAction="#showProducts"/>
             <Button fx:id="btnSessions" text="🔴  Phiên đấu giá" maxWidth="Infinity"
                     styleClass="nav-btn" onAction="#showSessions"/>
 
             <Region VBox.vgrow="ALWAYS"/>
 
+            <!-- Đăng xuất giữ lại ở sidebar để tiện -->
             <Button text="← Đăng xuất" maxWidth="Infinity"
                     styleClass="btn-danger" onAction="#handleLogout"/>
         </VBox>
@@ -40,12 +41,30 @@
     <center>
         <VBox spacing="0">
 
-            <!-- Header -->
+            <!-- Header với profile dropdown -->
             <HBox styleClass="header" alignment="CENTER_LEFT" spacing="12">
                 <padding><Insets top="0" right="24" bottom="0" left="24"/></padding>
                 <Label text="🛡 Bảng điều khiển Admin" styleClass="header-username"/>
                 <Region HBox.hgrow="ALWAYS"/>
-                <Label fx:id="adminNameLabel" styleClass="header-username"/>
+
+                <!-- Profile dropdown giống Seller -->
+                <MenuButton fx:id="adminMenuBtn" styleClass="profile-menu-btn">
+                    <graphic>
+                        <HBox spacing="8" alignment="CENTER">
+                            <Label fx:id="adminAvatarLabel" styleClass="profile-avatar"/>
+                            <VBox alignment="CENTER_LEFT">
+                                <Label fx:id="adminNameLabel" styleClass="header-username"/>
+                                <Label text="ADMIN" styleClass="header-role"/>
+                            </VBox>
+                        </HBox>
+                    </graphic>
+                    <items>
+                        <MenuItem text="👤  Hồ sơ"     onAction="#handleProfile"/>
+                        <SeparatorMenuItem/>
+                        <MenuItem text="🚪  Đăng xuất" onAction="#handleLogout"/>
+                    </items>
+                </MenuButton>
+
             </HBox>
 
             <!-- Stat cards -->
