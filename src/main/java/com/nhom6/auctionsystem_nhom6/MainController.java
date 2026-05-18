@@ -33,14 +33,16 @@ public class MainController {
     @FXML private MenuButton profileMenuBtn;
 
     @FXML private MenuItem menuItemHistory;
-    // menuItemMyProducts đã bị xóa khỏi FXML — không khai báo nữa
 
     // ── Notification bell ─────────────────────────────────────
     @FXML private Button bellButton;
     @FXML private Label  badgeLabel;
 
-    // ── Sidebar: nút Quản lý sản phẩm (chỉ Seller thấy) ──────
-    @FXML private Button btnProductManagement;
+    // ── Sidebar: nút theo role ────────────────────────────────
+    // SELLER thấy "Đăng bán sản phẩm", ADMIN thấy "Quản lý sản phẩm"
+    // BIDDER: cả 2 đều ẩn — không cần field riêng cho Bidder
+    @FXML private Button btnSellerProducts;
+    @FXML private Button btnAdminProducts;
 
     // =========================================================
     // AUCTION CARD & EMPTY STATE
@@ -145,25 +147,33 @@ public class MainController {
      * Điều chỉnh UI theo role:
      *
      * SIDEBAR:
-     *   SELLER → hiện nút "📦 Quản lý sản phẩm"
-     *   BIDDER → ẩn nút "📦 Quản lý sản phẩm"
+     *   SELLER → hiện "🏷️ Đăng bán sản phẩm"  (btnSellerProducts)
+     *   ADMIN  → hiện "📦 Quản lý sản phẩm"    (btnAdminProducts)
+     *   BIDDER → cả 2 nút đều ẩn (isSeller=false, isAdmin=false)
      *
      * PROFILE DROPDOWN:
      *   BIDDER → menuItemHistory = "🛒 Lịch sử mua hàng"
      *   SELLER → menuItemHistory = "📦 Lịch sử bán hàng"
-     *   Không còn "Sản phẩm đăng bán" trong dropdown
+     *   ADMIN  → xóa menuItemHistory khỏi dropdown
      */
     private void applyRoleMenu(User user) {
         String role = user.getRole() == null ? "" : user.getRole().toUpperCase();
 
-        // ── Sidebar: ẩn/hiện Quản lý sản phẩm theo role ─────
-        if (btnProductManagement != null) {
-            boolean isSeller = "SELLER".equals(role);
-            btnProductManagement.setVisible(isSeller);
-            btnProductManagement.setManaged(isSeller);
+        boolean isSeller = "SELLER".equals(role);
+        boolean isAdmin  = "ADMIN".equals(role);
+        // BIDDER: cả 2 đều false → cả 2 nút tự ẩn, không cần xử lý thêm
+
+        // ── Sidebar ──────────────────────────────────────────
+        if (btnSellerProducts != null) {
+            btnSellerProducts.setVisible(isSeller);
+            btnSellerProducts.setManaged(isSeller);
+        }
+        if (btnAdminProducts != null) {
+            btnAdminProducts.setVisible(isAdmin);
+            btnAdminProducts.setManaged(isAdmin);
         }
 
-        // ── Profile dropdown: chỉ đổi text Lịch sử ──────────
+        // ── Profile dropdown ─────────────────────────────────
         switch (role) {
             case "BIDDER" -> {
                 if (menuItemHistory != null)
@@ -184,7 +194,6 @@ public class MainController {
     // RESOLVE SESSION
     // =========================================================
     private AuctionSession resolveSession(User user) {
-        // Ưu tiên active session đang có
         AuctionSession active = AppContext.getActiveSession();
         if (active != null) return active;
 
@@ -333,7 +342,7 @@ public class MainController {
     private void updateCountdown() {
         if (session == null) return;
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime end = session.getEndTime(); // luôn lấy endTime mới nhất
+        LocalDateTime end = session.getEndTime();
         if (now.isAfter(end)) {
             hoursLabel.setText("00");
             minsLabel.setText("00");
@@ -352,7 +361,6 @@ public class MainController {
         minsLabel.setText(String.format("%02d",  (total % 3600) / 60));
         secsLabel.setText(String.format("%02d",  total % 60));
 
-        // Cảnh báo 5 phút cuối
         if (total == 300)
             pushNotification(
                     NotificationManager.NotifType.AUCTION_ENDING_SOON,
@@ -392,7 +400,6 @@ public class MainController {
             session.placeBid(bid);
 
             currentPriceLabel.setText(formatVND(session.getCurrentPrice()));
-            // Cập nhật countdown ngay nếu anti-sniping vừa gia hạn
             updateCountdown();
             refreshBidHistory();
             addChatMessage("System",
@@ -503,7 +510,6 @@ public class MainController {
     }
 
     @FXML private void handleLiveAuction() {
-        // Bidder: nếu chưa có session, lấy phiên running đầu tiên
         if (AppContext.getActiveSession() == null) {
             List<AuctionSession> running = AppContext.getRunningSessions();
             if (!running.isEmpty())
@@ -518,8 +524,20 @@ public class MainController {
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    /** Chỉ Seller mới thấy nút này (đã ẩn với Bidder qua applyRoleMenu) */
-    @FXML private void handleProductManagement() {
+    /**
+     * SELLER bấm "Đăng bán sản phẩm" → MyProductsController
+     * (nút chỉ hiển thị khi role = SELLER, xử lý trong applyRoleMenu)
+     */
+    @FXML private void handleSellerProducts() {
+        try { HelloApplication.showMyProductsView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    /**
+     * ADMIN bấm "Quản lý sản phẩm" → ProductManagementController
+     * (nút chỉ hiển thị khi role = ADMIN, xử lý trong applyRoleMenu)
+     */
+    @FXML private void handleAdminProducts() {
         try { HelloApplication.showProductManagementView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
