@@ -28,7 +28,7 @@
                 <Button text="📦  Quản lý sản phẩm"  maxWidth="Infinity" styleClass="nav-btn"/>
                 <Button text="🛒  Đơn hàng của tôi"  maxWidth="Infinity" styleClass="nav-btn"/>
                 <Button text="💳  Ví &amp; Giao dịch" maxWidth="Infinity" styleClass="nav-btn,nav-active"/>
-                <Button text="★  Đánh giá"           maxWidth="Infinity" styleClass="nav-btn"/>
+                <Button text="★  Đánh giá" maxWidth="Infinity" styleClass="nav-btn" onAction="#handleRating"/>
                 <Button text="?  Trợ giúp"            maxWidth="Infinity" styleClass="nav-btn"/>
             </VBox>
 

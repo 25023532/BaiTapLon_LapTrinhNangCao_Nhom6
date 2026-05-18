@@ -80,6 +80,14 @@ public class HelloApplication extends Application {
         load("auction-list-view.fxml", "AuctionSys – " + category);
     }
 
+    public static void showRatingView() throws Exception {
+        load("rating-view.fxml", "AuctionSys – Đánh giá");
+    }
+
+    public static void showHelpView() throws Exception {
+        load("help-view.fxml", "AuctionSys – Trợ giúp");
+    }
+
     public static void showProductManagementView() throws Exception {
         load("product-management-view.fxml", "AuctionSys – Quản lý sản phẩm");
     }

@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.SeparatorMenuItem?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.nhom6.auctionsystem_nhom6.RatingController"
+            styleClass="main-root">
+
+    <!-- ══ HEADER ══ -->
+    <top>
+        <HBox styleClass="header" spacing="12" alignment="CENTER_LEFT">
+            <padding><Insets top="0" right="20" bottom="0" left="20"/></padding>
+            <Button text="← Quay lại" onAction="#handleBack" styleClass="btn-secondary"/>
+            <Label text="★  Đánh giá &amp; Nhận xét" styleClass="header-username"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <MenuButton styleClass="profile-menu-btn">
+                <graphic>
+                    <HBox spacing="8" alignment="CENTER">
+                        <Label fx:id="userAvatarLabel" styleClass="profile-avatar"/>
+                        <VBox alignment="CENTER_LEFT">
+                            <Label fx:id="userNameLabel" styleClass="header-username"/>
+                            <Label fx:id="userRoleLabel" styleClass="header-role"/>
+                        </VBox>
+                    </HBox>
+                </graphic>
+                <items>
+                    <MenuItem text="👤  Hồ sơ"     onAction="#handleProfile"/>
+                    <MenuItem text="📋  Lịch sử"   onAction="#handleHistory"/>
+                    <SeparatorMenuItem/>
+                    <MenuItem text="🚪  Đăng xuất" onAction="#handleLogout"/>
+                </items>
+            </MenuButton>
+        </HBox>
+    </top>
+
+    <!-- ══ CONTENT ══ -->
+    <center>
+        <HBox spacing="16" fillHeight="true" style="-fx-background-color: #0f172a;">
+            <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+
+            <!-- ══ CỘT TRÁI: Stats + Write Review ══ -->
+            <VBox spacing="12" minWidth="340" maxWidth="340" VBox.vgrow="ALWAYS">
+
+                <!-- TỔNG QUAN ĐÁNH GIÁ -->
+                <VBox spacing="12" style="-fx-background-color: #1e293b;
+                                          -fx-background-radius: 12;
+                                          -fx-border-color: #334155;
+                                          -fx-border-radius: 12;
+                                          -fx-border-width: 1;">
+                    <padding><Insets top="20" right="20" bottom="20" left="20"/></padding>
+
+                    <Label text="📊 Tổng quan đánh giá"
+                           style="-fx-text-fill: #e2e8f0; -fx-font-weight: bold; -fx-font-size: 14px;"/>
+                    <Separator/>
+
+                    <!-- Điểm trung bình -->
+                    <HBox spacing="16" alignment="CENTER_LEFT">
+                        <VBox alignment="CENTER" minWidth="80">
+                            <Label fx:id="avgRatingLabel" text="—"
+                                   style="-fx-text-fill: #fbbf24; -fx-font-size: 48px; -fx-font-weight: bold;"/>
+                            <Label fx:id="avgStarsLabel" text="☆☆☆☆☆☆☆☆☆☆"
+                                   style="-fx-text-fill: #fbbf24; -fx-font-size: 14px;"/>
+                            <Label fx:id="totalReviewsLabel" text="0 đánh giá"
+                                   style="-fx-text-fill: #64748b; -fx-font-size: 12px;"/>
+                        </VBox>
+
+                        <!-- Thanh phân bổ sao -->
+                        <VBox spacing="4" HBox.hgrow="ALWAYS">
+                            <!-- 10 sao -->
+                            <HBox spacing="8" alignment="CENTER_LEFT">
+                                <Label text="10★" style="-fx-text-fill: #fbbf24; -fx-font-size: 11px;" minWidth="28"/>
+                                <ProgressBar fx:id="bar10" progress="0" prefHeight="8" HBox.hgrow="ALWAYS"
+                                             style="-fx-accent: #10b981;"/>
+                                <Label fx:id="count10Label" text="0"
+                                       style="-fx-text-fill: #64748b; -fx-font-size: 11px;" minWidth="20"/>
+                            </HBox>
+                            <HBox spacing="8" alignment="CENTER_LEFT">
+                                <Label text="9★" style="-fx-text-fill: #fbbf24; -fx-font-size: 11px;" minWidth="28"/>
+                                <ProgressBar fx:id="bar9" progress="0" prefHeight="8" HBox.hgrow="ALWAYS"
+                                             style="-fx-accent: #22c55e;"/>
+                                <Label fx:id="count9Label" text="0"
+                                       style="-fx-text-fill: #64748b; -fx-font-size: 11px;" minWidth="20"/>
+                            </HBox>
+                            <HBox spacing="8" alignment="CENTER_LEFT">
+                                <Label text="8★" style="-fx-text-fill: #fbbf24; -fx-font-size: 11px;" minWidth="28"/>
+                                <ProgressBar fx:id="bar8" progress="0" prefHeight="8" HBox.hgrow="ALWAYS"
+                                             style="-fx-accent: #84cc16;"/>
+                                <Label fx:id="count8Label" text="0"
+                                       style="-fx-text-fill: #64748b; -fx-font-size: 11px;" minWidth="20"/>
+                            </HBox>
+                            <HBox spacing="8" alignment="CENTER_LEFT">
+                                <Label text="7★" style="-fx-text-fill: #fbbf24; -fx-font-size: 11px;" minWidth="28"/>
+                                <ProgressBar fx:id="bar7" progress="0" prefHeight="8" HBox.hgrow="ALWAYS"
+                                             style="-fx-accent: #fbbf24;"/>
+                                <Label fx:id="count7Label" text="0"
+                                       style="-fx-text-fill: #64748b; -fx-font-size: 11px;" minWidth="20"/>
+                            </HBox>
+                            <HBox spacing="8" alignment="CENTER_LEFT">
+                                <Label text="6★" style="-fx-text-fill: #fbbf24; -fx-font-size: 11px;" minWidth="28"/>
+                                <ProgressBar fx:id="bar6" progress="0" prefHeight="8" HBox.hgrow="ALWAYS"
+                                             style="-fx-accent: #f59e0b;"/>
+                                <Label fx:id="count6Label" text="0"
+                                       style="-fx-text-fill: #64748b; -fx-font-size: 11px;" minWidth="20"/>
+                            </HBox>
+                            <HBox spacing="8" alignment="CENTER_LEFT">
+                                <Label text="5★" style="-fx-text-fill: #fbbf24; -fx-font-size: 11px;" minWidth="28"/>
+                                <ProgressBar fx:id="bar5" progress="0" prefHeight="8" HBox.hgrow="ALWAYS"
+                                             style="-fx-accent: #f97316;"/>
+                                <Label fx:id="count5Label" text="0"
+                                       style="-fx-text-fill: #64748b; -fx-font-size: 11px;" minWidth="20"/>
+                            </HBox>
+                            <HBox spacing="8" alignment="CENTER_LEFT">
+                                <Label text="4★" style="-fx-text-fill: #fbbf24; -fx-font-size: 11px;" minWidth="28"/>
+                                <ProgressBar fx:id="bar4" progress="0" prefHeight="8" HBox.hgrow="ALWAYS"
+                                             style="-fx-accent: #ef4444;"/>
+                                <Label fx:id="count4Label" text="0"
+                                       style="-fx-text-fill: #64748b; -fx-font-size: 11px;" minWidth="20"/>
+                            </HBox>
+                            <HBox spacing="8" alignment="CENTER_LEFT">
+                                <Label text="3★" style="-fx-text-fill: #fbbf24; -fx-font-size: 11px;" minWidth="28"/>
+                                <ProgressBar fx:id="bar3" progress="0" prefHeight="8" HBox.hgrow="ALWAYS"
+                                             style="-fx-accent: #dc2626;"/>
+                                <Label fx:id="count3Label" text="0"
+                                       style="-fx-text-fill: #64748b; -fx-font-size: 11px;" minWidth="20"/>
+                            </HBox>
+                            <HBox spacing="8" alignment="CENTER_LEFT">
+                                <Label text="2★" style="-fx-text-fill: #fbbf24; -fx-font-size: 11px;" minWidth="28"/>
+                                <ProgressBar fx:id="bar2" progress="0" prefHeight="8" HBox.hgrow="ALWAYS"
+                                             style="-fx-accent: #b91c1c;"/>
+                                <Label fx:id="count2Label" text="0"
+                                       style="-fx-text-fill: #64748b; -fx-font-size: 11px;" minWidth="20"/>
+                            </HBox>
+                            <HBox spacing="8" alignment="CENTER_LEFT">
+                                <Label text="1★" style="-fx-text-fill: #fbbf24; -fx-font-size: 11px;" minWidth="28"/>
+                                <ProgressBar fx:id="bar1" progress="0" prefHeight="8" HBox.hgrow="ALWAYS"
+                                             style="-fx-accent: #991b1b;"/>
+                                <Label fx:id="count1Label" text="0"
+                                       style="-fx-text-fill: #64748b; -fx-font-size: 11px;" minWidth="20"/>
+                            </HBox>
+                        </VBox>
+                    </HBox>
+                </VBox>
+
+                <!-- VIẾT ĐÁNH GIÁ -->
+                <VBox spacing="12" VBox.vgrow="ALWAYS"
+                      style="-fx-background-color: #1e293b;
+                             -fx-background-radius: 12;
+                             -fx-border-color: #334155;
+                             -fx-border-radius: 12;
+                             -fx-border-width: 1;">
+                    <padding><Insets top="20" right="20" bottom="20" left="20"/></padding>
+
+                    <Label text="✏️ Viết đánh giá"
+                           style="-fx-text-fill: #e2e8f0; -fx-font-weight: bold; -fx-font-size: 14px;"/>
+                    <Separator/>
+
+                    <!-- Chọn sao -->
+                    <Label text="Chọn số sao (1-10):"
+                           style="-fx-text-fill: #94a3b8; -fx-font-size: 12px;"/>
+                    <HBox fx:id="starRow" spacing="4" alignment="CENTER_LEFT"/>
+                    <Label fx:id="selectedStarLabel" text="Chưa chọn sao"
+                           style="-fx-text-fill: #64748b; -fx-font-size: 12px;"/>
+
+                    <!-- Nhận xét -->
+                    <Label text="Nhận xét của bạn:"
+                           style="-fx-text-fill: #94a3b8; -fx-font-size: 12px;"/>
+                    <TextArea fx:id="commentArea"
+                              promptText="Chia sẻ trải nghiệm của bạn về hệ thống..."
+                              prefRowCount="4" wrapText="true"
+                              style="-fx-background-color: #0f172a;
+                                     -fx-text-fill: #e2e8f0;
+                                     -fx-prompt-text-fill: #475569;
+                                     -fx-border-color: #334155;
+                                     -fx-border-radius: 8;
+                                     -fx-background-radius: 8;
+                                     -fx-font-size: 13px;
+                                     -fx-padding: 10;"/>
+
+                    <HBox alignment="CENTER_RIGHT">
+                        <Label fx:id="charCountLabel" text="0/500"
+                               style="-fx-text-fill: #475569; -fx-font-size: 11px;"/>
+                    </HBox>
+
+                    <Label fx:id="writeResultLabel" text="" wrapText="true" visible="false"/>
+
+                    <Button text="⭐ Gửi đánh giá" onAction="#handleSubmitReview"
+                            maxWidth="Infinity"
+                            style="-fx-background-color: #2563eb;
+                                   -fx-text-fill: white;
+                                   -fx-font-weight: bold;
+                                   -fx-font-size: 13px;
+                                   -fx-background-radius: 8;
+                                   -fx-padding: 10 0 10 0;
+                                   -fx-cursor: hand;"/>
+                </VBox>
+            </VBox>
+
+            <!-- ══ CỘT PHẢI: Danh sách đánh giá ══ -->
+            <VBox spacing="12" HBox.hgrow="ALWAYS">
+
+                <!-- Filter bar -->
+                <HBox spacing="10" alignment="CENTER_LEFT"
+                      style="-fx-background-color: #1e293b;
+                             -fx-background-radius: 10;
+                             -fx-border-color: #334155;
+                             -fx-border-radius: 10;
+                             -fx-border-width: 1;
+                             -fx-padding: 12 16 12 16;">
+
+                    <Label text="🔍" style="-fx-font-size: 14px;"/>
+                    <TextField fx:id="searchField"
+                               promptText="Tìm trong nhận xét..."
+                               HBox.hgrow="ALWAYS"
+                               style="-fx-background-color: #0f172a;
+                                      -fx-text-fill: #e2e8f0;
+                                      -fx-prompt-text-fill: #475569;
+                                      -fx-border-color: #334155;
+                                      -fx-border-radius: 8;
+                                      -fx-background-radius: 8;
+                                      -fx-padding: 8 12 8 12;"
+                               onKeyReleased="#handleSearch"/>
+
+                    <Label text="Lọc:" style="-fx-text-fill: #64748b; -fx-font-size: 12px;"/>
+                    <ComboBox fx:id="filterStarBox" prefWidth="150" onAction="#handleFilter"
+                              style="-fx-background-color: #0f172a;
+                                     -fx-border-color: #334155;
+                                     -fx-border-radius: 8;"/>
+
+                    <Label text="Sắp xếp:" style="-fx-text-fill: #64748b; -fx-font-size: 12px;"/>
+                    <ComboBox fx:id="sortBox" prefWidth="160" onAction="#handleFilter"
+                              style="-fx-background-color: #0f172a;
+                                     -fx-border-color: #334155;
+                                     -fx-border-radius: 8;"/>
+                </HBox>
+
+                <!-- Count -->
+                <HBox alignment="CENTER_LEFT">
+                    <Label fx:id="reviewCountLabel" text="0 đánh giá"
+                           style="-fx-text-fill: #64748b; -fx-font-size: 13px;"/>
+                </HBox>
+
+                <!-- List -->
+                <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS"
+                            style="-fx-background: transparent;
+                                   -fx-background-color: transparent;
+                                   -fx-border-width: 0;">
+                    <VBox fx:id="reviewListBox" spacing="10">
+                        <padding><Insets top="0" right="4" bottom="0" left="0"/></padding>
+                    </VBox>
+                </ScrollPane>
+            </VBox>
+        </HBox>
+    </center>
+
+</BorderPane>

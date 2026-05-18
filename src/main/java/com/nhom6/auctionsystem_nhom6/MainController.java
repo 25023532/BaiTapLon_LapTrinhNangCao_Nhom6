@@ -474,6 +474,16 @@ public class MainController {
         catch (Exception e) { e.printStackTrace(); }
     }
 
+    @FXML private void handleRating() {
+        try { HelloApplication.showRatingView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleHelp() {
+        try { HelloApplication.showHelpView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
     @FXML private void handleProductManagement() {
         try { HelloApplication.showProductManagementView(); }
         catch (Exception e) { e.printStackTrace(); }

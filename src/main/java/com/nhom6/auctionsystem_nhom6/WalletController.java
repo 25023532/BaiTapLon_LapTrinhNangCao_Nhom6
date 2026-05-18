@@ -344,6 +344,11 @@ public class WalletController {
         catch (Exception e) { e.printStackTrace(); }
     }
 
+    @FXML private void handleRating() {
+        try { HelloApplication.showRatingView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
     // =========================================================
     // UTIL
     // =========================================================
