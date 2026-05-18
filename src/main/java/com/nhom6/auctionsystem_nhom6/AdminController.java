@@ -12,7 +12,6 @@ import org.example.user.User;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class AdminController {
 
@@ -25,7 +24,6 @@ public class AdminController {
 
     private final AuthService authService = AppContext.getAuthService();
 
-    // Tab đang hiển thị
     private String currentTab = "users";
 
     @FXML
@@ -40,7 +38,7 @@ public class AdminController {
     // THỐNG KÊ
     // =========================================================
     private void refreshStats() {
-        // FIX: getAllUsers() trả về Map<String, User> → chuyển sang List
+        // getAllUsers() trả về Map → chuyển sang List
         List<User> users = new ArrayList<>(authService.getAllUsers().values());
         totalUsersLabel.setText(String.valueOf(users.size()));
 
@@ -51,9 +49,10 @@ public class AdminController {
                 .filter(p -> "CHỜ DUYỆT".equals(p.status())).count();
         pendingLabel.setText(String.valueOf(pending));
 
-        // FIX: isEnded() không tồn tại → dùng getStatus() == AuctionStatus.ENDED
+        // FIX: AuctionStatus không có ENDED
+        // → đếm phiên đang RUNNING (mọi trạng thái khác đều là đã kết thúc)
         long activeSessions = AppContext.getGlobalSessions().stream()
-                .filter(s -> s.getStatus() != AuctionStatus.ENDED).count();
+                .filter(s -> s.getStatus() == AuctionStatus.RUNNING).count();
         activeSessionsLabel.setText(String.valueOf(activeSessions));
     }
 
@@ -65,11 +64,9 @@ public class AdminController {
         currentTab = "users";
         contentBox.getChildren().clear();
 
-        // Hàng tiêu đề
         HBox header = buildTableHeader("Tên đăng nhập", "Họ tên", "Email", "Vai trò", "Hành động");
         contentBox.getChildren().add(header);
 
-        // FIX: getAllUsers() trả về Map<String, User> → chuyển sang List
         List<User> users = new ArrayList<>(authService.getAllUsers().values());
         if (users.isEmpty()) {
             contentBox.getChildren().add(emptyLabel("Chưa có người dùng nào."));
@@ -90,7 +87,6 @@ public class AdminController {
             roleBadge.getStyleClass().addAll("history-badge", roleBadgeStyle(u.getRole()));
             roleBadge.setMinWidth(120);
 
-            // Nút xóa (không cho xóa chính mình)
             Button deleteBtn = new Button("🗑 Xóa");
             deleteBtn.getStyleClass().add("btn-danger");
             boolean isSelf = u.getUsername()
@@ -131,9 +127,11 @@ public class AdminController {
 
             Label name     = colLabel(p.name(), 200, true);
             Label category = colLabel(p.category(), 120, false);
-            // FIX: sellerUsername() là accessor của record — nếu vẫn lỗi,
-            //      hãy clean & rebuild project để xóa file .class cũ
-            Label seller   = colLabel(p.sellerUsername(), 140, false);
+
+            // FIX: ProductRecord không có field sellerUsername vì seller được lưu
+            //      làm KEY trong productMap. Dùng helper getSellerForProduct() để tra cứu.
+            String sellerName = AppContext.getSellerForProduct(p.id());
+            Label seller = colLabel(sellerName, 140, false);
 
             Label statusBadge = new Label(p.status());
             statusBadge.getStyleClass().addAll("history-badge", productBadgeStyle(p.status()));
@@ -142,24 +140,23 @@ public class AdminController {
             HBox actions = new HBox(8);
             actions.setAlignment(Pos.CENTER);
 
-            // Nút duyệt chỉ hiện khi CHỜ DUYỆT
             if ("CHỜ DUYỆT".equals(p.status())) {
                 Button approveBtn = new Button("✅ Duyệt");
                 approveBtn.setStyle(
                         "-fx-background-color: #14532d; -fx-text-fill: #4ade80; "
                                 + "-fx-background-radius: 6; -fx-cursor: hand; "
                                 + "-fx-font-size: 12px; -fx-padding: 5 10 5 10;");
-                approveBtn.setOnAction(e -> handleApproveProduct(p));
+                approveBtn.setOnAction(e -> handleApproveProduct(p, sellerName));
 
                 Button rejectBtn = new Button("❌ Từ chối");
                 rejectBtn.getStyleClass().add("btn-danger");
-                rejectBtn.setOnAction(e -> handleRejectProduct(p));
+                rejectBtn.setOnAction(e -> handleRejectProduct(p, sellerName));
 
                 actions.getChildren().addAll(approveBtn, rejectBtn);
             } else {
                 Button viewBtn = new Button("👁 Xem");
                 viewBtn.getStyleClass().add("btn-secondary");
-                viewBtn.setOnAction(e -> handleViewProduct(p));
+                viewBtn.setOnAction(e -> handleViewProduct(p, sellerName));
                 actions.getChildren().add(viewBtn);
             }
 
@@ -194,24 +191,23 @@ public class AdminController {
             row.setPadding(new Insets(10, 20, 10, 20));
 
             Label idLabel    = colLabel(s.getSessionId(), 140, false);
-
-            // FIX: getProductName() không tồn tại → dùng getItemName()
             Label nameLabel  = colLabel(s.getItemName(), 200, true);
             Label priceLabel = colLabel(formatVND(s.getCurrentPrice()), 140, false);
             priceLabel.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
 
-            // FIX: isEnded() không tồn tại → dùng getStatus() == AuctionStatus.ENDED
-            boolean ended = s.getStatus() == AuctionStatus.ENDED;
-            String statusTxt = ended ? "ĐÃ KẾT THÚC" : "ĐANG DIỄN RA";
+            // FIX: không dùng AuctionStatus.ENDED vì không tồn tại
+            // → phiên đang chạy khi status == RUNNING, mọi trạng thái khác = kết thúc
+            boolean isRunning = s.getStatus() == AuctionStatus.RUNNING;
+            String statusTxt  = isRunning ? "ĐANG DIỄN RA" : "ĐÃ KẾT THÚC";
             Label statusBadge = new Label(statusTxt);
             statusBadge.getStyleClass().addAll("history-badge",
-                    ended ? "badge-neutral" : "badge-success");
+                    isRunning ? "badge-success" : "badge-neutral");
             statusBadge.setMinWidth(130);
 
             Button enterBtn = new Button("🔴 Vào phiên");
             enterBtn.getStyleClass().add("btn-primary");
             enterBtn.setStyle("-fx-font-size: 12px; -fx-padding: 5 10 5 10;");
-            enterBtn.setDisable(ended);
+            enterBtn.setDisable(!isRunning);
             enterBtn.setOnAction(e -> handleEnterSession(s));
 
             HBox actions = new HBox(8, enterBtn);
@@ -232,7 +228,7 @@ public class AdminController {
         confirm.setContentText("Bạn có chắc muốn xóa tài khoản này?");
         confirm.showAndWait().ifPresent(btn -> {
             if (btn == ButtonType.OK) {
-                // FIX: deleteUser() không tồn tại trong AuthService → dùng unregister()
+                // AuthService dùng unregister() thay vì deleteUser()
                 authService.unregister(u.getUsername());
                 showUsers();
                 refreshStats();
@@ -240,8 +236,8 @@ public class AdminController {
         });
     }
 
-    private void handleApproveProduct(AppContext.ProductRecord p) {
-        AppContext.updateProduct(p.sellerUsername(), new AppContext.ProductRecord(
+    private void handleApproveProduct(AppContext.ProductRecord p, String sellerName) {
+        AppContext.updateProduct(sellerName, new AppContext.ProductRecord(
                 p.id(), p.name(), p.category(),
                 p.startPrice(), p.currentPrice(), p.bidCount(),
                 "ĐÃ DUYỆT", p.startTime(), p.endTime(), p.topBidder()
@@ -249,8 +245,8 @@ public class AdminController {
         showProducts();
     }
 
-    private void handleRejectProduct(AppContext.ProductRecord p) {
-        AppContext.updateProduct(p.sellerUsername(), new AppContext.ProductRecord(
+    private void handleRejectProduct(AppContext.ProductRecord p, String sellerName) {
+        AppContext.updateProduct(sellerName, new AppContext.ProductRecord(
                 p.id(), p.name(), p.category(),
                 p.startPrice(), p.currentPrice(), p.bidCount(),
                 "TỪ CHỐI", p.startTime(), p.endTime(), p.topBidder()
@@ -258,7 +254,7 @@ public class AdminController {
         showProducts();
     }
 
-    private void handleViewProduct(AppContext.ProductRecord p) {
+    private void handleViewProduct(AppContext.ProductRecord p, String sellerName) {
         Alert a = new Alert(Alert.AlertType.INFORMATION);
         a.setTitle("Chi tiết sản phẩm");
         a.setHeaderText(p.name());
@@ -267,7 +263,7 @@ public class AdminController {
                         + "\nDanh mục  : " + p.category()
                         + "\nGiá KĐ   : " + formatVND(p.startPrice())
                         + "\nGiá hiện  : " + formatVND(p.currentPrice())
-                        + "\nNgười bán : " + p.sellerUsername()
+                        + "\nNgười bán : " + sellerName
                         + "\nTrạng thái: " + p.status()
         );
         a.showAndWait();
