@@ -88,10 +88,14 @@ public class HelloApplication extends Application {
         load("live-auction-view.fxml", "AuctionSys – Đấu giá trực tiếp");
     }
 
-    /** Mở màn hình lịch sử phiên đấu giá đã kết thúc. */
     public static void showAuctionSessionHistoryView() throws Exception {
         load("auction-session-history-view.fxml",
                 "AuctionSys – Lịch sử phiên đấu giá");
+    }
+
+    // ← THÊM MỚI: màn hình Admin
+    public static void showAdminView() throws Exception {
+        load("admin-view.fxml", "AuctionSys – Quản trị hệ thống");
     }
 
     // =========================================================
