@@ -64,11 +64,12 @@ public class LiveAuctionController {
     // ── State ─────────────────────────────────────────────────
     private AuctionSession currentSession;
     private Timeline       countdownTimer;
-    // ✅ uiRefreshTimer: CHỈ sync UI từ session thật, KHÔNG tự đặt giá
     private Timeline       uiRefreshTimer;
     private boolean        sessionSelected = false;
-    // Tracking bid count — chỉ update UI khi có bid mới từ người thật
     private int            lastBidCount    = 0;
+
+    // ✅ Lưu số online thật từ server để dùng cho cả onlineLabel và participantsLabel
+    private int            currentOnlineCount = 0;
 
     private static final DateTimeFormatter TIME_FMT =
             DateTimeFormatter.ofPattern("HH:mm:ss");
@@ -78,22 +79,21 @@ public class LiveAuctionController {
     // =========================================================
     @FXML
     public void initialize() {
-        // ── Ẩn anti-sniping label ─────────────────────────────
         if (extensionNoticeLabel != null) {
             extensionNoticeLabel.setVisible(false);
             extensionNoticeLabel.setManaged(false);
         }
 
+        // ✅ Khởi tạo ban đầu với dấu "--" thay vì random
         onlineLabel.setText("● -- online");
+        participantsLabel.setText("👥 -- người tham gia");
 
-        // ✅ Load left panel từ globalSessions (thấy phiên của mọi Seller)
         loadLiveSessionList();
         setNoSessionState();
 
-        // ✅ Kết nối server
+        // ✅ Kết nối server và yêu cầu số online ngay
         connectToServer();
 
-        // ✅ Tự động chọn activeSession nếu có
         AuctionSession active = AppContext.getActiveSession();
         if (active != null) {
             selectSession(active);
@@ -106,10 +106,15 @@ public class LiveAuctionController {
     private void connectToServer() {
         ServerConnection conn = ServerConnection.getInstance();
         conn.setListener(this::handleServerMessage);
+
+        User user = AppContext.getCurrentUser();
         if (!conn.isConnected()) {
-            User user = AppContext.getCurrentUser();
             conn.connect(user.getUsername());
         }
+
+        // ✅ Luôn yêu cầu số online sau khi gắn listener
+        //    (dù đã kết nối trước đó hay vừa kết nối mới)
+        conn.sendJson("{\"action\":\"GET_ONLINE_COUNT\"}");
     }
 
     private void handleServerMessage(String raw) {
@@ -122,36 +127,60 @@ public class LiveAuctionController {
                     String message = extractJson(raw, "message");
                     User me = AppContext.getCurrentUser();
                     if (me != null && !sender.equals(me.getUsername())) {
-                        addChatMsg(sender, message, false);
+                        Platform.runLater(() -> addChatMsg(sender, message, false));
                     }
                 }
+
+                // ✅ FIX: Wrap trong Platform.runLater + cập nhật cả hai label
                 case "ONLINE_COUNT" -> {
-                    String count = extractJson(raw, "count");
-                    onlineLabel.setText("● " + count + " online");
+                    String countStr = extractJson(raw, "count");
+                    Platform.runLater(() -> {
+                        try {
+                            currentOnlineCount = Integer.parseInt(countStr);
+                        } catch (NumberFormatException ignored) {
+                            currentOnlineCount = 0;
+                        }
+                        updateOnlineLabels(currentOnlineCount);
+                    });
                 }
+
                 case "NEW_BID" -> {
                     String bidder = extractJson(raw, "username");
                     String amount = extractJson(raw, "amount");
                     if (currentSession != null) {
                         try {
                             double amt = Double.parseDouble(amount);
-                            liveCurrentPrice.setText(
-                                    String.format("₫ %,.0f", amt));
-                            liveLeaderLabel.setText("👑 " + bidder);
-                            addChatMsg("System",
-                                    bidder + " đặt giá "
-                                    + String.format("₫ %,.0f", amt), false);
+                            Platform.runLater(() -> {
+                                liveCurrentPrice.setText(
+                                        String.format("₫ %,.0f", amt));
+                                liveLeaderLabel.setText("👑 " + bidder);
+                                addChatMsg("System",
+                                        bidder + " đặt giá "
+                                        + String.format("₫ %,.0f", amt), false);
+                            });
                         } catch (NumberFormatException ignored) {}
                     }
                 }
+
                 case "SYSTEM" -> {
                     String message = extractJson(raw, "message");
-                    addChatMsg("System", message, false);
+                    Platform.runLater(() -> addChatMsg("System", message, false));
                 }
             }
         } catch (Exception e) {
             System.err.println("handleServerMessage lỗi: " + e.getMessage());
         }
+    }
+
+    /**
+     * ✅ Cập nhật đồng thời cả onlineLabel (chat panel) và participantsLabel (header)
+     *    từ cùng một nguồn dữ liệu.
+     */
+    private void updateOnlineLabels(int count) {
+        if (onlineLabel != null)
+            onlineLabel.setText("● " + count + " online");
+        if (participantsLabel != null)
+            participantsLabel.setText("👥 " + count + " người tham gia");
     }
 
     private String extractJson(String json, String key) {
@@ -164,7 +193,7 @@ public class LiveAuctionController {
     }
 
     // =========================================================
-    // ✅ LEFT PANEL — đọc từ globalSessions (Bidder thấy phiên Seller tạo)
+    // LEFT PANEL
     // =========================================================
     private void loadLiveSessionList() {
         liveSessionListBox.getChildren().clear();
@@ -265,9 +294,8 @@ public class LiveAuctionController {
     // SELECT SESSION
     // =========================================================
     private void selectSession(AuctionSession session) {
-        // Dừng timer cũ
         if (countdownTimer != null) countdownTimer.stop();
-        if (uiRefreshTimer != null) uiRefreshTimer.stop();
+        if (uiRefreshTimer  != null) uiRefreshTimer.stop();
 
         currentSession  = session;
         sessionSelected = true;
@@ -275,7 +303,6 @@ public class LiveAuctionController {
 
         AppContext.setActiveSession(session);
 
-        // ── Điền thông tin ────────────────────────────────────
         liveTitleLabel.setText(session.getItemName());
         liveDescLabel.setText(
                 "Sản phẩm mới 100%, còn nguyên seal, bảo hành 12 tháng.");
@@ -290,15 +317,19 @@ public class LiveAuctionController {
         refreshBidHistory();
         bidCountLabel.setText(session.getBidHistory().size() + " lượt");
 
-        // ── Refresh left panel ────────────────────────────────
         loadLiveSessionList();
-
-        // ── Start timers ──────────────────────────────────────
         startCountdown();
-        startUiRefresh();   // ✅ chỉ sync UI, không tự đặt giá
+        startUiRefresh();
 
-        participantsLabel.setText(
-                "👥 " + (8 + (int)(Math.random() * 15)) + " người tham gia");
+        // ✅ FIX: Không dùng Math.random() — dùng số online thật từ server
+        //    Nếu chưa nhận được từ server thì giữ giá trị hiện tại
+        updateOnlineLabels(currentOnlineCount);
+
+        // ✅ Yêu cầu server cập nhật lại số online mới nhất
+        ServerConnection conn = ServerConnection.getInstance();
+        if (conn.isConnected())
+            conn.sendJson("{\"action\":\"GET_ONLINE_COUNT\"}");
+
         addChatMsg("System",
                 "✅ Đã tham gia phiên: " + session.getItemName(), false);
     }
@@ -345,14 +376,12 @@ public class LiveAuctionController {
     }
 
     // =========================================================
-    // ✅ UI REFRESH — CHỈ cập nhật khi có bid mới từ người thật
-    //    KHÔNG tự đặt giá, KHÔNG simulate
+    // UI REFRESH
     // =========================================================
     private void startUiRefresh() {
         uiRefreshTimer = new Timeline(new KeyFrame(Duration.seconds(2), e -> {
             if (currentSession == null || !sessionSelected) return;
             int currentBidCount = currentSession.getBidHistory().size();
-            // Chỉ update nếu có bid mới
             if (currentBidCount > lastBidCount) {
                 lastBidCount = currentBidCount;
                 Platform.runLater(() -> {
@@ -364,7 +393,6 @@ public class LiveAuctionController {
                     bidCountLabel.setText(currentBidCount + " lượt");
                     loadLiveSessionList();
 
-                    // Anti-sniping
                     try {
                         if (currentSession.isLastBidTriggeredExtension()) {
                             showAntiSnipingNotice();
@@ -378,7 +406,7 @@ public class LiveAuctionController {
     }
 
     // =========================================================
-    // ✅ PLACE BID — chỉ từ hành động người dùng thật
+    // PLACE BID
     // =========================================================
     @FXML
     private void handleCustomBid() {
@@ -415,10 +443,6 @@ public class LiveAuctionController {
                 + steps * currentSession.getMinBidStep());
     }
 
-    /**
-     * ✅ Đặt giá thật — cập nhật UI ngay sau khi thành công
-     *    KHÔNG simulate, KHÔNG auto-bid
-     */
     private void placeBid(double amount) {
         User user = AppContext.getCurrentUser();
         Bid  bid  = new Bid(UUID.randomUUID().toString(),
@@ -426,7 +450,6 @@ public class LiveAuctionController {
         try {
             currentSession.placeBid(bid);
 
-            // ✅ Cập nhật UI ngay lập tức
             lastBidCount = currentSession.getBidHistory().size();
             liveCurrentPrice.setText(formatVND(currentSession.getCurrentPrice()));
             updateLeaderLabel();
@@ -439,14 +462,12 @@ public class LiveAuctionController {
                     "✅ " + user.getUsername()
                     + " đặt giá " + formatVND(amount), false);
 
-            // Anti-sniping
             try {
                 if (currentSession.isLastBidTriggeredExtension()) {
                     showAntiSnipingNotice();
                 }
             } catch (Exception ignored) {}
 
-            // Ghi lịch sử bidder
             AppContext.addHistory(user.getUsername(), new AppContext.HistoryRecord(
                     "BID-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase(),
                     currentSession.getItemName(), amount,
@@ -454,7 +475,6 @@ public class LiveAuctionController {
                     "CHỜ XỬ LÝ", false, LocalDateTime.now()
             ));
 
-            // Gửi server
             ServerConnection conn = ServerConnection.getInstance();
             if (conn.isConnected())
                 conn.sendBid(user.getUsername(),
@@ -590,9 +610,9 @@ public class LiveAuctionController {
     // =========================================================
     @FXML
     private void handleBack() {
-        if (countdownTimer != null) countdownTimer.stop();
-        if (uiRefreshTimer != null) uiRefreshTimer.stop();
-        if (extensionNoticeTimer != null) extensionNoticeTimer.stop();
+        if (countdownTimer        != null) countdownTimer.stop();
+        if (uiRefreshTimer        != null) uiRefreshTimer.stop();
+        if (extensionNoticeTimer  != null) extensionNoticeTimer.stop();
         try { HelloApplication.showMainView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
