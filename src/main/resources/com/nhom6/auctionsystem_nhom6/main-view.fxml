@@ -1,306 +1,670 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.scene.control.*?>
-<?import javafx.scene.layout.*?>
-<?import javafx.geometry.Insets?>
-<?import javafx.scene.control.SeparatorMenuItem?>
+package com.nhom6.auctionsystem_nhom6;
 
-<BorderPane xmlns:fx="http://javafx.com/fxml"
-            fx:controller="com.nhom6.auctionsystem_nhom6.MainController"
-            styleClass="main-root">
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
+import javafx.application.Platform;
+import javafx.fxml.FXML;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
+import javafx.stage.Popup;
+import javafx.util.Duration;
 
-    <!-- ══ SIDEBAR ══ -->
-    <left>
-        <VBox styleClass="sidebar" spacing="0">
+import org.example.auction.AuctionSession;
+import org.example.auction.Bid;
+import org.example.exception.AuctionClosedException;
+import org.example.exception.InvalidBidException;
+import org.example.user.User;
 
-            <HBox styleClass="sidebar-logo" spacing="10" alignment="CENTER_LEFT">
-                <padding><Insets top="20" right="16" bottom="20" left="16"/></padding>
-                <Label text="⬡" styleClass="logo-icon"/>
-                <VBox>
-                    <Label text="AuctionSys"       styleClass="logo-name"/>
-                    <Label text="Hệ thống đấu giá" styleClass="logo-sub"/>
-                </VBox>
-            </HBox>
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.UUID;
 
-            <VBox styleClass="sidebar-nav" spacing="2">
-                <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
+public class MainController {
 
-                <Button text="⊞  Tổng quan"
-                        maxWidth="Infinity" styleClass="nav-btn,nav-active"/>
+    // =========================================================
+    // HEADER
+    // =========================================================
+    @FXML private Label      userNameLabel;
+    @FXML private Label      userRoleLabel;
+    @FXML private Label      userAvatarLabel;
+    @FXML private Label      walletLabel;
+    @FXML private TextField  searchField;
+    @FXML private MenuButton profileMenuBtn;
 
-                <Button text="☰  Danh sách phiên"
-                        maxWidth="Infinity" styleClass="nav-btn"
-                        onAction="#handleAuctionList"/>
+    @FXML private MenuItem menuItemHistory;
 
-                <Button text="⚡  Đấu giá trực tiếp"
-                        maxWidth="Infinity" styleClass="nav-btn"
-                        onAction="#handleLiveAuction"/>
+    // ── Notification bell ─────────────────────────────────────
+    @FXML private Button bellButton;
+    @FXML private Label  badgeLabel;
 
-                <!--
-                    Nút Quản lý sản phẩm: chỉ hiện với SELLER.
-                    fx:id để controller ẩn/hiện theo role.
-                -->
-                <Button fx:id="btnProductManagement"
-                        text="📦  Quản lý sản phẩm"
-                        maxWidth="Infinity" styleClass="nav-btn"
-                        onAction="#handleProductManagement"
-                        visible="false" managed="false"/>
+    // ── Sidebar: nút theo role ────────────────────────────────
+    // SELLER thấy "Đăng bán sản phẩm", ADMIN thấy "Quản lý sản phẩm"
+    // BIDDER: cả 2 đều ẩn — không cần field riêng cho Bidder
+    @FXML private Button btnSellerProducts;
+    @FXML private Button btnAdminProducts;
 
-                <Button text="📋  Lịch sử phiên đấu giá"
-                        maxWidth="Infinity" styleClass="nav-btn"
-                        onAction="#handleAuctionSessionHistory"/>
+    // =========================================================
+    // AUCTION CARD & EMPTY STATE
+    // =========================================================
+    @FXML private HBox auctionCard;
+    @FXML private VBox emptyAuctionBox;
 
-                <Button text="💳  Ví &amp; Giao dịch"
-                        maxWidth="Infinity" styleClass="nav-btn"
-                        onAction="#handleWallet"/>
-            </VBox>
+    // =========================================================
+    // AUCTION INFO
+    // =========================================================
+    @FXML private Label productTitleLabel;
+    @FXML private Label productDescLabel;
+    @FXML private Label startPriceLabel;
+    @FXML private Label currentPriceLabel;
+    @FXML private Label minStepLabel;
+    @FXML private Label endTimeLabel;
+    @FXML private Label statusLabel;
 
-            <VBox styleClass="sidebar-cats" spacing="2">
-                <padding><Insets top="8" right="8" bottom="8" left="16"/></padding>
-                <Label text="DANH MỤC" styleClass="cat-title"/>
-                <Button text="🖥️  Điện tử"    maxWidth="Infinity" styleClass="cat-btn" onAction="#handleCategoryDienTu"/>
-                <Button text="📷  Máy ảnh"    maxWidth="Infinity" styleClass="cat-btn" onAction="#handleCategoryMayAnh"/>
-                <Button text="💻  Laptop"     maxWidth="Infinity" styleClass="cat-btn" onAction="#handleCategoryLaptop"/>
-                <Button text="📱  Điện thoại" maxWidth="Infinity" styleClass="cat-btn" onAction="#handleCategoryDienThoai"/>
-                <Button text="⌚  Đồng hồ"   maxWidth="Infinity" styleClass="cat-btn" onAction="#handleCategoryDongHo"/>
-                <Button text="🚗  Xe cộ"     maxWidth="Infinity" styleClass="cat-btn" onAction="#handleCategoryXeCo"/>
-            </VBox>
+    // =========================================================
+    // COUNTDOWN
+    // =========================================================
+    @FXML private Label hoursLabel;
+    @FXML private Label minsLabel;
+    @FXML private Label secsLabel;
 
-            <Region VBox.vgrow="ALWAYS"/>
-        </VBox>
-    </left>
+    // =========================================================
+    // BID HISTORY
+    // =========================================================
+    @FXML private VBox bidHistoryBox;
 
-    <!-- ══ HEADER ══ -->
-    <top>
-        <HBox styleClass="header" spacing="12" alignment="CENTER_LEFT">
-            <padding><Insets top="0" right="20" bottom="0" left="20"/></padding>
+    // =========================================================
+    // CHAT
+    // =========================================================
+    @FXML private VBox       chatPanel;
+    @FXML private VBox       chatMessagesBox;
+    @FXML private TextField  chatInput;
+    @FXML private ScrollPane chatScrollPane;
+    @FXML private Label      onlineCountLabel;
 
-            <TextField fx:id="searchField"
-                       promptText="Tìm kiếm sản phẩm, người bán..."
-                       HBox.hgrow="ALWAYS" styleClass="search-field"/>
+    // =========================================================
+    // DATA
+    // =========================================================
+    private AuctionSession session;
+    private Timeline       countdownTimer;
+    private LocalDateTime  sessionStartTime;
 
-            <Region HBox.hgrow="ALWAYS"/>
+    // ── Notification ──────────────────────────────────────────
+    private final NotificationManager notifManager = new NotificationManager();
+    private       Popup               notifPopup;
 
-            <VBox alignment="CENTER" spacing="0">
-                <StackPane>
-                    <Button fx:id="bellButton" text="🔔" styleClass="icon-btn"
-                            onAction="#handleBellClick"/>
-                    <Label fx:id="badgeLabel" text="0"
-                           visible="false" managed="false"
-                           style="-fx-background-color:#ef4444;
-                                  -fx-text-fill:white;
-                                  -fx-font-size:9px;
-                                  -fx-font-weight:bold;
-                                  -fx-background-radius:10;
-                                  -fx-padding:1 4 1 4;
-                                  -fx-min-width:16;
-                                  -fx-alignment:center;"
-                           StackPane.alignment="TOP_RIGHT"/>
-                </StackPane>
-            </VBox>
+    private static final DateTimeFormatter TIME_FMT =
+            DateTimeFormatter.ofPattern("HH:mm:ss");
 
-            <Separator orientation="VERTICAL"/>
+    // =========================================================
+    // INITIALIZE
+    // =========================================================
+    @FXML
+    public void initialize() {
+        User user = AppContext.getCurrentUser();
+        if (user == null) {
+            showAlert("Lỗi đăng nhập", "Không tìm thấy user hiện tại.");
+            return;
+        }
 
-            <VBox alignment="CENTER_RIGHT">
-                <Label text="Số dư (VNĐ)" styleClass="wallet-label"/>
-                <Label fx:id="walletLabel" styleClass="wallet-amount"/>
-            </VBox>
+        // ── Header info ──────────────────────────────────────
+        userNameLabel.setText(user.getUsername());
+        userRoleLabel.setText(user.getRole());
+        String avatar = user.getUsername().length() >= 2
+                ? user.getUsername().substring(0, 2).toUpperCase()
+                : user.getUsername().toUpperCase();
+        userAvatarLabel.setText(avatar);
+        walletLabel.setText(String.format("₫ %,.0f",
+                AppContext.getWalletBalance(user.getUsername())));
 
-            <Separator orientation="VERTICAL"/>
+        // ── Menu + sidebar theo role ──────────────────────────
+        applyRoleMenu(user);
 
-            <!--
-                Profile dropdown:
-                - menuItemHistory  : đổi text theo role (BIDDER/SELLER)
-                - menuItemMyProducts: ĐÃ XÓA — thay bằng nút sidebar
-            -->
-            <MenuButton fx:id="profileMenuBtn" styleClass="profile-menu-btn">
-                <graphic>
-                    <HBox spacing="8" alignment="CENTER">
-                        <Label fx:id="userAvatarLabel" styleClass="profile-avatar"/>
-                        <VBox alignment="CENTER_LEFT">
-                            <Label fx:id="userNameLabel" styleClass="header-username"/>
-                            <Label fx:id="userRoleLabel" styleClass="header-role"/>
-                        </VBox>
-                    </HBox>
-                </graphic>
-                <items>
-                    <MenuItem text="👤  Hồ sơ"
-                              onAction="#handleProfile"/>
-                    <MenuItem fx:id="menuItemHistory"
-                              text="📋  Lịch sử"
-                              onAction="#handleHistory"/>
-                    <!-- menuItemMyProducts đã bị xóa khỏi đây -->
-                    <SeparatorMenuItem/>
-                    <MenuItem text="🚪  Đăng xuất"
-                              onAction="#handleLogout"/>
-                </items>
-            </MenuButton>
+        // ── Session ──────────────────────────────────────────
+        session = resolveSession(user);
+        if (session != null) {
+            AppContext.setActiveSession(session);
+            sessionStartTime = LocalDateTime.now();
+            showAuctionCard(true);
+            loadAuctionInfo();
+            refreshBidHistory();
+            startCountdown();
+        } else {
+            showAuctionCard(false);
+        }
 
-        </HBox>
-    </top>
+        // ── Badge ─────────────────────────────────────────────
+        updateBadge();
 
-    <!-- ══ CONTENT ══ -->
-    <center>
-        <StackPane>
+        // ── Server ───────────────────────────────────────────
+        connectToServer(user);
+    }
 
-            <VBox spacing="16" style="-fx-background-color: #0f172a;">
-                <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+    // =========================================================
+    // ROLE MENU + SIDEBAR
+    // =========================================================
+    /**
+     * Điều chỉnh UI theo role:
+     *
+     * SIDEBAR:
+     *   SELLER → hiện "🏷️ Đăng bán sản phẩm"  (btnSellerProducts)
+     *   ADMIN  → hiện "📦 Quản lý sản phẩm"    (btnAdminProducts)
+     *   BIDDER → cả 2 nút đều ẩn (isSeller=false, isAdmin=false)
+     *
+     * PROFILE DROPDOWN:
+     *   BIDDER → menuItemHistory = "🛒 Lịch sử mua hàng"
+     *   SELLER → menuItemHistory = "📦 Lịch sử bán hàng"
+     *   ADMIN  → xóa menuItemHistory khỏi dropdown
+     */
+    private void applyRoleMenu(User user) {
+        String role = user.getRole() == null ? "" : user.getRole().toUpperCase();
 
-                <Label text="🏷️  Sản phẩm đấu giá hiện tại"
-                       style="-fx-font-size:16px; -fx-font-weight:bold; -fx-text-fill:#e2e8f0;"/>
+        boolean isSeller = "SELLER".equals(role);
+        boolean isAdmin  = "ADMIN".equals(role);
+        // BIDDER: cả 2 đều false → cả 2 nút tự ẩn, không cần xử lý thêm
 
-                <!-- Auction Card -->
-                <HBox fx:id="auctionCard"
-                      styleClass="auction-card"
-                      spacing="24"
-                      visible="false"
-                      managed="false">
-                    <padding><Insets top="24" right="24" bottom="24" left="24"/></padding>
+        // ── Sidebar ──────────────────────────────────────────
+        if (btnSellerProducts != null) {
+            btnSellerProducts.setVisible(isSeller);
+            btnSellerProducts.setManaged(isSeller);
+        }
+        if (btnAdminProducts != null) {
+            btnAdminProducts.setVisible(isAdmin);
+            btnAdminProducts.setManaged(isAdmin);
+        }
 
-                    <VBox styleClass="product-image-box" alignment="CENTER" minWidth="220">
-                        <Label text="⬡" styleClass="product-image-icon"/>
-                        <Label fx:id="statusLabel" styleClass="status-badge"/>
-                    </VBox>
+        // ── Profile dropdown ─────────────────────────────────
+        switch (role) {
+            case "BIDDER" -> {
+                if (menuItemHistory != null)
+                    menuItemHistory.setText("🛒  Lịch sử mua hàng");
+            }
+            case "SELLER" -> {
+                if (menuItemHistory != null)
+                    menuItemHistory.setText("📦  Lịch sử bán hàng");
+            }
+            default -> {
+                if (menuItemHistory != null)
+                    profileMenuBtn.getItems().remove(menuItemHistory);
+            }
+        }
+    }
 
-                    <VBox spacing="12" HBox.hgrow="ALWAYS">
-                        <Label fx:id="productTitleLabel" styleClass="product-title"/>
-                        <Label fx:id="productDescLabel"  styleClass="product-desc"
-                               wrapText="true"/>
+    // =========================================================
+    // RESOLVE SESSION
+    // =========================================================
+    private AuctionSession resolveSession(User user) {
+        AuctionSession active = AppContext.getActiveSession();
+        if (active != null) return active;
 
-                        <HBox spacing="24">
-                            <VBox styleClass="price-cell">
-                                <Label text="Giá khởi điểm"    styleClass="price-label"/>
-                                <Label fx:id="startPriceLabel" styleClass="price-value"/>
-                            </VBox>
-                            <VBox styleClass="price-cell price-current">
-                                <Label text="Giá hiện tại"       styleClass="price-label"/>
-                                <Label fx:id="currentPriceLabel" styleClass="price-current-value"/>
-                            </VBox>
-                            <VBox styleClass="price-cell">
-                                <Label text="Bước giá tối thiểu" styleClass="price-label"/>
-                                <Label fx:id="minStepLabel"      styleClass="price-value"/>
-                            </VBox>
-                            <VBox styleClass="price-cell">
-                                <Label text="Kết thúc lúc"  styleClass="price-label"/>
-                                <Label fx:id="endTimeLabel" styleClass="price-value"/>
-                            </VBox>
-                        </HBox>
+        String role = user.getRole() == null ? "" : user.getRole().toUpperCase();
 
-                        <HBox alignment="CENTER_LEFT" spacing="24">
-                            <VBox>
-                                <Label text="THỜI GIAN CÒN LẠI"
-                                       styleClass="countdown-label"/>
-                                <HBox spacing="4" alignment="CENTER_LEFT">
-                                    <VBox alignment="CENTER">
-                                        <Label fx:id="hoursLabel" text="00"
-                                               styleClass="countdown-num"/>
-                                        <Label text="GIỜ"  styleClass="countdown-unit"/>
-                                    </VBox>
-                                    <Label text=":" styleClass="countdown-sep"/>
-                                    <VBox alignment="CENTER">
-                                        <Label fx:id="minsLabel" text="00"
-                                               styleClass="countdown-num"/>
-                                        <Label text="PHÚT" styleClass="countdown-unit"/>
-                                    </VBox>
-                                    <Label text=":" styleClass="countdown-sep"/>
-                                    <VBox alignment="CENTER">
-                                        <Label fx:id="secsLabel" text="00"
-                                               styleClass="countdown-num"/>
-                                        <Label text="GIÂY" styleClass="countdown-unit"/>
-                                    </VBox>
-                                </HBox>
-                            </VBox>
-                            <Button text="ĐẶT GIÁ NGAY!"
-                                    onAction="#handlePlaceBid"
-                                    styleClass="btn-bid"/>
-                        </HBox>
-                    </VBox>
-                </HBox>
+        // Seller → ưu tiên phiên do chính mình tạo
+        if ("SELLER".equals(role)) {
+            for (AuctionSession s : AppContext.getRunningSessions()) {
+                if (user.getUsername().equalsIgnoreCase(
+                        AppContext.getSessionSeller(s.getSessionId()))) {
+                    return s;
+                }
+            }
+        }
 
-                <!-- Empty State -->
-                <VBox fx:id="emptyAuctionBox"
-                      styleClass="auction-card"
-                      alignment="CENTER"
-                      spacing="12"
-                      prefHeight="200"
-                      visible="true"
-                      managed="true">
-                    <padding><Insets top="36" right="40" bottom="36" left="40"/></padding>
-                    <Label text="🏷️" style="-fx-font-size:48px;"/>
-                    <Label text="Chưa có phiên đấu giá nào đang diễn ra"
-                           style="-fx-font-size:15px; -fx-font-weight:bold;
-                                  -fx-text-fill:#94a3b8;"/>
-                    <Label text="Khi có sản phẩm được đăng, thông tin sẽ hiển thị tại đây."
-                           style="-fx-font-size:13px; -fx-text-fill:#64748b;"
-                           wrapText="true"/>
-                </VBox>
+        // Bidder hoặc Seller không có phiên riêng → lấy phiên đầu tiên
+        List<AuctionSession> running = AppContext.getRunningSessions();
+        return running.isEmpty() ? null : running.get(0);
+    }
 
-                <!-- Lịch sử bid -->
-                <VBox styleClass="info-card" VBox.vgrow="ALWAYS" spacing="8">
-                    <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
-                    <Label text="Lịch sử bid" styleClass="card-title"/>
-                    <Separator/>
-                    <ScrollPane fitToWidth="true" prefHeight="200"
-                                styleClass="bid-scroll">
-                        <VBox fx:id="bidHistoryBox" spacing="6"/>
-                    </ScrollPane>
-                    <Hyperlink text="Xem tất cả lịch sử →"
-                               onAction="#handleHistory"
-                               styleClass="see-all-link"/>
-                </VBox>
-            </VBox>
+    // =========================================================
+    // SERVER CONNECTION
+    // =========================================================
+    private void connectToServer(User user) {
+        ServerConnection conn = ServerConnection.getInstance();
+        conn.setListener(this::handleServerMessage);
+        if (!conn.isConnected()) {
+            conn.connect(user.getUsername());
+        } else {
+            conn.sendJson("{\"action\":\"GET_ONLINE_COUNT\"}");
+        }
+    }
 
-            <!-- Chat FAB -->
-            <Button text="💬"
-                    onAction="#handleToggleChat"
-                    styleClass="btn-chat-fab"
-                    StackPane.alignment="BOTTOM_RIGHT">
-                <StackPane.margin><Insets bottom="24" right="24"/></StackPane.margin>
-            </Button>
+    private void handleServerMessage(String raw) {
+        try {
+            if (!raw.contains("\"type\"")) return;
+            String type = extractJson(raw, "type");
+            switch (type) {
+                case "CHAT" -> {
+                    String sender  = extractJson(raw, "username");
+                    String message = extractJson(raw, "message");
+                    User me = AppContext.getCurrentUser();
+                    if (me != null && !sender.equals(me.getUsername()))
+                        Platform.runLater(() ->
+                                addChatMessage(sender, message, false));
+                }
+                case "ONLINE_COUNT" -> {
+                    String count = extractJson(raw, "count");
+                    Platform.runLater(() -> {
+                        if (onlineCountLabel != null)
+                            onlineCountLabel.setText("● Online " + count);
+                    });
+                }
+                case "NEW_BID" -> {
+                    String bidder = extractJson(raw, "username");
+                    String amount = extractJson(raw, "amount");
+                    if (session != null) {
+                        try {
+                            double amt = Double.parseDouble(amount);
+                            Platform.runLater(() -> {
+                                currentPriceLabel.setText(
+                                        String.format("₫ %,.0f", amt));
+                                addChatMessage("System",
+                                        bidder + " đặt giá "
+                                        + String.format("₫ %,.0f", amt),
+                                        false);
+                            });
+                            User me = AppContext.getCurrentUser();
+                            if (me != null && !bidder.equals(me.getUsername())) {
+                                boolean participating =
+                                        session.getBidHistory().stream()
+                                        .anyMatch(b -> b.getBidderId()
+                                                .equals(me.getUsername()));
+                                if (participating)
+                                    pushNotification(
+                                            NotificationManager.NotifType.OUTBID,
+                                            "Bạn bị vượt giá!",
+                                            String.format(
+                                                "%s vừa đặt ₫%,.0f cho %s",
+                                                bidder, amt,
+                                                session.getItemName()));
+                            }
+                        } catch (NumberFormatException ignored) {}
+                    }
+                }
+                case "SYSTEM" -> {
+                    String message = extractJson(raw, "message");
+                    Platform.runLater(() ->
+                            addChatMessage("System", message, false));
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("handleServerMessage lỗi: " + e.getMessage());
+        }
+    }
 
-            <!-- Chat Panel -->
-            <VBox fx:id="chatPanel"
-                  styleClass="chat-panel"
-                  spacing="0"
-                  prefWidth="340" maxWidth="340" maxHeight="480"
-                  StackPane.alignment="BOTTOM_RIGHT"
-                  visible="false" managed="false">
-                <StackPane.margin><Insets bottom="88" right="16"/></StackPane.margin>
+    private String extractJson(String json, String key) {
+        String search = "\"" + key + "\":\"";
+        int start = json.indexOf(search);
+        if (start == -1) return "";
+        start += search.length();
+        int end = json.indexOf("\"", start);
+        return end == -1 ? "" : json.substring(start, end);
+    }
 
-                <HBox styleClass="chat-header" alignment="CENTER_LEFT" spacing="8">
-                    <padding><Insets top="12" right="16" bottom="12" left="16"/></padding>
-                    <Label text="💬 CHAT TRỰC TUYẾN" styleClass="chat-title"/>
-                    <Region HBox.hgrow="ALWAYS"/>
-                    <Label fx:id="onlineCountLabel" text="● Online ..."
-                           styleClass="chat-online"/>
-                    <Button text="✕" onAction="#handleToggleChat"
-                            styleClass="btn-close-chat"/>
-                </HBox>
+    // =========================================================
+    // AUCTION CARD TOGGLE
+    // =========================================================
+    private void showAuctionCard(boolean hasSession) {
+        if (auctionCard != null) {
+            auctionCard.setVisible(hasSession);
+            auctionCard.setManaged(hasSession);
+        }
+        if (emptyAuctionBox != null) {
+            emptyAuctionBox.setVisible(!hasSession);
+            emptyAuctionBox.setManaged(!hasSession);
+        }
+    }
 
-                <ScrollPane fx:id="chatScrollPane"
-                            fitToWidth="true"
-                            VBox.vgrow="ALWAYS"
-                            prefHeight="360"
-                            styleClass="chat-scroll">
-                    <VBox fx:id="chatMessagesBox" spacing="8">
-                        <padding>
-                            <Insets top="12" right="12" bottom="12" left="12"/>
-                        </padding>
-                    </VBox>
-                </ScrollPane>
+    // =========================================================
+    // LOAD AUCTION INFO
+    // =========================================================
+    private void loadAuctionInfo() {
+        productTitleLabel.setText(session.getItemName());
+        productDescLabel.setText(
+                "Sản phẩm mới 100%, còn nguyên seal, bảo hành 12 tháng.");
+        startPriceLabel.setText(formatVND(session.getStartingPrice()));
+        currentPriceLabel.setText(formatVND(session.getCurrentPrice()));
+        minStepLabel.setText(formatVND(session.getMinBidStep()));
+        endTimeLabel.setText(session.getEndTime()
+                .format(DateTimeFormatter.ofPattern("HH:mm:ss dd/MM/yyyy")));
+        statusLabel.setText("● " + session.getStatus().name());
+        statusLabel.getStyleClass().setAll("status-badge", "status-running");
+    }
 
-                <HBox styleClass="chat-input-row" spacing="8" alignment="CENTER">
-                    <padding><Insets top="8" right="12" bottom="8" left="12"/></padding>
-                    <TextField fx:id="chatInput"
-                               promptText="Nhập tin nhắn..."
-                               HBox.hgrow="ALWAYS"
-                               styleClass="chat-input"
-                               onAction="#handleSendChat"/>
-                    <Button text="➤" onAction="#handleSendChat"
-                            styleClass="btn-send"/>
-                </HBox>
-            </VBox>
+    // =========================================================
+    // COUNTDOWN
+    // =========================================================
+    private void startCountdown() {
+        countdownTimer = new Timeline(
+                new KeyFrame(Duration.seconds(1), e -> updateCountdown()));
+        countdownTimer.setCycleCount(Timeline.INDEFINITE);
+        countdownTimer.play();
+    }
 
-        </StackPane>
-    </center>
+    private void updateCountdown() {
+        if (session == null) return;
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime end = session.getEndTime();
+        if (now.isAfter(end)) {
+            hoursLabel.setText("00");
+            minsLabel.setText("00");
+            secsLabel.setText("00");
+            if (statusLabel != null) statusLabel.setText("● KẾT THÚC");
+            countdownTimer.stop();
+            saveSessionToHistory();
+            pushNotification(
+                    NotificationManager.NotifType.SYSTEM,
+                    "Phiên đấu giá kết thúc",
+                    "Phiên \"" + session.getItemName() + "\" đã kết thúc.");
+            return;
+        }
+        long total = java.time.Duration.between(now, end).getSeconds();
+        hoursLabel.setText(String.format("%02d", total / 3600));
+        minsLabel.setText(String.format("%02d",  (total % 3600) / 60));
+        secsLabel.setText(String.format("%02d",  total % 60));
 
-</BorderPane>
+        if (total == 300)
+            pushNotification(
+                    NotificationManager.NotifType.AUCTION_ENDING_SOON,
+                    "Sắp hết giờ!",
+                    "Còn 5 phút! Giá hiện tại: "
+                    + formatVND(session.getCurrentPrice()));
+    }
+
+    // =========================================================
+    // LƯU PHIÊN VÀO LỊCH SỬ
+    // =========================================================
+    private void saveSessionToHistory() {
+        if (session == null) return;
+        LocalDateTime start = sessionStartTime != null
+                ? sessionStartTime
+                : session.getEndTime().minusHours(1);
+        AppContext.finalizeSession(session, start);
+    }
+
+    // =========================================================
+    // PLACE BID
+    // =========================================================
+    @FXML
+    private void handlePlaceBid() {
+        if (session == null) {
+            showAlert("Chưa có phiên đấu giá",
+                    "Hiện tại chưa có sản phẩm nào đang đấu giá.");
+            return;
+        }
+        User user = AppContext.getCurrentUser();
+        if (user == null) { showAlert("Lỗi", "Bạn chưa đăng nhập."); return; }
+
+        try {
+            double newPrice = session.getCurrentPrice() + session.getMinBidStep();
+            Bid bid = new Bid(UUID.randomUUID().toString(),
+                    user.getUsername(), newPrice);
+            session.placeBid(bid);
+
+            currentPriceLabel.setText(formatVND(session.getCurrentPrice()));
+            updateCountdown();
+            refreshBidHistory();
+            addChatMessage("System",
+                    user.getUsername() + " đã đặt giá "
+                    + formatVND(newPrice), false);
+
+            pushNotification(
+                    NotificationManager.NotifType.BID_PLACED,
+                    "Đặt giá thành công",
+                    String.format("Bạn đã đặt %s cho \"%s\"",
+                            formatVND(newPrice), session.getItemName()));
+
+            AppContext.addHistory(user.getUsername(),
+                    new AppContext.HistoryRecord(
+                            "BID-" + UUID.randomUUID().toString()
+                                    .substring(0, 6).toUpperCase(),
+                            session.getItemName(), newPrice,
+                            AppContext.getSessionSeller(session.getSessionId()),
+                            "CHỜ XỬ LÝ", true, LocalDateTime.now()));
+
+            ServerConnection conn = ServerConnection.getInstance();
+            if (conn.isConnected())
+                conn.sendBid(user.getUsername(),
+                        session.getItemName(), newPrice);
+
+        } catch (InvalidBidException e) {
+            showAlert("Bid không hợp lệ", e.getMessage());
+            pushNotification(NotificationManager.NotifType.SYSTEM,
+                    "Bid không hợp lệ", e.getMessage());
+        } catch (AuctionClosedException e) {
+            showAlert("Phiên đấu giá đã đóng", e.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
+            showAlert("Lỗi hệ thống", e.getMessage());
+        }
+    }
+
+    // =========================================================
+    // NOTIFICATION BELL
+    // =========================================================
+    @FXML
+    private void handleBellClick() {
+        if (notifPopup != null && notifPopup.isShowing()) {
+            notifPopup.hide();
+            return;
+        }
+        notifManager.markAllRead();
+        updateBadge();
+        notifPopup = NotificationPopup.show(bellButton, notifManager.getAll());
+    }
+
+    public void pushNotification(NotificationManager.NotifType type,
+                                  String title, String body) {
+        Platform.runLater(() -> {
+            notifManager.add(new NotificationManager.NotifItem(
+                    type, title, body, LocalDateTime.now()));
+            updateBadge();
+        });
+    }
+
+    private void updateBadge() {
+        if (badgeLabel == null) return;
+        int unread = notifManager.countUnread();
+        badgeLabel.setText(unread > 9 ? "9+" : String.valueOf(unread));
+        badgeLabel.setVisible(unread > 0);
+        badgeLabel.setManaged(unread > 0);
+    }
+
+    // =========================================================
+    // CHAT
+    // =========================================================
+    @FXML
+    private void handleToggleChat() {
+        boolean visible = !chatPanel.isVisible();
+        chatPanel.setVisible(visible);
+        chatPanel.setManaged(visible);
+        if (visible) Platform.runLater(() -> chatScrollPane.setVvalue(1.0));
+    }
+
+    @FXML
+    private void handleSendChat() {
+        String msg = chatInput.getText().trim();
+        if (msg.isEmpty()) return;
+        User user = AppContext.getCurrentUser();
+
+        addChatMessage(user.getUsername(), msg,
+                "SELLER".equalsIgnoreCase(user.getRole()));
+        chatInput.clear();
+
+        ServerConnection conn = ServerConnection.getInstance();
+        if (conn.isConnected()) {
+            conn.sendChat(user.getUsername(), msg);
+        } else {
+            boolean ok = conn.connect(user.getUsername());
+            if (ok) {
+                conn.setListener(this::handleServerMessage);
+                conn.sendChat(user.getUsername(), msg);
+            }
+        }
+    }
+
+    // =========================================================
+    // SIDEBAR NAVIGATION
+    // =========================================================
+    @FXML private void handleAuctionList() {
+        try { HelloApplication.showAuctionListView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleLiveAuction() {
+        if (AppContext.getActiveSession() == null) {
+            List<AuctionSession> running = AppContext.getRunningSessions();
+            if (!running.isEmpty())
+                AppContext.setActiveSession(running.get(0));
+            else {
+                showAlert("Thông báo",
+                        "Hiện chưa có phiên đấu giá nào đang diễn ra.");
+                return;
+            }
+        }
+        try { HelloApplication.showLiveAuctionView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    /**
+     * SELLER bấm "Đăng bán sản phẩm" → MyProductsController
+     * (nút chỉ hiển thị khi role = SELLER, xử lý trong applyRoleMenu)
+     */
+    @FXML private void handleSellerProducts() {
+        try { HelloApplication.showMyProductsView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    /**
+     * ADMIN bấm "Quản lý sản phẩm" → ProductManagementController
+     * (nút chỉ hiển thị khi role = ADMIN, xử lý trong applyRoleMenu)
+     */
+    @FXML private void handleAdminProducts() {
+        try { HelloApplication.showProductManagementView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleAuctionSessionHistory() {
+        try { HelloApplication.showAuctionSessionHistoryView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleCategoryDienTu() {
+        try { HelloApplication.showAuctionListByCategory("Điện tử"); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleCategoryMayAnh() {
+        try { HelloApplication.showAuctionListByCategory("Máy ảnh"); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleCategoryLaptop() {
+        try { HelloApplication.showAuctionListByCategory("Laptop"); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleCategoryDienThoai() {
+        try { HelloApplication.showAuctionListByCategory("Điện thoại"); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleCategoryDongHo() {
+        try { HelloApplication.showAuctionListByCategory("Đồng hồ"); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleCategoryXeCo() {
+        try { HelloApplication.showAuctionListByCategory("Xe cộ"); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    // =========================================================
+    // PROFILE MENU HANDLERS
+    // =========================================================
+    @FXML private void handleProfile() {
+        try { HelloApplication.showProfileView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleHistory() {
+        try { HelloApplication.showHistoryView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleWallet() {
+        try { HelloApplication.showWalletView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleLogout() {
+        if (countdownTimer != null) countdownTimer.stop();
+        ServerConnection.getInstance().disconnect();
+        AppContext.logout();
+        try { HelloApplication.showLoginView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    // =========================================================
+    // BID HISTORY
+    // =========================================================
+    private void refreshBidHistory() {
+        bidHistoryBox.getChildren().clear();
+        if (session == null) return;
+        var history = session.getBidHistory();
+        if (history.isEmpty()) {
+            Label empty = new Label("Chưa có lượt đặt giá nào.");
+            empty.setStyle("-fx-text-fill: #64748b; -fx-font-size: 13px;");
+            bidHistoryBox.getChildren().add(empty);
+            return;
+        }
+        for (int i = history.size() - 1; i >= 0; i--) {
+            Bid b = history.get(i);
+            HBox row = new HBox(12);
+            row.getStyleClass().add("bid-row");
+            if (i == history.size() - 1)
+                row.getStyleClass().add("bid-row-top");
+
+            Label name = new Label(
+                    (i == history.size() - 1 ? "👑 " : "") + b.getBidderId());
+            Label amount = new Label(formatVND(b.getAmount()));
+            Label time   = new Label(b.getTimestamp().format(TIME_FMT));
+            amount.getStyleClass().add("bid-amount");
+            time.getStyleClass().add("bid-time");
+            HBox.setHgrow(name, Priority.ALWAYS);
+            row.getChildren().addAll(name, amount, time);
+            bidHistoryBox.getChildren().add(row);
+        }
+    }
+
+    // =========================================================
+    // CHAT UI
+    // =========================================================
+    private void addChatMessage(String sender, String message,
+                                 boolean isSeller) {
+        VBox bubble = new VBox(2);
+        bubble.getStyleClass().add(
+                isSeller ? "chat-bubble-seller" : "chat-bubble-buyer");
+        Label senderLabel = new Label(sender);
+        senderLabel.getStyleClass().add("chat-sender");
+        Label msgLabel = new Label(message);
+        msgLabel.setWrapText(true);
+        msgLabel.getStyleClass().add("chat-message");
+        bubble.getChildren().addAll(senderLabel, msgLabel);
+        chatMessagesBox.getChildren().add(bubble);
+        Platform.runLater(() -> chatScrollPane.setVvalue(1.0));
+    }
+
+    // =========================================================
+    // UTIL
+    // =========================================================
+    private String formatVND(double amount) {
+        return String.format("₫ %,.0f", amount);
+    }
+
+    private void showAlert(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+}
