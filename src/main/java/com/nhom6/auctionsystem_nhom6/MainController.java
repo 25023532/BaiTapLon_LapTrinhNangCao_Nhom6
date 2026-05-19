@@ -8,7 +8,6 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Popup;
 import javafx.util.Duration;
-import javafx.scene.control.ButtonBar;
 
 import org.example.auction.AuctionSession;
 import org.example.auction.Bid;
@@ -40,8 +39,9 @@ public class MainController {
     @FXML private Label  badgeLabel;
 
     // ── Sidebar: nút theo role ────────────────────────────────
-    // SELLER thấy "Đăng bán sản phẩm", ADMIN thấy "Quản lý sản phẩm"
-    // BIDDER: cả 2 đều ẩn — không cần field riêng cho Bidder
+    // SELLER thấy btnSellerProducts
+    // ADMIN  thấy btnAdminProducts
+    // BIDDER: cả 2 đều ẩn
     @FXML private Button btnSellerProducts;
     @FXML private Button btnAdminProducts;
 
@@ -89,15 +89,17 @@ public class MainController {
     private AuctionSession session;
     private Timeline       countdownTimer;
     private LocalDateTime  sessionStartTime;
-    private boolean auctionEnded = false;
 
     // ── Notification ──────────────────────────────────────────
     private final NotificationManager notifManager = new NotificationManager();
     private       Popup               notifPopup;
-    private Popup searchPopup;
 
     private static final DateTimeFormatter TIME_FMT =
             DateTimeFormatter.ofPattern("HH:mm:ss");
+    private static final DateTimeFormatter DT_FMT =
+            DateTimeFormatter.ofPattern("HH:mm:ss dd/MM/yyyy");
+    private static final DateTimeFormatter ISO_DT =
+            DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     // =========================================================
     // INITIALIZE
@@ -110,7 +112,7 @@ public class MainController {
             return;
         }
 
-        // ── Header info ──────────────────────────────────────
+        // ── Header ───────────────────────────────────────────
         userNameLabel.setText(user.getUsername());
         userRoleLabel.setText(user.getRole());
         String avatar = user.getUsername().length() >= 2
@@ -141,9 +143,6 @@ public class MainController {
 
         // ── Server ───────────────────────────────────────────
         connectToServer(user);
-
-        // SearchBar
-        setupSearch();
     }
 
     // =========================================================
@@ -155,19 +154,17 @@ public class MainController {
      * SIDEBAR:
      *   SELLER → hiện "🏷️ Đăng bán sản phẩm"  (btnSellerProducts)
      *   ADMIN  → hiện "📦 Quản lý sản phẩm"    (btnAdminProducts)
-     *   BIDDER → cả 2 nút đều ẩn (isSeller=false, isAdmin=false)
+     *   BIDDER → cả 2 nút đều ẩn
      *
      * PROFILE DROPDOWN:
      *   BIDDER → menuItemHistory = "🛒 Lịch sử mua hàng"
      *   SELLER → menuItemHistory = "📦 Lịch sử bán hàng"
-     *   ADMIN  → xóa menuItemHistory khỏi dropdown
+     *   ADMIN  → xóa menuItemHistory
      */
     private void applyRoleMenu(User user) {
-        String role = user.getRole() == null ? "" : user.getRole().toUpperCase();
-
+        String role    = user.getRole() == null ? "" : user.getRole().toUpperCase();
         boolean isSeller = "SELLER".equals(role);
         boolean isAdmin  = "ADMIN".equals(role);
-        // BIDDER: cả 2 đều false → cả 2 nút tự ẩn, không cần xử lý thêm
 
         // ── Sidebar ──────────────────────────────────────────
         if (btnSellerProducts != null) {
@@ -190,7 +187,7 @@ public class MainController {
                     menuItemHistory.setText("📦  Lịch sử bán hàng");
             }
             default -> {
-                if (menuItemHistory != null)
+                if (menuItemHistory != null && profileMenuBtn != null)
                     profileMenuBtn.getItems().remove(menuItemHistory);
             }
         }
@@ -215,7 +212,7 @@ public class MainController {
             }
         }
 
-        // Bidder hoặc Seller không có phiên riêng → lấy phiên đầu tiên
+        // Bidder hoặc không có phiên riêng → lấy phiên đầu tiên
         List<AuctionSession> running = AppContext.getRunningSessions();
         return running.isEmpty() ? null : running.get(0);
     }
@@ -233,11 +230,38 @@ public class MainController {
         }
     }
 
+    /**
+     * Xử lý tất cả message từ server.
+     *
+     * Các type hỗ trợ:
+     *   ONLINE_COUNT                 → cập nhật label online
+     *   CHAT                         → hiện message vào chat
+     *   NEW_BID                      → cập nhật giá + notify
+     *   SYSTEM                       → hiện system message
+     *   NOTIFY_ADMIN_NEW_PRODUCT     → Admin nhận khi Seller đăng sản phẩm
+     *   NOTIFY_SELLER_APPROVED       → Seller nhận khi Admin duyệt
+     *   NOTIFY_SELLER_REJECTED       → Seller nhận khi Admin từ chối
+     *   NOTIFY_BIDDER_SESSION_START  → Bidder nhận khi Seller bắt đầu phiên
+     *   NOTIFY_BIDDER_SESSION_END    → Bidder nhận khi phiên kết thúc
+     */
     private void handleServerMessage(String raw) {
         try {
-            if (!raw.contains("\"type\"")) return;
+            // Lấy type từ JSON
             String type = extractJson(raw, "type");
+            if (type == null || type.isEmpty()) return;
+
             switch (type) {
+
+                // ── Số người online ───────────────────────────
+                case "ONLINE_COUNT" -> {
+                    String count = extractJson(raw, "count");
+                    Platform.runLater(() -> {
+                        if (onlineCountLabel != null)
+                            onlineCountLabel.setText("● Online " + count);
+                    });
+                }
+
+                // ── Chat từ người khác ─────────────────────────
                 case "CHAT" -> {
                     String sender  = extractJson(raw, "username");
                     String message = extractJson(raw, "message");
@@ -246,29 +270,44 @@ public class MainController {
                         Platform.runLater(() ->
                                 addChatMessage(sender, message, false));
                 }
-                case "ONLINE_COUNT" -> {
-                    String count = extractJson(raw, "count");
-                    Platform.runLater(() -> {
-                        if (onlineCountLabel != null)
-                            onlineCountLabel.setText("● Online " + count);
-                    });
-                }
+
+                // ── Bid từ người khác ──────────────────────────
                 case "NEW_BID" -> {
-                    String bidder = extractJson(raw, "username");
-                    String amount = extractJson(raw, "amount");
-                    if (session != null) {
-                        try {
-                            double amt = Double.parseDouble(amount);
-                            Platform.runLater(() -> {
+                    String bidder    = extractJson(raw, "username");
+                    String amountStr = extractJson(raw, "amount");
+                    String sessionId = extractJson(raw, "sessionId");
+                    User me = AppContext.getCurrentUser();
+                    if (me == null || bidder.equals(me.getUsername())) return;
+
+                    try {
+                        double amt = Double.parseDouble(amountStr);
+
+                        // Cập nhật AuctionSession local
+                        AppContext.getGlobalSessions().stream()
+                                .filter(s -> s.getSessionId().equals(sessionId)
+                                        || s.getItemName().equals(sessionId))
+                                .findFirst()
+                                .ifPresent(s -> {
+                                    try {
+                                        s.placeBid(new Bid(
+                                                UUID.randomUUID().toString(),
+                                                bidder, amt));
+                                    } catch (Exception ignored) {}
+                                });
+
+                        Platform.runLater(() -> {
+                            if (session != null) {
                                 currentPriceLabel.setText(
-                                        String.format("₫ %,.0f", amt));
-                                addChatMessage("System",
-                                        bidder + " đặt giá "
-                                        + String.format("₫ %,.0f", amt),
-                                        false);
-                            });
-                            User me = AppContext.getCurrentUser();
-                            if (me != null && !bidder.equals(me.getUsername())) {
+                                        formatVND(session.getCurrentPrice()));
+                                updateCountdown();
+                                refreshBidHistory();
+                            }
+                            addChatMessage("System",
+                                    bidder + " đặt giá " + formatVND(amt),
+                                    false);
+
+                            // Notify nếu đang tham gia phiên đó
+                            if (session != null) {
                                 boolean participating =
                                         session.getBidHistory().stream()
                                         .anyMatch(b -> b.getBidderId()
@@ -276,223 +315,251 @@ public class MainController {
                                 if (participating)
                                     pushNotification(
                                             NotificationManager.NotifType.OUTBID,
-                                            "Bạn bị vượt giá!",
-                                            String.format(
-                                                "%s vừa đặt ₫%,.0f cho %s",
-                                                bidder, amt,
-                                                session.getItemName()));
+                                            "⚠️ Bạn bị vượt giá!",
+                                            String.format("%s vừa đặt %s cho \"%s\"",
+                                                    bidder, formatVND(amt),
+                                                    session.getItemName()));
                             }
-                        } catch (NumberFormatException ignored) {}
-                    }
+                        });
+                    } catch (NumberFormatException ignored) {}
                 }
+
+                // ── System message ─────────────────────────────
                 case "SYSTEM" -> {
                     String message = extractJson(raw, "message");
                     Platform.runLater(() ->
                             addChatMessage("System", message, false));
                 }
+
+                // ══════════════════════════════════════════════
+                // ADMIN nhận: Seller vừa đăng sản phẩm mới
+                // ══════════════════════════════════════════════
+                case "NOTIFY_ADMIN_NEW_PRODUCT" -> {
+                    String productId   = extractJson(raw, "productId");
+                    String productName = extractJson(raw, "productName");
+                    String sellerName  = extractJson(raw, "sellerName");
+                    String category    = extractJson(raw, "category");
+                    double startPrice  = parseDouble(extractJson(raw, "startPrice"));
+                    String startTimeStr= extractJson(raw, "startTime");
+                    String endTimeStr  = extractJson(raw, "endTime");
+
+                    // Thêm vào AppContext để Admin thấy trong ProductManagement
+                    try {
+                        LocalDateTime startTime = LocalDateTime.parse(
+                                startTimeStr, ISO_DT);
+                        LocalDateTime endTime   = LocalDateTime.parse(
+                                endTimeStr, ISO_DT);
+
+                        boolean exists = AppContext.getAllProducts().stream()
+                                .anyMatch(p -> p.id().equals(productId));
+                        if (!exists) {
+                            AppContext.addProduct(sellerName,
+                                    new AppContext.ProductRecord(
+                                            productId, productName, category,
+                                            startPrice, startPrice, 0,
+                                            "CHỜ DUYỆT",
+                                            startTime, endTime, "—"));
+                        }
+                    } catch (Exception e) {
+                        System.err.println("[MainController] Parse product error: "
+                                + e.getMessage());
+                    }
+
+                    // Hiện notification cho Admin
+                    Platform.runLater(() ->
+                        pushNotification(
+                                NotificationManager.NotifType.SYSTEM,
+                                "📦 Sản phẩm mới cần duyệt",
+                                sellerName + " vừa đăng \""
+                                + productName + "\" ("
+                                + category + ") — Vào Quản lý sản phẩm để duyệt."
+                        )
+                    );
+                }
+
+                // ══════════════════════════════════════════════
+                // SELLER nhận: Admin đã duyệt sản phẩm
+                // ══════════════════════════════════════════════
+                case "NOTIFY_SELLER_APPROVED" -> {
+                    String productId   = extractJson(raw, "productId");
+                    String productName = extractJson(raw, "productName");
+
+                    // Cập nhật status trong AppContext
+                    User me = AppContext.getCurrentUser();
+                    if (me != null) {
+                        AppContext.getProducts(me.getUsername()).stream()
+                                .filter(p -> p.id().equals(productId))
+                                .findFirst()
+                                .ifPresent(p -> AppContext.updateProduct(
+                                        me.getUsername(),
+                                        p.withUpdated(p.currentPrice(),
+                                                p.bidCount(), "ĐÃ DUYỆT",
+                                                p.topBidder())));
+                    }
+
+                    Platform.runLater(() ->
+                        pushNotification(
+                                NotificationManager.NotifType.BID_PLACED,
+                                "✅ Sản phẩm được duyệt!",
+                                "\"" + productName + "\" đã được Admin duyệt. "
+                                + "Bạn có thể bắt đầu phiên đấu giá ngay!"
+                        )
+                    );
+                }
+
+                // ══════════════════════════════════════════════
+                // SELLER nhận: Admin từ chối sản phẩm
+                // ══════════════════════════════════════════════
+                case "NOTIFY_SELLER_REJECTED" -> {
+                    String productId   = extractJson(raw, "productId");
+                    String productName = extractJson(raw, "productName");
+                    String reason      = extractJson(raw, "reason");
+
+                    // Cập nhật status trong AppContext
+                    User me = AppContext.getCurrentUser();
+                    if (me != null) {
+                        AppContext.getProducts(me.getUsername()).stream()
+                                .filter(p -> p.id().equals(productId))
+                                .findFirst()
+                                .ifPresent(p -> AppContext.updateProduct(
+                                        me.getUsername(),
+                                        p.withUpdated(p.currentPrice(),
+                                                p.bidCount(), "TỪ CHỐI",
+                                                p.topBidder())));
+                    }
+
+                    Platform.runLater(() ->
+                        pushNotification(
+                                NotificationManager.NotifType.SYSTEM,
+                                "❌ Sản phẩm bị từ chối",
+                                "\"" + productName + "\" — Lý do: " + reason
+                        )
+                    );
+                }
+
+                // ══════════════════════════════════════════════
+                // BIDDER nhận: Phiên đấu giá mới bắt đầu
+                // ══════════════════════════════════════════════
+                case "NOTIFY_BIDDER_SESSION_START" -> {
+                    String sessionId  = extractJson(raw, "sessionId");
+                    String itemName   = extractJson(raw, "itemName");
+                    String sellerName = extractJson(raw, "sellerName");
+                    String category   = extractJson(raw, "category");
+                    double startPrice = parseDouble(extractJson(raw, "startPrice"));
+                    double minStep    = parseDouble(extractJson(raw, "minStep"));
+                    String endTimeStr = extractJson(raw, "endTime");
+
+                    try {
+                        LocalDateTime endTime = LocalDateTime.parse(
+                                endTimeStr, ISO_DT);
+
+                        // Tạo AuctionSession local nếu chưa có
+                        boolean exists = AppContext.getGlobalSessions().stream()
+                                .anyMatch(s -> s.getSessionId().equals(sessionId));
+
+                        if (!exists) {
+                            AuctionSession newSession = new AuctionSession(
+                                    sessionId, itemName,
+                                    startPrice, minStep, endTime);
+                            newSession.start();
+                            AppContext.registerSession(newSession, sellerName);
+
+                            // Thêm ProductRecord nếu chưa có
+                            boolean productExists = AppContext.getAllProducts()
+                                    .stream().anyMatch(p -> p.id().equals(sessionId));
+                            if (!productExists) {
+                                AppContext.addProduct(sellerName,
+                                        new AppContext.ProductRecord(
+                                                sessionId, itemName, category,
+                                                startPrice, startPrice, 0,
+                                                "ĐANG ĐẤU GIÁ",
+                                                LocalDateTime.now(),
+                                                endTime, "—"));
+                            }
+                        }
+
+                        // Nếu Bidder chưa có session → tự động load phiên mới
+                        Platform.runLater(() -> {
+                            if (session == null) {
+                                AuctionSession found =
+                                        AppContext.getGlobalSessions().stream()
+                                        .filter(s -> s.getSessionId()
+                                                .equals(sessionId))
+                                        .findFirst().orElse(null);
+                                if (found != null) {
+                                    session = found;
+                                    AppContext.setActiveSession(session);
+                                    sessionStartTime = LocalDateTime.now();
+                                    showAuctionCard(true);
+                                    loadAuctionInfo();
+                                    refreshBidHistory();
+                                    startCountdown();
+                                }
+                            }
+                        });
+
+                    } catch (Exception e) {
+                        System.err.println("[MainController] Parse session error: "
+                                + e.getMessage());
+                    }
+
+                    // Notify cho tất cả (Bidder + Seller khác)
+                    Platform.runLater(() ->
+                        pushNotification(
+                                NotificationManager.NotifType.AUCTION_ENDING_SOON,
+                                "⚡ Phiên đấu giá mới bắt đầu!",
+                                String.format(
+                                    "\"%s\" bởi %s — Giá khởi điểm: %s. "
+                                    + "Vào Đấu giá trực tiếp để tham gia!",
+                                    itemName, sellerName, formatVND(startPrice))
+                        )
+                    );
+                }
+
+                // ══════════════════════════════════════════════
+                // BIDDER nhận: Phiên đấu giá kết thúc
+                // ══════════════════════════════════════════════
+                case "NOTIFY_BIDDER_SESSION_END" -> {
+                    String itemName = extractJson(raw, "itemName");
+                    Platform.runLater(() ->
+                        pushNotification(
+                                NotificationManager.NotifType.SYSTEM,
+                                "🏁 Phiên đấu giá kết thúc",
+                                "\"" + itemName + "\" đã kết thúc."
+                        )
+                    );
+                }
             }
         } catch (Exception e) {
-            System.err.println("handleServerMessage lỗi: " + e.getMessage());
+            System.err.println("[MainController] handleServerMessage lỗi: "
+                    + e.getMessage());
         }
     }
 
-    // =========================================================
-    // SEARCH
-    // =========================================================
-    private void setupSearch() {
-        searchField.textProperty().addListener((obs, oldVal, newVal) -> {
-            String kw = newVal.trim().toLowerCase();
-            if (kw.isEmpty()) {
-                hideSearchPopup();
-                return;
-            }
-            showSearchResults(kw);
-        });
-
-        searchField.focusedProperty().addListener((obs, o, focused) -> {
-            if (!focused) hideSearchPopup();
-        });
-    }
-
-    private void showSearchResults(String keyword) {
-        VBox resultBox = new VBox(0);
-        resultBox.setStyle("""
-            -fx-background-color: #1e293b;
-            -fx-border-color: #334155;
-            -fx-border-width: 1;
-            -fx-border-radius: 10;
-            -fx-background-radius: 10;
-            -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 16, 0, 0, 4);
-            -fx-padding: 6 0 6 0;
-            """);
-        resultBox.setPrefWidth(400);
-
-        boolean hasResult = false;
-
-        // ── Tìm trong phiên đấu giá ───────────────────────────
-        List<AuctionSession> sessions = AppContext.getGlobalSessions().stream()
-                .filter(s -> s.getItemName().toLowerCase().contains(keyword))
-                .limit(4)
-                .toList();
-
-        if (!sessions.isEmpty()) {
-            resultBox.getChildren().add(sectionLabel("🔨 Phiên đấu giá"));
-            for (AuctionSession s : sessions) {
-                resultBox.getChildren().add(buildSessionResult(s));
-                hasResult = true;
-            }
-        }
-
-        // ── Tìm trong sản phẩm ────────────────────────────────
-        List<AppContext.ProductRecord> products = AppContext.getAllProducts().stream()
-                .filter(p -> p.name().toLowerCase().contains(keyword)
-                        || p.category().toLowerCase().contains(keyword))
-                .limit(4)
-                .toList();
-
-        if (!products.isEmpty()) {
-            resultBox.getChildren().add(sectionLabel("📦 Sản phẩm"));
-            for (AppContext.ProductRecord p : products) {
-                resultBox.getChildren().add(buildProductResult(p));
-                hasResult = true;
-            }
-        }
-
-        // ── Không có kết quả ──────────────────────────────────
-        if (!hasResult) {
-            Label empty = new Label("Không tìm thấy kết quả cho \"" + keyword + "\"");
-            empty.setStyle("""
-                -fx-text-fill: #64748b;
-                -fx-font-size: 13px;
-                -fx-padding: 12 16 12 16;
-                """);
-            resultBox.getChildren().add(empty);
-        }
-
-        // Hiện popup
-        if (searchPopup == null) searchPopup = new Popup();
-        searchPopup.getContent().clear();
-        searchPopup.getContent().add(resultBox);
-        searchPopup.setAutoHide(true);
-
-        var bounds = searchField.localToScreen(searchField.getBoundsInLocal());
-        if (bounds != null) {
-            searchPopup.show(searchField,
-                    bounds.getMinX(),
-                    bounds.getMaxY() + 4);
-        }
-    }
-
-    private Label sectionLabel(String text) {
-        Label l = new Label(text);
-        l.setStyle("""
-            -fx-text-fill: #64748b;
-            -fx-font-size: 11px;
-            -fx-font-weight: bold;
-            -fx-padding: 6 16 4 16;
-            """);
-        return l;
-    }
-
-    private HBox buildSessionResult(AuctionSession s) {
-        HBox row = new HBox(12);
-        row.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-        row.setStyle("""
-            -fx-padding: 10 16 10 16;
-            -fx-cursor: hand;
-            -fx-background-color: transparent;
-            """);
-        row.setOnMouseEntered(e -> row.setStyle("""
-            -fx-padding: 10 16 10 16;
-            -fx-cursor: hand;
-            -fx-background-color: #334155;
-            """));
-        row.setOnMouseExited(e -> row.setStyle("""
-            -fx-padding: 10 16 10 16;
-            -fx-cursor: hand;
-            -fx-background-color: transparent;
-            """));
-
-        Label icon = new Label("🟢");
-        icon.setStyle("-fx-font-size: 14px;");
-
-        VBox info = new VBox(2);
-        HBox.setHgrow(info, Priority.ALWAYS);
-        Label name = new Label(s.getItemName());
-        name.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 13px; -fx-font-weight: bold;");
-        Label meta = new Label("Giá hiện tại: " + String.format("₫ %,.0f", s.getCurrentPrice()));
-        meta.setStyle("-fx-text-fill: #64748b; -fx-font-size: 11px;");
-        info.getChildren().addAll(name, meta);
-
-        Label arrow = new Label("→");
-        arrow.setStyle("-fx-text-fill: #2563eb; -fx-font-size: 14px;");
-
-        row.getChildren().addAll(icon, info, arrow);
-        row.setOnMouseClicked(e -> {
-            hideSearchPopup();
-            searchField.clear();
-            AppContext.setActiveSession(s);
-            try { HelloApplication.showLiveAuctionView(); }
-            catch (Exception ex) { ex.printStackTrace(); }
-        });
-        return row;
-    }
-
-    private HBox buildProductResult(AppContext.ProductRecord p) {
-        HBox row = new HBox(12);
-        row.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-        row.setStyle("""
-            -fx-padding: 10 16 10 16;
-            -fx-cursor: hand;
-            -fx-background-color: transparent;
-            """);
-        row.setOnMouseEntered(e -> row.setStyle("""
-            -fx-padding: 10 16 10 16;
-            -fx-cursor: hand;
-            -fx-background-color: #334155;
-            """));
-        row.setOnMouseExited(e -> row.setStyle("""
-            -fx-padding: 10 16 10 16;
-            -fx-cursor: hand;
-            -fx-background-color: transparent;
-            """));
-
-        Label icon = new Label("📦");
-        icon.setStyle("-fx-font-size: 14px;");
-
-        VBox info = new VBox(2);
-        HBox.setHgrow(info, Priority.ALWAYS);
-        Label name = new Label(p.name());
-        name.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 13px; -fx-font-weight: bold;");
-        Label meta = new Label(p.category() + " · " + p.status());
-        meta.setStyle("-fx-text-fill: #64748b; -fx-font-size: 11px;");
-        info.getChildren().addAll(name, meta);
-
-        Label arrow = new Label("→");
-        arrow.setStyle("-fx-text-fill: #2563eb; -fx-font-size: 14px;");
-
-        row.getChildren().addAll(icon, info, arrow);
-        row.setOnMouseClicked(e -> {
-            hideSearchPopup();
-            searchField.clear();
-            try { HelloApplication.showAuctionListByCategory(p.category()); }
-            catch (Exception ex) { ex.printStackTrace(); }
-        });
-        return row;
-    }
-
-    private void hideSearchPopup() {
-        if (searchPopup != null && searchPopup.isShowing())
-            searchPopup.hide();
-    }
-
+    // ── Helpers parse JSON ────────────────────────────────────
     private String extractJson(String json, String key) {
         String search = "\"" + key + "\":\"";
         int start = json.indexOf(search);
-        if (start == -1) return "";
+        if (start == -1) {
+            // Thử parse số (không có dấu nháy)
+            String searchNum = "\"" + key + "\":";
+            int s2 = json.indexOf(searchNum);
+            if (s2 == -1) return "";
+            s2 += searchNum.length();
+            int e2 = json.indexOf(",", s2);
+            if (e2 == -1) e2 = json.indexOf("}", s2);
+            if (e2 == -1) return "";
+            return json.substring(s2, e2).trim()
+                    .replace("\"", "");
+        }
         start += search.length();
         int end = json.indexOf("\"", start);
         return end == -1 ? "" : json.substring(start, end);
+    }
+
+    private double parseDouble(String s) {
+        try { return Double.parseDouble(s.trim()); }
+        catch (NumberFormatException e) { return 0; }
     }
 
     // =========================================================
@@ -513,14 +580,14 @@ public class MainController {
     // LOAD AUCTION INFO
     // =========================================================
     private void loadAuctionInfo() {
+        if (session == null) return;
         productTitleLabel.setText(session.getItemName());
         productDescLabel.setText(
                 "Sản phẩm mới 100%, còn nguyên seal, bảo hành 12 tháng.");
         startPriceLabel.setText(formatVND(session.getStartingPrice()));
         currentPriceLabel.setText(formatVND(session.getCurrentPrice()));
         minStepLabel.setText(formatVND(session.getMinBidStep()));
-        endTimeLabel.setText(session.getEndTime()
-                .format(DateTimeFormatter.ofPattern("HH:mm:ss dd/MM/yyyy")));
+        endTimeLabel.setText(session.getEndTime().format(DT_FMT));
         statusLabel.setText("● " + session.getStatus().name());
         statusLabel.getStyleClass().setAll("status-badge", "status-running");
     }
@@ -529,6 +596,7 @@ public class MainController {
     // COUNTDOWN
     // =========================================================
     private void startCountdown() {
+        if (countdownTimer != null) countdownTimer.stop();
         countdownTimer = new Timeline(
                 new KeyFrame(Duration.seconds(1), e -> updateCountdown()));
         countdownTimer.setCycleCount(Timeline.INDEFINITE);
@@ -538,20 +606,17 @@ public class MainController {
     private void updateCountdown() {
         if (session == null) return;
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime end = session.getEndTime();
+        LocalDateTime end = session.getEndTime(); // luôn lấy mới nhất (anti-sniping)
         if (now.isAfter(end)) {
-            if (auctionEnded) return;
-            auctionEnded = true;
             hoursLabel.setText("00");
             minsLabel.setText("00");
             secsLabel.setText("00");
             if (statusLabel != null) statusLabel.setText("● KẾT THÚC");
             countdownTimer.stop();
             saveSessionToHistory();
-            handleAuctionEnd();
             pushNotification(
                     NotificationManager.NotifType.SYSTEM,
-                    "Phiên đấu giá kết thúc",
+                    "🏁 Phiên đấu giá kết thúc",
                     "Phiên \"" + session.getItemName() + "\" đã kết thúc.");
             return;
         }
@@ -560,10 +625,11 @@ public class MainController {
         minsLabel.setText(String.format("%02d",  (total % 3600) / 60));
         secsLabel.setText(String.format("%02d",  total % 60));
 
+        // Cảnh báo 5 phút cuối
         if (total == 300)
             pushNotification(
                     NotificationManager.NotifType.AUCTION_ENDING_SOON,
-                    "Sắp hết giờ!",
+                    "⏰ Sắp hết giờ!",
                     "Còn 5 phút! Giá hiện tại: "
                     + formatVND(session.getCurrentPrice()));
     }
@@ -607,7 +673,7 @@ public class MainController {
 
             pushNotification(
                     NotificationManager.NotifType.BID_PLACED,
-                    "Đặt giá thành công",
+                    "✅ Đặt giá thành công",
                     String.format("Bạn đã đặt %s cho \"%s\"",
                             formatVND(newPrice), session.getItemName()));
 
@@ -622,7 +688,7 @@ public class MainController {
             ServerConnection conn = ServerConnection.getInstance();
             if (conn.isConnected())
                 conn.sendBid(user.getUsername(),
-                        session.getItemName(), newPrice);
+                        session.getSessionId(), newPrice);
 
         } catch (InvalidBidException e) {
             showAlert("Bid không hợp lệ", e.getMessage());
@@ -668,176 +734,6 @@ public class MainController {
     }
 
     // =========================================================
-    // XỬ LÝ KẾT THÚC PHIÊN & THANH TOÁN
-    // =========================================================
-    private void handleAuctionEnd() {
-        if (session == null) return;
-
-        User me = AppContext.getCurrentUser();
-        if (me == null) return;
-
-        var history = session.getBidHistory();
-        if (history.isEmpty()) {
-            pushNotification(
-                    NotificationManager.NotifType.SYSTEM,
-                    "Phiên kết thúc",
-                    "\"" + session.getItemName() + "\" kết thúc — không có ai đặt giá.");
-            return;
-        }
-
-        var winnerBid = history.get(history.size() - 1);
-        String winner = winnerBid.getBidderId();
-        double finalPrice = winnerBid.getAmount();
-
-        if (winner.equals(me.getUsername())) {
-            pushNotification(
-                    NotificationManager.NotifType.SYSTEM,
-                    "🏆 Bạn đã thắng!",
-                    "Bạn thắng phiên \"" + session.getItemName()
-                            + "\" với giá " + formatVND(finalPrice));
-            showPaymentDialog(finalPrice);
-        } else {
-            boolean participated = history.stream()
-                    .anyMatch(b -> b.getBidderId().equals(me.getUsername()));
-            if (participated) {
-                pushNotification(
-                        NotificationManager.NotifType.SYSTEM,
-                        "😔 Bạn đã thua",
-                        "Phiên \"" + session.getItemName()
-                                + "\" kết thúc. Người thắng: " + winner
-                                + " (" + formatVND(finalPrice) + ")");
-            } else {
-                pushNotification(
-                        NotificationManager.NotifType.SYSTEM,
-                        "Phiên đấu giá kết thúc",
-                        "\"" + session.getItemName() + "\" — " + winner
-                                + " thắng với " + formatVND(finalPrice));
-            }
-        }
-    }
-
-    private void showPaymentDialog(double amount) {
-        Platform.runLater(() -> {
-            double balance = AppContext.getWalletBalance(
-                    AppContext.getCurrentUser().getUsername());
-
-            Alert dialog = new Alert(Alert.AlertType.NONE);
-            dialog.setTitle("💳 Thanh toán đấu giá");
-            dialog.setHeaderText("🏆 Chúc mừng! Bạn đã thắng phiên đấu giá");
-
-            String itemName = session.getItemName();
-            boolean canPay  = balance >= amount;
-
-            dialog.setContentText(
-                    "Sản phẩm  : " + itemName + "\n"
-                            + "Giá thắng : " + formatVND(amount) + "\n"
-                            + "Số dư ví  : " + formatVND(balance) + "\n\n"
-                            + (canPay
-                            ? "✅ Số dư đủ để thanh toán."
-                            : "❌ Số dư không đủ! Cần nạp thêm "
-                            + formatVND(amount - balance))
-            );
-
-            // Style dialog
-            dialog.getDialogPane().setStyle("""
-                -fx-background-color: #1e293b;
-                -fx-border-color: #334155;
-                """);
-
-            dialog.getDialogPane().lookup(".content.label").setStyle("-fx-text-fill: #e2e8f0;");
-            dialog.getDialogPane().lookup(".header-panel .label").setStyle("-fx-text-fill: #f1f5f9; -fx-font-size: 14px;");
-
-            ButtonType payBtn  = new ButtonType(
-                    canPay ? "✅ Thanh toán ngay" : "💳 Nạp tiền & Thanh toán",
-                    ButtonBar.ButtonData.OK_DONE);
-            ButtonType skipBtn = new ButtonType(
-                    "Bỏ qua", ButtonBar.ButtonData.CANCEL_CLOSE);
-            dialog.getDialogPane().getButtonTypes().addAll(payBtn, skipBtn);
-
-            // Style buttons
-            Platform.runLater(() -> {
-                var payNode = dialog.getDialogPane().lookupButton(payBtn);
-                payNode.setStyle("""
-                    -fx-background-color: #2563eb;
-                    -fx-text-fill: white;
-                    -fx-font-weight: bold;
-                    -fx-background-radius: 8;
-                    -fx-padding: 8 20 8 20;
-                    """);
-                var skipNode = dialog.getDialogPane().lookupButton(skipBtn);
-                skipNode.setStyle("""
-                    -fx-background-color: #334155;
-                    -fx-text-fill: #94a3b8;
-                    -fx-background-radius: 8;
-                    -fx-padding: 8 20 8 20;
-                    """);
-            });
-
-            dialog.showAndWait().ifPresent(btn -> {
-                if (btn == payBtn) {
-                    if (canPay) {
-                        // ✅ Thanh toán trực tiếp
-                        processPayment(amount, itemName);
-                    } else {
-                        // Chuyển sang trang ví để nạp tiền
-                        try { HelloApplication.showWalletView(); }
-                        catch (Exception e) { e.printStackTrace(); }
-                    }
-                } else {
-                    // Bỏ qua — vẫn ghi lịch sử CHỜ XỬ LÝ
-                    pushNotification(
-                            NotificationManager.NotifType.SYSTEM,
-                            "Nhắc nhở thanh toán",
-                            "Bạn chưa thanh toán cho \""
-                                    + itemName + "\". Vào Ví để thanh toán.");
-                }
-            });
-        });
-    }
-
-    private void processPayment(double amount, String itemName) {
-        User me = AppContext.getCurrentUser();
-        boolean ok = AppContext.payment(me.getUsername(), amount,
-                "Thanh toán đấu giá: " + itemName);
-
-        if (ok) {
-            // Cập nhật lịch sử → THÀNH CÔNG
-            var history = AppContext.getHistory(me.getUsername());
-            for (int i = history.size() - 1; i >= 0; i--) {
-                var rec = history.get(i);
-                if (rec.itemName().equals(itemName)
-                        && "CHỜ XỬ LÝ".equals(rec.status())) {
-                    history.set(i, new AppContext.HistoryRecord(
-                            rec.id(), rec.itemName(), rec.amount(),
-                            rec.counterparty(), "THÀNH CÔNG",
-                            rec.wonBid(), rec.time()));
-                    break;
-                }
-            }
-
-            // Cập nhật wallet label
-            walletLabel.setText(formatVND(
-                    AppContext.getWalletBalance(me.getUsername())));
-
-            pushNotification(
-                    NotificationManager.NotifType.SYSTEM,
-                    "✅ Thanh toán thành công",
-                    "Đã thanh toán " + formatVND(amount)
-                            + " cho \"" + itemName + "\"");
-
-            showAlert("Thanh toán thành công",
-                    "✅ Đã thanh toán " + formatVND(amount)
-                            + "\nSố dư còn lại: "
-                            + formatVND(AppContext.getWalletBalance(me.getUsername())));
-        } else {
-            showAlert("Thanh toán thất bại",
-                    "❌ Số dư không đủ. Vui lòng nạp thêm tiền vào ví.");
-            try { HelloApplication.showWalletView(); }
-            catch (Exception e) { e.printStackTrace(); }
-        }
-    }
-
-    // =========================================================
     // CHAT
     // =========================================================
     @FXML
@@ -853,7 +749,6 @@ public class MainController {
         String msg = chatInput.getText().trim();
         if (msg.isEmpty()) return;
         User user = AppContext.getCurrentUser();
-
         addChatMessage(user.getUsername(), msg,
                 "SELLER".equalsIgnoreCase(user.getRole()));
         chatInput.clear();
@@ -878,22 +773,6 @@ public class MainController {
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    @FXML private void handleRating() {
-        try { HelloApplication.showRatingView(); }
-        catch (Exception e) { e.printStackTrace(); }
-    }
-
-    @FXML private void handleHelp() {
-        try { HelloApplication.showHelpView(); }
-        catch (Exception e) { e.printStackTrace(); }
-    }
-
-    @FXML private void handleSearch() {
-        String kw = searchField.getText().trim().toLowerCase();
-        if (kw.isEmpty()) { hideSearchPopup(); return; }
-        showSearchResults(kw);
-    }
-
     @FXML private void handleLiveAuction() {
         if (AppContext.getActiveSession() == null) {
             List<AuctionSession> running = AppContext.getRunningSessions();
@@ -909,19 +788,13 @@ public class MainController {
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    /**
-     * SELLER bấm "Đăng bán sản phẩm" → MyProductsController
-     * (nút chỉ hiển thị khi role = SELLER, xử lý trong applyRoleMenu)
-     */
+    /** SELLER bấm "Đăng bán sản phẩm" */
     @FXML private void handleSellerProducts() {
         try { HelloApplication.showMyProductsView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    /**
-     * ADMIN bấm "Quản lý sản phẩm" → ProductManagementController
-     * (nút chỉ hiển thị khi role = ADMIN, xử lý trong applyRoleMenu)
-     */
+    /** ADMIN bấm "Quản lý sản phẩm" */
     @FXML private void handleAdminProducts() {
         try { HelloApplication.showProductManagementView(); }
         catch (Exception e) { e.printStackTrace(); }
@@ -963,7 +836,7 @@ public class MainController {
     }
 
     // =========================================================
-    // PROFILE MENU HANDLERS
+    // PROFILE MENU
     // =========================================================
     @FXML private void handleProfile() {
         try { HelloApplication.showProfileView(); }
@@ -988,6 +861,17 @@ public class MainController {
         catch (Exception e) { e.printStackTrace(); }
     }
 
+    // Các handler phụ giữ tương thích
+    @FXML private void handleRating() {
+        try { HelloApplication.showRatingView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleHelp() {
+        try { HelloApplication.showHelpView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
     // =========================================================
     // BID HISTORY
     // =========================================================
@@ -1007,8 +891,7 @@ public class MainController {
             row.getStyleClass().add("bid-row");
             if (i == history.size() - 1)
                 row.getStyleClass().add("bid-row-top");
-
-            Label name = new Label(
+            Label name   = new Label(
                     (i == history.size() - 1 ? "👑 " : "") + b.getBidderId());
             Label amount = new Label(formatVND(b.getAmount()));
             Label time   = new Label(b.getTimestamp().format(TIME_FMT));
