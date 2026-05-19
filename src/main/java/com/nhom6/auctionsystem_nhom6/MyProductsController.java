@@ -331,10 +331,29 @@ public class MyProductsController {
         dialog.showAndWait().ifPresent(product -> {
             if (product == null) return;
 
-            // ✅ Lưu thẳng vào AppContext
+            // ✅ Lưu sản phẩm
             AppContext.addProduct(username, product);
 
-            // ✅ Reload toàn bộ từ AppContext → luôn đúng
+            // ✅ Tạo AuctionSession và đăng ký để bidder thấy
+            try {
+                double step = Math.max(product.startPrice() * 0.05, 500_000);
+                org.example.auction.AuctionSession session =
+                        new org.example.auction.AuctionSession(
+                                product.id(),
+                                product.name(),
+                                product.startPrice(),
+                                step,
+                                product.endTime()
+                        );
+                session.start(); // bắt đầu phiên ngay
+
+                AppContext.registerSession(session, username);
+                AppContext.setActiveSession(session);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
             refreshStats();
             renderList(AppContext.getProducts(username));
         });

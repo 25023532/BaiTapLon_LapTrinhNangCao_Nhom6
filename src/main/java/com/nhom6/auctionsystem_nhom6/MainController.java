@@ -8,6 +8,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Popup;
 import javafx.util.Duration;
+import javafx.scene.control.ButtonBar;
 
 import org.example.auction.AuctionSession;
 import org.example.auction.Bid;
@@ -88,6 +89,7 @@ public class MainController {
     private AuctionSession session;
     private Timeline       countdownTimer;
     private LocalDateTime  sessionStartTime;
+    private boolean auctionEnded = false;
 
     // ── Notification ──────────────────────────────────────────
     private final NotificationManager notifManager = new NotificationManager();
@@ -538,12 +540,15 @@ public class MainController {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime end = session.getEndTime();
         if (now.isAfter(end)) {
+            if (auctionEnded) return;
+            auctionEnded = true;
             hoursLabel.setText("00");
             minsLabel.setText("00");
             secsLabel.setText("00");
             if (statusLabel != null) statusLabel.setText("● KẾT THÚC");
             countdownTimer.stop();
             saveSessionToHistory();
+            handleAuctionEnd();
             pushNotification(
                     NotificationManager.NotifType.SYSTEM,
                     "Phiên đấu giá kết thúc",
@@ -660,6 +665,176 @@ public class MainController {
         badgeLabel.setText(unread > 9 ? "9+" : String.valueOf(unread));
         badgeLabel.setVisible(unread > 0);
         badgeLabel.setManaged(unread > 0);
+    }
+
+    // =========================================================
+    // XỬ LÝ KẾT THÚC PHIÊN & THANH TOÁN
+    // =========================================================
+    private void handleAuctionEnd() {
+        if (session == null) return;
+
+        User me = AppContext.getCurrentUser();
+        if (me == null) return;
+
+        var history = session.getBidHistory();
+        if (history.isEmpty()) {
+            pushNotification(
+                    NotificationManager.NotifType.SYSTEM,
+                    "Phiên kết thúc",
+                    "\"" + session.getItemName() + "\" kết thúc — không có ai đặt giá.");
+            return;
+        }
+
+        var winnerBid = history.get(history.size() - 1);
+        String winner = winnerBid.getBidderId();
+        double finalPrice = winnerBid.getAmount();
+
+        if (winner.equals(me.getUsername())) {
+            pushNotification(
+                    NotificationManager.NotifType.SYSTEM,
+                    "🏆 Bạn đã thắng!",
+                    "Bạn thắng phiên \"" + session.getItemName()
+                            + "\" với giá " + formatVND(finalPrice));
+            showPaymentDialog(finalPrice);
+        } else {
+            boolean participated = history.stream()
+                    .anyMatch(b -> b.getBidderId().equals(me.getUsername()));
+            if (participated) {
+                pushNotification(
+                        NotificationManager.NotifType.SYSTEM,
+                        "😔 Bạn đã thua",
+                        "Phiên \"" + session.getItemName()
+                                + "\" kết thúc. Người thắng: " + winner
+                                + " (" + formatVND(finalPrice) + ")");
+            } else {
+                pushNotification(
+                        NotificationManager.NotifType.SYSTEM,
+                        "Phiên đấu giá kết thúc",
+                        "\"" + session.getItemName() + "\" — " + winner
+                                + " thắng với " + formatVND(finalPrice));
+            }
+        }
+    }
+
+    private void showPaymentDialog(double amount) {
+        Platform.runLater(() -> {
+            double balance = AppContext.getWalletBalance(
+                    AppContext.getCurrentUser().getUsername());
+
+            Alert dialog = new Alert(Alert.AlertType.NONE);
+            dialog.setTitle("💳 Thanh toán đấu giá");
+            dialog.setHeaderText("🏆 Chúc mừng! Bạn đã thắng phiên đấu giá");
+
+            String itemName = session.getItemName();
+            boolean canPay  = balance >= amount;
+
+            dialog.setContentText(
+                    "Sản phẩm  : " + itemName + "\n"
+                            + "Giá thắng : " + formatVND(amount) + "\n"
+                            + "Số dư ví  : " + formatVND(balance) + "\n\n"
+                            + (canPay
+                            ? "✅ Số dư đủ để thanh toán."
+                            : "❌ Số dư không đủ! Cần nạp thêm "
+                            + formatVND(amount - balance))
+            );
+
+            // Style dialog
+            dialog.getDialogPane().setStyle("""
+                -fx-background-color: #1e293b;
+                -fx-border-color: #334155;
+                """);
+
+            dialog.getDialogPane().lookup(".content.label").setStyle("-fx-text-fill: #e2e8f0;");
+            dialog.getDialogPane().lookup(".header-panel .label").setStyle("-fx-text-fill: #f1f5f9; -fx-font-size: 14px;");
+
+            ButtonType payBtn  = new ButtonType(
+                    canPay ? "✅ Thanh toán ngay" : "💳 Nạp tiền & Thanh toán",
+                    ButtonBar.ButtonData.OK_DONE);
+            ButtonType skipBtn = new ButtonType(
+                    "Bỏ qua", ButtonBar.ButtonData.CANCEL_CLOSE);
+            dialog.getDialogPane().getButtonTypes().addAll(payBtn, skipBtn);
+
+            // Style buttons
+            Platform.runLater(() -> {
+                var payNode = dialog.getDialogPane().lookupButton(payBtn);
+                payNode.setStyle("""
+                    -fx-background-color: #2563eb;
+                    -fx-text-fill: white;
+                    -fx-font-weight: bold;
+                    -fx-background-radius: 8;
+                    -fx-padding: 8 20 8 20;
+                    """);
+                var skipNode = dialog.getDialogPane().lookupButton(skipBtn);
+                skipNode.setStyle("""
+                    -fx-background-color: #334155;
+                    -fx-text-fill: #94a3b8;
+                    -fx-background-radius: 8;
+                    -fx-padding: 8 20 8 20;
+                    """);
+            });
+
+            dialog.showAndWait().ifPresent(btn -> {
+                if (btn == payBtn) {
+                    if (canPay) {
+                        // ✅ Thanh toán trực tiếp
+                        processPayment(amount, itemName);
+                    } else {
+                        // Chuyển sang trang ví để nạp tiền
+                        try { HelloApplication.showWalletView(); }
+                        catch (Exception e) { e.printStackTrace(); }
+                    }
+                } else {
+                    // Bỏ qua — vẫn ghi lịch sử CHỜ XỬ LÝ
+                    pushNotification(
+                            NotificationManager.NotifType.SYSTEM,
+                            "Nhắc nhở thanh toán",
+                            "Bạn chưa thanh toán cho \""
+                                    + itemName + "\". Vào Ví để thanh toán.");
+                }
+            });
+        });
+    }
+
+    private void processPayment(double amount, String itemName) {
+        User me = AppContext.getCurrentUser();
+        boolean ok = AppContext.payment(me.getUsername(), amount,
+                "Thanh toán đấu giá: " + itemName);
+
+        if (ok) {
+            // Cập nhật lịch sử → THÀNH CÔNG
+            var history = AppContext.getHistory(me.getUsername());
+            for (int i = history.size() - 1; i >= 0; i--) {
+                var rec = history.get(i);
+                if (rec.itemName().equals(itemName)
+                        && "CHỜ XỬ LÝ".equals(rec.status())) {
+                    history.set(i, new AppContext.HistoryRecord(
+                            rec.id(), rec.itemName(), rec.amount(),
+                            rec.counterparty(), "THÀNH CÔNG",
+                            rec.wonBid(), rec.time()));
+                    break;
+                }
+            }
+
+            // Cập nhật wallet label
+            walletLabel.setText(formatVND(
+                    AppContext.getWalletBalance(me.getUsername())));
+
+            pushNotification(
+                    NotificationManager.NotifType.SYSTEM,
+                    "✅ Thanh toán thành công",
+                    "Đã thanh toán " + formatVND(amount)
+                            + " cho \"" + itemName + "\"");
+
+            showAlert("Thanh toán thành công",
+                    "✅ Đã thanh toán " + formatVND(amount)
+                            + "\nSố dư còn lại: "
+                            + formatVND(AppContext.getWalletBalance(me.getUsername())));
+        } else {
+            showAlert("Thanh toán thất bại",
+                    "❌ Số dư không đủ. Vui lòng nạp thêm tiền vào ví.");
+            try { HelloApplication.showWalletView(); }
+            catch (Exception e) { e.printStackTrace(); }
+        }
     }
 
     // =========================================================
