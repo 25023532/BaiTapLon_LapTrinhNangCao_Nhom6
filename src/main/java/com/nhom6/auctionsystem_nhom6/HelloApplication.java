@@ -12,6 +12,7 @@ public class HelloApplication extends Application {
 
     private static Stage  primaryStage;
     private static String pendingCategory = null;
+    private static String pendingKeyword  = null;   // ← THÊM MỚI
 
     @Override
     public void start(Stage stage) throws Exception {
@@ -73,12 +74,21 @@ public class HelloApplication extends Application {
 
     public static void showAuctionListView() throws Exception {
         pendingCategory = null;
+        pendingKeyword  = null;   // ← reset khi xem toàn bộ
         load("auction-list-view.fxml", "AuctionSys – Danh sách phiên đấu giá");
     }
 
     public static void showAuctionListByCategory(String category) throws Exception {
         pendingCategory = category;
+        pendingKeyword  = null;   // ← reset keyword khi lọc theo category
         load("auction-list-view.fxml", "AuctionSys – " + category);
+    }
+
+    // ← THÊM MỚI: tìm kiếm theo từ khóa
+    public static void showAuctionListByKeyword(String keyword) throws Exception {
+        pendingKeyword  = keyword;
+        pendingCategory = null;   // reset category khi tìm theo keyword
+        load("auction-list-view.fxml", "AuctionSys – Tìm kiếm: " + keyword);
     }
 
     public static void showRatingView() throws Exception {
@@ -108,12 +118,19 @@ public class HelloApplication extends Application {
     }
 
     // =========================================================
-    // PENDING CATEGORY
+    // PENDING CATEGORY / KEYWORD
     // =========================================================
     public static String getPendingCategory() {
         String cat = pendingCategory;
         pendingCategory = null;
         return cat;
+    }
+
+    // ← THÊM MỚI: getter cho keyword (gọi trong AuctionListController)
+    public static String getPendingKeyword() {
+        String kw = pendingKeyword;
+        pendingKeyword = null;
+        return kw;
     }
 
     // =========================================================
