@@ -94,6 +94,7 @@
 
             <TextField fx:id="searchField"
                        promptText="Tìm kiếm sản phẩm, người bán..."
+                       onKeyReleased="#handleSearch"
                        HBox.hgrow="ALWAYS" styleClass="search-field"/>
 
             <Region HBox.hgrow="ALWAYS"/>

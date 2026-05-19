@@ -6,6 +6,7 @@ import javafx.scene.Scene;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 import javafx.scene.image.Image;
+import javafx.scene.Parent;
 
 public class HelloApplication extends Application {
 
@@ -24,7 +25,7 @@ public class HelloApplication extends Application {
         FXMLLoader loader = new FXMLLoader(
                 getClass().getResource(
                         "/com/nhom6/auctionsystem_nhom6/login-view.fxml"));
-        BorderPane root = loader.load();
+        Parent root = loader.load();
 
         Scene scene = new Scene(root, 1280, 800);
         scene.getStylesheets().add(
@@ -122,7 +123,7 @@ public class HelloApplication extends Application {
         FXMLLoader loader = new FXMLLoader(
                 HelloApplication.class.getResource(
                         "/com/nhom6/auctionsystem_nhom6/" + fxml));
-        BorderPane root = loader.load();
+        Parent root = loader.load();
         primaryStage.getScene().setRoot(root);
         primaryStage.setTitle(title);
     }

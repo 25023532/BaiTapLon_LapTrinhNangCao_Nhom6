@@ -4,53 +4,178 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.image.Image?>
+<?import javafx.scene.shape.Circle?>
+<?import javafx.scene.shape.Rectangle?>
 
-<BorderPane xmlns:fx="http://javafx.com/fxml"
-            fx:controller="com.nhom6.auctionsystem_nhom6.LoginController"
-            styleClass="login-root">
+<StackPane xmlns:fx="http://javafx.com/fxml"
+           fx:controller="com.nhom6.auctionsystem_nhom6.LoginController"
+           style="-fx-background-color: #050d1a;">
 
-    <center>
-        <VBox alignment="CENTER" spacing="16" maxWidth="380">
-            <padding><Insets top="60" right="40" bottom="60" left="40"/></padding>
+    <!-- ══ BACKGROUND DECORATIONS ══ -->
 
-            <!-- Logo -->
-            <ImageView fitWidth="200" fitHeight="200" preserveRatio="true">
-                <image>
-                    <Image url="@images/logo.png"/>
-                </image>
-            </ImageView>
+    <!-- Gradient overlay -->
+    <Region style="-fx-background-color: linear-gradient(to bottom right, #0a1628, #050d1a, #0d1f3c);"/>
 
-            <Label text="Auction System" styleClass="login-logo"/>
-            <Label text="Hệ thống Đấu giá Trực tuyến" styleClass="login-subtitle"/>
+    <!-- Glowing orb top-left -->
+    <Region prefWidth="500" prefHeight="500"
+            style="-fx-background-color: radial-gradient(center 0% 0%, radius 60%, #1a3a6b 0%, transparent 70%);
+                   -fx-background-radius: 250;"
+            StackPane.alignment="TOP_LEFT"
+            mouseTransparent="true">
+        <StackPane.margin><Insets top="-100" left="-100"/></StackPane.margin>
+    </Region>
 
-            <!-- Form -->
-            <VBox spacing="10" styleClass="login-card">
-                <padding><Insets top="32" right="32" bottom="32" left="32"/></padding>
+    <!-- Glowing orb bottom-right -->
+    <Region prefWidth="600" prefHeight="600"
+            style="-fx-background-color: radial-gradient(center 100% 100%, radius 60%, #0f2d5e 0%, transparent 70%);
+                   -fx-background-radius: 300;"
+            StackPane.alignment="BOTTOM_RIGHT"
+            mouseTransparent="true">
+        <StackPane.margin><Insets bottom="-150" right="-150"/></StackPane.margin>
+    </Region>
 
-                <Label text="Đăng nhập" styleClass="login-title"/>
+    <!-- Glowing orb center-right (accent) -->
+    <Region prefWidth="300" prefHeight="300"
+            style="-fx-background-color: radial-gradient(center 50% 50%, radius 50%, #1e3f7a 0%, transparent 70%);
+                   -fx-background-radius: 150;"
+            StackPane.alignment="CENTER_RIGHT"
+            mouseTransparent="true">
+        <StackPane.margin><Insets right="-50"/></StackPane.margin>
+    </Region>
 
-                <Label text="Tên đăng nhập"/>
-                <TextField fx:id="usernameField" promptText="Nhập tên đăng nhập..."
+    <!-- Decorative grid lines (horizontal) -->
+    <VBox StackPane.alignment="CENTER" mouseTransparent="true" spacing="60"
+          style="-fx-opacity: 0.04;">
+        <Region prefHeight="1" style="-fx-background-color: #38bdf8;"/>
+        <Region prefHeight="1" style="-fx-background-color: #38bdf8;"/>
+        <Region prefHeight="1" style="-fx-background-color: #38bdf8;"/>
+        <Region prefHeight="1" style="-fx-background-color: #38bdf8;"/>
+        <Region prefHeight="1" style="-fx-background-color: #38bdf8;"/>
+        <Region prefHeight="1" style="-fx-background-color: #38bdf8;"/>
+        <Region prefHeight="1" style="-fx-background-color: #38bdf8;"/>
+        <Region prefHeight="1" style="-fx-background-color: #38bdf8;"/>
+        <Region prefHeight="1" style="-fx-background-color: #38bdf8;"/>
+        <Region prefHeight="1" style="-fx-background-color: #38bdf8;"/>
+        <Region prefHeight="1" style="-fx-background-color: #38bdf8;"/>
+        <Region prefHeight="1" style="-fx-background-color: #38bdf8;"/>
+    </VBox>
+
+    <!-- Floating decorative circles -->
+    <Circle radius="80" fill="transparent"
+            stroke="#1e3f7a" strokeWidth="1"
+            style="-fx-opacity: 0.3;"
+            StackPane.alignment="TOP_LEFT"
+            mouseTransparent="true">
+        <StackPane.margin><Insets top="80" left="60"/></StackPane.margin>
+    </Circle>
+
+    <Circle radius="120" fill="transparent"
+            stroke="#1e3f7a" strokeWidth="1"
+            style="-fx-opacity: 0.2;"
+            StackPane.alignment="TOP_LEFT"
+            mouseTransparent="true">
+        <StackPane.margin><Insets top="40" left="20"/></StackPane.margin>
+    </Circle>
+
+    <Circle radius="60" fill="transparent"
+            stroke="#2563eb" strokeWidth="1"
+            style="-fx-opacity: 0.25;"
+            StackPane.alignment="BOTTOM_RIGHT"
+            mouseTransparent="true">
+        <StackPane.margin><Insets bottom="120" right="80"/></StackPane.margin>
+    </Circle>
+
+    <Circle radius="150" fill="transparent"
+            stroke="#1e3f7a" strokeWidth="1"
+            style="-fx-opacity: 0.15;"
+            StackPane.alignment="BOTTOM_RIGHT"
+            mouseTransparent="true">
+        <StackPane.margin><Insets bottom="60" right="40"/></StackPane.margin>
+    </Circle>
+
+    <Circle radius="40" fill="transparent"
+            stroke="#38bdf8" strokeWidth="1"
+            style="-fx-opacity: 0.2;"
+            StackPane.alignment="TOP_RIGHT"
+            mouseTransparent="true">
+        <StackPane.margin><Insets top="200" right="150"/></StackPane.margin>
+    </Circle>
+
+    <!-- Small dot accents -->
+    <Circle radius="4" fill="#2563eb" style="-fx-opacity: 0.6;"
+            StackPane.alignment="TOP_LEFT" mouseTransparent="true">
+        <StackPane.margin><Insets top="160" left="140"/></StackPane.margin>
+    </Circle>
+    <Circle radius="3" fill="#38bdf8" style="-fx-opacity: 0.5;"
+            StackPane.alignment="TOP_RIGHT" mouseTransparent="true">
+        <StackPane.margin><Insets top="300" right="200"/></StackPane.margin>
+    </Circle>
+    <Circle radius="5" fill="#1d4ed8" style="-fx-opacity: 0.4;"
+            StackPane.alignment="BOTTOM_LEFT" mouseTransparent="true">
+        <StackPane.margin><Insets bottom="200" left="180"/></StackPane.margin>
+    </Circle>
+    <Circle radius="3" fill="#38bdf8" style="-fx-opacity: 0.6;"
+            StackPane.alignment="BOTTOM_RIGHT" mouseTransparent="true">
+        <StackPane.margin><Insets bottom="300" right="120"/></StackPane.margin>
+    </Circle>
+
+    <!-- ══ LOGIN FORM (center) ══ -->
+    <VBox alignment="CENTER" spacing="16" maxWidth="400"
+          StackPane.alignment="CENTER">
+
+        <!-- Logo -->
+        <ImageView fitWidth="100" fitHeight="100" preserveRatio="true">
+            <image><Image url="@images/logo.png"/></image>
+        </ImageView>
+
+        <Label text="Auction System"
+               style="-fx-text-fill: #f1f5f9; -fx-font-size: 28px;
+                      -fx-font-weight: bold;"/>
+        <Label text="Hệ thống Đấu giá Trực tuyến"
+               style="-fx-text-fill: #64748b; -fx-font-size: 13px;"/>
+
+        <!-- Card -->
+        <VBox spacing="12"
+              style="-fx-background-color: rgba(15,23,42,0.85);
+                     -fx-background-radius: 16;
+                     -fx-border-color: #1e3a5f;
+                     -fx-border-radius: 16;
+                     -fx-border-width: 1;
+                     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 30, 0, 0, 8);">
+            <padding><Insets top="32" right="32" bottom="32" left="32"/></padding>
+
+            <Label text="Đăng nhập"
+                   style="-fx-text-fill: #e2e8f0; -fx-font-size: 20px;
+                          -fx-font-weight: bold;"/>
+
+            <Label text="Tên đăng nhập"
+                   style="-fx-text-fill: #94a3b8; -fx-font-size: 12px;"/>
+            <TextField fx:id="usernameField"
+                       promptText="Nhập tên đăng nhập..."
+                       styleClass="login-input"/>
+
+            <Label text="Mật khẩu"
+                   style="-fx-text-fill: #94a3b8; -fx-font-size: 12px;"/>
+            <PasswordField fx:id="passwordField"
+                           promptText="Nhập mật khẩu..."
                            styleClass="login-input"/>
 
-                <Label text="Mật khẩu"/>
-                <PasswordField fx:id="passwordField" promptText="Nhập mật khẩu..."
-                               styleClass="login-input"/>
+            <Label fx:id="errorLabel" styleClass="login-error"
+                   visible="false" wrapText="true"/>
 
-                <Label fx:id="errorLabel" styleClass="login-error" visible="false"
-                       wrapText="true"/>
+            <Button text="Đăng nhập" onAction="#handleLogin"
+                    maxWidth="Infinity" styleClass="btn-primary"
+                    style="-fx-padding: 12 0 12 0; -fx-font-size: 14px;"/>
 
-                <Button text="Đăng nhập" onAction="#handleLogin"
-                        maxWidth="Infinity" styleClass="btn-primary"/>
+            <Separator style="-fx-background-color: #1e293b;"/>
 
-                <Separator/>
+            <Button text="Tạo tài khoản mới" onAction="#handleRegister"
+                    maxWidth="Infinity" styleClass="btn-secondary"/>
 
-                <Button text="Tạo tài khoản mới" onAction="#handleRegister"
-                        maxWidth="Infinity" styleClass="btn-secondary"/>
-
-                <Label text="Demo: admin/admin123 · bidder07/bidder123"
-                       styleClass="login-hint" wrapText="true"/>
-            </VBox>
+            <Label text="Demo: admin/admin123 · bidder07/bidder123"
+                   style="-fx-text-fill: #334155; -fx-font-size: 11px;"
+                   wrapText="true"/>
         </VBox>
-    </center>
-</BorderPane>
+    </VBox>
+
+</StackPane>

@@ -56,19 +56,19 @@
     "fullName": "ass"
   },
   {
-    "id": "B8E4DF8E",
-    "username": "1234",
-    "hashedPassword": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
-    "role": "BIDDER",
-    "email": "1234@",
-    "fullName": "1234"
-  },
-  {
     "id": "56542DA2",
     "username": "1111",
     "hashedPassword": "bcb15f821479b4d5772bd0ca866c00ad5f926e3580720659cc80d39c9d09802a",
     "role": "BIDDER",
     "email": "1111@",
     "fullName": "1111"
+  },
+  {
+    "id": "D98C28A2",
+    "username": "2222",
+    "hashedPassword": "4cc8f4d609b717356701c57a03e737e5ac8fe885da8c7163d3de47e01849c635",
+    "role": "SELLER",
+    "email": "2222@",
+    "fullName": "2222"
   }
 ]

@@ -92,6 +92,7 @@ public class MainController {
     // ── Notification ──────────────────────────────────────────
     private final NotificationManager notifManager = new NotificationManager();
     private       Popup               notifPopup;
+    private Popup searchPopup;
 
     private static final DateTimeFormatter TIME_FMT =
             DateTimeFormatter.ofPattern("HH:mm:ss");
@@ -138,6 +139,9 @@ public class MainController {
 
         // ── Server ───────────────────────────────────────────
         connectToServer(user);
+
+        // SearchBar
+        setupSearch();
     }
 
     // =========================================================
@@ -288,6 +292,196 @@ public class MainController {
         } catch (Exception e) {
             System.err.println("handleServerMessage lỗi: " + e.getMessage());
         }
+    }
+
+    // =========================================================
+    // SEARCH
+    // =========================================================
+    private void setupSearch() {
+        searchField.textProperty().addListener((obs, oldVal, newVal) -> {
+            String kw = newVal.trim().toLowerCase();
+            if (kw.isEmpty()) {
+                hideSearchPopup();
+                return;
+            }
+            showSearchResults(kw);
+        });
+
+        searchField.focusedProperty().addListener((obs, o, focused) -> {
+            if (!focused) hideSearchPopup();
+        });
+    }
+
+    private void showSearchResults(String keyword) {
+        VBox resultBox = new VBox(0);
+        resultBox.setStyle("""
+            -fx-background-color: #1e293b;
+            -fx-border-color: #334155;
+            -fx-border-width: 1;
+            -fx-border-radius: 10;
+            -fx-background-radius: 10;
+            -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.5), 16, 0, 0, 4);
+            -fx-padding: 6 0 6 0;
+            """);
+        resultBox.setPrefWidth(400);
+
+        boolean hasResult = false;
+
+        // ── Tìm trong phiên đấu giá ───────────────────────────
+        List<AuctionSession> sessions = AppContext.getGlobalSessions().stream()
+                .filter(s -> s.getItemName().toLowerCase().contains(keyword))
+                .limit(4)
+                .toList();
+
+        if (!sessions.isEmpty()) {
+            resultBox.getChildren().add(sectionLabel("🔨 Phiên đấu giá"));
+            for (AuctionSession s : sessions) {
+                resultBox.getChildren().add(buildSessionResult(s));
+                hasResult = true;
+            }
+        }
+
+        // ── Tìm trong sản phẩm ────────────────────────────────
+        List<AppContext.ProductRecord> products = AppContext.getAllProducts().stream()
+                .filter(p -> p.name().toLowerCase().contains(keyword)
+                        || p.category().toLowerCase().contains(keyword))
+                .limit(4)
+                .toList();
+
+        if (!products.isEmpty()) {
+            resultBox.getChildren().add(sectionLabel("📦 Sản phẩm"));
+            for (AppContext.ProductRecord p : products) {
+                resultBox.getChildren().add(buildProductResult(p));
+                hasResult = true;
+            }
+        }
+
+        // ── Không có kết quả ──────────────────────────────────
+        if (!hasResult) {
+            Label empty = new Label("Không tìm thấy kết quả cho \"" + keyword + "\"");
+            empty.setStyle("""
+                -fx-text-fill: #64748b;
+                -fx-font-size: 13px;
+                -fx-padding: 12 16 12 16;
+                """);
+            resultBox.getChildren().add(empty);
+        }
+
+        // Hiện popup
+        if (searchPopup == null) searchPopup = new Popup();
+        searchPopup.getContent().clear();
+        searchPopup.getContent().add(resultBox);
+        searchPopup.setAutoHide(true);
+
+        var bounds = searchField.localToScreen(searchField.getBoundsInLocal());
+        if (bounds != null) {
+            searchPopup.show(searchField,
+                    bounds.getMinX(),
+                    bounds.getMaxY() + 4);
+        }
+    }
+
+    private Label sectionLabel(String text) {
+        Label l = new Label(text);
+        l.setStyle("""
+            -fx-text-fill: #64748b;
+            -fx-font-size: 11px;
+            -fx-font-weight: bold;
+            -fx-padding: 6 16 4 16;
+            """);
+        return l;
+    }
+
+    private HBox buildSessionResult(AuctionSession s) {
+        HBox row = new HBox(12);
+        row.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        row.setStyle("""
+            -fx-padding: 10 16 10 16;
+            -fx-cursor: hand;
+            -fx-background-color: transparent;
+            """);
+        row.setOnMouseEntered(e -> row.setStyle("""
+            -fx-padding: 10 16 10 16;
+            -fx-cursor: hand;
+            -fx-background-color: #334155;
+            """));
+        row.setOnMouseExited(e -> row.setStyle("""
+            -fx-padding: 10 16 10 16;
+            -fx-cursor: hand;
+            -fx-background-color: transparent;
+            """));
+
+        Label icon = new Label("🟢");
+        icon.setStyle("-fx-font-size: 14px;");
+
+        VBox info = new VBox(2);
+        HBox.setHgrow(info, Priority.ALWAYS);
+        Label name = new Label(s.getItemName());
+        name.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 13px; -fx-font-weight: bold;");
+        Label meta = new Label("Giá hiện tại: " + String.format("₫ %,.0f", s.getCurrentPrice()));
+        meta.setStyle("-fx-text-fill: #64748b; -fx-font-size: 11px;");
+        info.getChildren().addAll(name, meta);
+
+        Label arrow = new Label("→");
+        arrow.setStyle("-fx-text-fill: #2563eb; -fx-font-size: 14px;");
+
+        row.getChildren().addAll(icon, info, arrow);
+        row.setOnMouseClicked(e -> {
+            hideSearchPopup();
+            searchField.clear();
+            AppContext.setActiveSession(s);
+            try { HelloApplication.showLiveAuctionView(); }
+            catch (Exception ex) { ex.printStackTrace(); }
+        });
+        return row;
+    }
+
+    private HBox buildProductResult(AppContext.ProductRecord p) {
+        HBox row = new HBox(12);
+        row.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        row.setStyle("""
+            -fx-padding: 10 16 10 16;
+            -fx-cursor: hand;
+            -fx-background-color: transparent;
+            """);
+        row.setOnMouseEntered(e -> row.setStyle("""
+            -fx-padding: 10 16 10 16;
+            -fx-cursor: hand;
+            -fx-background-color: #334155;
+            """));
+        row.setOnMouseExited(e -> row.setStyle("""
+            -fx-padding: 10 16 10 16;
+            -fx-cursor: hand;
+            -fx-background-color: transparent;
+            """));
+
+        Label icon = new Label("📦");
+        icon.setStyle("-fx-font-size: 14px;");
+
+        VBox info = new VBox(2);
+        HBox.setHgrow(info, Priority.ALWAYS);
+        Label name = new Label(p.name());
+        name.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 13px; -fx-font-weight: bold;");
+        Label meta = new Label(p.category() + " · " + p.status());
+        meta.setStyle("-fx-text-fill: #64748b; -fx-font-size: 11px;");
+        info.getChildren().addAll(name, meta);
+
+        Label arrow = new Label("→");
+        arrow.setStyle("-fx-text-fill: #2563eb; -fx-font-size: 14px;");
+
+        row.getChildren().addAll(icon, info, arrow);
+        row.setOnMouseClicked(e -> {
+            hideSearchPopup();
+            searchField.clear();
+            try { HelloApplication.showAuctionListByCategory(p.category()); }
+            catch (Exception ex) { ex.printStackTrace(); }
+        });
+        return row;
+    }
+
+    private void hideSearchPopup() {
+        if (searchPopup != null && searchPopup.isShowing())
+            searchPopup.hide();
     }
 
     private String extractJson(String json, String key) {
@@ -517,6 +711,12 @@ public class MainController {
     @FXML private void handleHelp() {
         try { HelloApplication.showHelpView(); }
         catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleSearch() {
+        String kw = searchField.getText().trim().toLowerCase();
+        if (kw.isEmpty()) { hideSearchPopup(); return; }
+        showSearchResults(kw);
     }
 
     @FXML private void handleLiveAuction() {
