@@ -9,76 +9,80 @@ import java.util.Map;
 /**
  * ClientHandler — xử lý 1 client trên 1 luồng riêng.
  *
- * Vấn đề đồng bộ đã xử lý:
- *  1. sendMessage / sendJson dùng synchronized(writeLock) → tránh race condition
- *     khi nhiều luồng broadcast ghi vào cùng 1 PrintWriter đồng thời.
- *     (PrintWriter bản thân KHÔNG thread-safe dù auto-flush=true)
+ * Giao thức (JSON):
  *
- *  2. volatile out → đảm bảo mọi thread thấy giá trị mới nhất khi kiểm tra null.
- *     Không dùng volatile đơn thuần để serialize write — đó là việc của writeLock.
+ * Client → Server:
+ *   {action:"LOGIN",          username, role}
+ *   {action:"PLACE_BID",      username, sessionId, amount}
+ *   {action:"CHAT",           username, message}
+ *   {action:"PRODUCT_PENDING",productId, productName, sellerName,
+ *                              category, startPrice, startTime, endTime}
+ *   {action:"PRODUCT_APPROVED",productId, sellerUsername, productName}
+ *   {action:"PRODUCT_REJECTED",productId, sellerUsername, productName, reason}
+ *   {action:"SESSION_START",  sessionId, itemName, startPrice, minStep,
+ *                              endTime, sellerName, category}
+ *   {action:"SESSION_END",    sessionId, itemName}
+ *   {action:"GET_ONLINE_COUNT"}
  *
- *  3. close() synchronized → tránh race giữa luồng đang broadcast và luồng đang
- *     đóng socket (double-close socket ném IOException).
- *
- *  4. isClosed flag (volatile) → sendMessage/sendJson kiểm tra trước khi ghi,
- *     tránh ghi vào socket đã đóng và spam log lỗi.
- *
- *  5. out được gán TRƯỚC khi gửi welcome message → không bao giờ null khi dùng.
- *
- *  6. Phân tách sendMessage (String thô) và sendJson (Map) để rõ ràng hơn.
- *     Cả hai đều đi qua cùng 1 writeLock.
+ * Server → Client:
+ *   {type:"ONLINE_COUNT",               count}
+ *   {type:"NEW_BID",                    username, sessionId, amount}
+ *   {type:"CHAT",                       username, message}
+ *   {type:"SYSTEM",                     message}
+ *   {type:"NOTIFY_ADMIN_NEW_PRODUCT",   productId, productName, sellerName,
+ *                                        category, startPrice, startTime, endTime}
+ *   {type:"NOTIFY_SELLER_APPROVED",     productId, productName}
+ *   {type:"NOTIFY_SELLER_REJECTED",     productId, productName, reason}
+ *   {type:"NOTIFY_BIDDER_SESSION_START",sessionId, itemName, startPrice,
+ *                                        minStep, endTime, sellerName, category}
+ *   {type:"NOTIFY_BIDDER_SESSION_END",  sessionId, itemName}
  */
 public class ClientHandler implements Runnable, Observer {
 
     private final Socket socket;
 
-    // volatile: đảm bảo visibility giữa các thread (luồng run() gán, luồng khác đọc)
     private volatile PrintWriter out;
-    private volatile boolean isClosed = false;
+    private volatile boolean     isClosed = false;
 
-    // Lock riêng cho việc ghi — không dùng "this" để tránh deadlock với synchronized method
+    /** Lock ghi riêng — không dùng "this" để tránh deadlock */
     private final Object writeLock = new Object();
 
     private String username = "unknown";
+    private String role     = "BIDDER"; // mặc định
 
     public ClientHandler(Socket socket) {
         this.socket = socket;
     }
 
     // =========================================================
-    // VÒNG LẶP ĐỌC CHÍNH
+    // RUN
     // =========================================================
-
     @Override
     public void run() {
         try {
             BufferedReader in = new BufferedReader(
                     new InputStreamReader(socket.getInputStream()));
 
-            // Gán out TRƯỚC khi gửi bất kỳ tin nào
-            // Không đặt trong try-with-resources vì close() cần gọi out.flush() thủ công
             out = new PrintWriter(
                     new OutputStreamWriter(socket.getOutputStream()), true);
 
+            // Gửi welcome
             sendJson(Map.of(
                     "status",  "OK",
                     "message", "Connected to Auction Server"
             ));
 
-            String inputLine;
-            while ((inputLine = in.readLine()) != null) {
-                System.out.println("[RECV from " + username + "] " + inputLine);
-                handleMessage(inputLine);
+            String line;
+            while ((line = in.readLine()) != null) {
+                System.out.println("[RECV from " + username + "] " + line);
+                handleMessage(line);
             }
 
         } catch (IOException e) {
-            if (!isClosed) {
-                // Lỗi thật (không phải do close() chủ động)
-                System.out.println("[DISCONNECT] Client [" + username
-                        + "] mất kết nối: " + e.getMessage());
-            }
+            if (!isClosed)
+                System.out.println("[DISCONNECT] " + username
+                        + " mất kết nối: " + e.getMessage());
         } finally {
-            // removeObserver sẽ gọi broadcastOnlineCount() sau khi xóa khỏi list
             AuctionServer.removeObserver(this);
             close();
         }
@@ -87,59 +91,67 @@ public class ClientHandler implements Runnable, Observer {
     // =========================================================
     // GỬI TIN — THREAD-SAFE
     // =========================================================
-
-    /**
-     * Gửi chuỗi String thô (JSON đã được serialize bên ngoài).
-     * synchronized(writeLock) đảm bảo chỉ 1 thread ghi tại 1 thời điểm,
-     * tránh các dòng JSON bị trộn lẫn nhau trên socket.
-     */
     public void sendMessage(String message) {
         if (isClosed || out == null) return;
-
         synchronized (writeLock) {
-            // Kiểm tra lại bên trong lock vì isClosed có thể thay đổi
-            // giữa lần kiểm tra ngoài và lúc vào được lock
             if (isClosed || out == null) return;
             out.println(message);
         }
     }
 
-    /**
-     * Serialize Map thành JSON rồi gửi qua sendMessage.
-     * Không cần synchronized riêng — sendMessage đã lo.
-     */
     private void sendJson(Map<String, Object> data) {
         sendMessage(JsonUtil.toJson(data));
     }
 
     // =========================================================
-    // XỬ LÝ MESSAGE TỪ CLIENT
+    // XỬ LÝ MESSAGE
     // =========================================================
-
     @SuppressWarnings("unchecked")
     private void handleMessage(String message) {
         if (message == null || message.isBlank()) return;
-
         try {
-            Map<String, Object> data = (Map<String, Object>) JsonUtil.parse(message);
+            Map<String, Object> data =
+                    (Map<String, Object>) JsonUtil.parse(message);
             String action = data.get("action").toString().toUpperCase();
 
             switch (action) {
 
+                // ── Đăng nhập ─────────────────────────────────
                 case "LOGIN" -> {
                     username = data.get("username").toString();
+                    role     = data.getOrDefault("role", "BIDDER")
+                                   .toString().toUpperCase();
+
+                    // Đăng ký vào userMap để server có thể sendToUser
+                    AuctionServer.registerUser(username, this);
+
                     sendJson(Map.of(
                             "status",   "OK",
                             "message",  "Login success",
-                            "username", username
+                            "username", username,
+                            "role",     role
                     ));
+
                     AuctionServer.broadcastAll(JsonUtil.toJson(Map.of(
                             "type",    "SYSTEM",
                             "message", username + " đã tham gia."
                     )));
                     AuctionServer.broadcastOnlineCount();
+
+                    // Gửi pending products cho Admin mới login
+                    if ("ADMIN".equals(role)) {
+                        for (String pending : AuctionServer.getPendingProducts()) {
+                            sendMessage(pending);
+                        }
+                    }
+
+                    // Gửi các phiên đang active cho client mới
+                    for (String sessionData : AuctionServer.getActiveSessions()) {
+                        sendMessage(sessionData);
+                    }
                 }
 
+                // ── Đặt giá ───────────────────────────────────
                 case "PLACE_BID" -> {
                     String sessionId = data.get("sessionId").toString();
                     String amount    = data.get("amount").toString();
@@ -149,18 +161,115 @@ public class ClientHandler implements Runnable, Observer {
                             "sessionId", sessionId,
                             "amount",    amount
                     )));
-                    sendJson(Map.of("status", "OK", "message", "Bid placed successfully"));
+                    sendJson(Map.of("status", "OK",
+                            "message", "Bid placed successfully"));
                 }
 
+                // ── Chat ──────────────────────────────────────
                 case "CHAT" -> {
-                    String chatMessage = data.get("message").toString();
+                    String chatMsg = data.get("message").toString();
                     AuctionServer.broadcast(JsonUtil.toJson(Map.of(
                             "type",     "CHAT",
                             "username", username,
-                            "message",  chatMessage
+                            "message",  chatMsg
                     )), this);
                 }
 
+                // ── Seller đăng sản phẩm → notify Admin ───────
+                case "PRODUCT_PENDING" -> {
+                    String notif = JsonUtil.toJson(Map.of(
+                            "type",        "NOTIFY_ADMIN_NEW_PRODUCT",
+                            "productId",   safe(data, "productId"),
+                            "productName", safe(data, "productName"),
+                            "sellerName",  safe(data, "sellerName"),
+                            "category",    safe(data, "category"),
+                            "startPrice",  safe(data, "startPrice"),
+                            "startTime",   safe(data, "startTime"),
+                            "endTime",     safe(data, "endTime")
+                    ));
+                    // Lưu để gửi cho Admin mới login sau này
+                    AuctionServer.addPendingProduct(notif);
+                    // Broadcast đến tất cả Admin đang online ngay
+                    AuctionServer.broadcastToRole("ADMIN", notif);
+                    sendJson(Map.of("status", "OK",
+                            "message", "Product pending sent to admins"));
+                }
+
+                // ── Admin duyệt → notify Seller ───────────────
+                case "PRODUCT_APPROVED" -> {
+                    String productId     = safe(data, "productId");
+                    String sellerUser    = safe(data, "sellerUsername");
+                    String productName   = safe(data, "productName");
+
+                    // Xóa khỏi pending
+                    AuctionServer.removePendingProduct(productId);
+
+                    // Gửi riêng cho Seller
+                    AuctionServer.sendToUser(sellerUser, JsonUtil.toJson(Map.of(
+                            "type",        "NOTIFY_SELLER_APPROVED",
+                            "productId",   productId,
+                            "productName", productName
+                    )));
+                    sendJson(Map.of("status", "OK",
+                            "message", "Approved notification sent"));
+                }
+
+                // ── Admin từ chối → notify Seller ─────────────
+                case "PRODUCT_REJECTED" -> {
+                    String productId   = safe(data, "productId");
+                    String sellerUser  = safe(data, "sellerUsername");
+                    String productName = safe(data, "productName");
+                    String reason      = safe(data, "reason");
+
+                    AuctionServer.removePendingProduct(productId);
+
+                    AuctionServer.sendToUser(sellerUser, JsonUtil.toJson(Map.of(
+                            "type",        "NOTIFY_SELLER_REJECTED",
+                            "productId",   productId,
+                            "productName", productName,
+                            "reason",      reason
+                    )));
+                    sendJson(Map.of("status", "OK",
+                            "message", "Rejected notification sent"));
+                }
+
+                // ── Seller bắt đầu phiên → notify tất cả ─────
+                case "SESSION_START" -> {
+                    String sessionId = safe(data, "sessionId");
+                    String notif     = JsonUtil.toJson(Map.of(
+                            "type",       "NOTIFY_BIDDER_SESSION_START",
+                            "sessionId",  sessionId,
+                            "itemName",   safe(data, "itemName"),
+                            "startPrice", safe(data, "startPrice"),
+                            "minStep",    safe(data, "minStep"),
+                            "endTime",    safe(data, "endTime"),
+                            "sellerName", safe(data, "sellerName"),
+                            "category",   safe(data, "category")
+                    ));
+                    // Lưu để gửi cho client mới login
+                    AuctionServer.addActiveSession(sessionId, notif);
+                    // Broadcast cho TẤT CẢ (Bidder + Seller khác)
+                    AuctionServer.broadcastAll(notif);
+                    sendJson(Map.of("status", "OK",
+                            "message", "Session start broadcasted"));
+                }
+
+                // ── Kết thúc phiên ────────────────────────────
+                case "SESSION_END" -> {
+                    String sessionId = safe(data, "sessionId");
+                    String itemName  = safe(data, "itemName");
+
+                    AuctionServer.removeActiveSession(sessionId);
+                    AuctionServer.broadcastAll(JsonUtil.toJson(Map.of(
+                            "type",      "NOTIFY_BIDDER_SESSION_END",
+                            "sessionId", sessionId,
+                            "itemName",  itemName
+                    )));
+                    sendJson(Map.of("status", "OK",
+                            "message", "Session end broadcasted"));
+                }
+
+                // ── Số online ─────────────────────────────────
                 case "GET_ONLINE_COUNT" -> {
                     sendJson(Map.of(
                             "type",  "ONLINE_COUNT",
@@ -175,55 +284,45 @@ public class ClientHandler implements Runnable, Observer {
             }
 
         } catch (Exception e) {
+            System.err.println("[ERROR] handleMessage: " + e.getMessage());
             sendJson(Map.of(
                     "status",  "ERROR",
-                    "message", "Invalid JSON: " + e.getMessage()
+                    "message", "Invalid JSON or error: " + e.getMessage()
             ));
         }
     }
 
-    // =========================================================
-    // ĐÓNG KẾT NỐI — THREAD-SAFE
-    // =========================================================
+    /** Lấy giá trị an toàn từ map, trả "" nếu null */
+    private String safe(Map<String, Object> data, String key) {
+        Object v = data.get(key);
+        return v == null ? "" : v.toString();
+    }
 
-    /**
-     * Đóng socket và đánh dấu handler là đã đóng.
-     * synchronized đảm bảo socket.close() chỉ được gọi đúng 1 lần
-     * dù nhiều luồng (shutdown hook, finally trong run()) cùng gọi close().
-     */
+    // =========================================================
+    // ĐÓNG KẾT NỐI
+    // =========================================================
     public synchronized void close() {
-        if (isClosed) return;     // đã đóng rồi, không làm gì thêm
+        if (isClosed) return;
         isClosed = true;
-
         try {
-            if (out != null) {
-                out.flush();      // đẩy hết dữ liệu còn trong buffer trước khi đóng
-            }
+            if (out != null) out.flush();
             socket.close();
         } catch (IOException e) {
-            System.err.println("[CLOSE] Lỗi đóng socket của [" + username + "]: "
-                    + e.getMessage());
+            System.err.println("[CLOSE] " + username + ": " + e.getMessage());
         }
     }
 
     // =========================================================
-    // OBSERVER INTERFACE
+    // OBSERVER
     // =========================================================
-
-    /**
-     * Nếu dự án dùng Observer pattern để push event,
-     * update() cũng phải đi qua sendMessage để đảm bảo thread-safety.
-     */
     @Override
     public void update(Object message) {
         sendMessage(message.toString());
     }
 
     // =========================================================
-    // GETTER
+    // GETTERS
     // =========================================================
-
-    public String getUsername() {
-        return username;
-    }
+    public String getUsername() { return username; }
+    public String getRole()     { return role; }
 }
