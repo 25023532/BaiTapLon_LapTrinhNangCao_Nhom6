@@ -7,8 +7,10 @@
             fx:controller="com.nhom6.auctionsystem_nhom6.HelpController"
             styleClass="main-root">
 
+    <!-- ══ SIDEBAR ══ -->
     <left>
         <VBox styleClass="sidebar" spacing="0">
+
             <HBox styleClass="sidebar-logo" spacing="10" alignment="CENTER_LEFT">
                 <padding><Insets top="20" right="16" bottom="20" left="16"/></padding>
                 <Label text="⬡" styleClass="logo-icon"/>
@@ -20,14 +22,30 @@
 
             <VBox styleClass="sidebar-nav" spacing="2">
                 <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
-                <Button text="⊞  Tổng quan"          maxWidth="Infinity" styleClass="nav-btn" onAction="#handleBack"/>
-                <Button text="☰  Danh sách phiên"     maxWidth="Infinity" styleClass="nav-btn" onAction="#handleAuctionList"/>
-                <Button text="⚡  Đấu giá trực tiếp"  maxWidth="Infinity" styleClass="nav-btn" onAction="#handleLiveAuction"/>
-                <Button text="📦  Quản lý sản phẩm"   maxWidth="Infinity" styleClass="nav-btn" onAction="#handleProductManagement"/>
-                <Button text="🛒  Đơn hàng của tôi" maxWidth="Infinity" styleClass="nav-btn"/>
-                <Button text="★  Đánh giá"            maxWidth="Infinity" styleClass="nav-btn" onAction="#handleRating"/>
-                <Button text="💳  Ví &amp; Giao dịch" maxWidth="Infinity" styleClass="nav-btn" onAction="#handleWallet"/>
-                <Button text="?  Trợ giúp"            maxWidth="Infinity" styleClass="nav-btn,nav-active"/>
+
+                <Button text="⊞  Tổng quan"
+                        maxWidth="Infinity" styleClass="nav-btn"
+                        onAction="#handleBack"/>
+
+                <Button text="☰  Danh sách phiên"
+                        maxWidth="Infinity" styleClass="nav-btn"
+                        onAction="#handleAuctionList"/>
+
+                <Button text="⚡  Đấu giá trực tiếp"
+                        maxWidth="Infinity" styleClass="nav-btn"
+                        onAction="#handleLiveAuction"/>
+
+                <Button text="📦  Đăng bán sản phẩm"
+                        maxWidth="Infinity" styleClass="nav-btn"
+                        onAction="#handleProductManagement"/>
+
+                <Button text="📋  Lịch sử phiên đấu giá"
+                        maxWidth="Infinity" styleClass="nav-btn"
+                        onAction="#handleSessionHistory"/>
+
+                <Button text="💳  Ví &amp; Giao dịch"
+                        maxWidth="Infinity" styleClass="nav-btn"
+                        onAction="#handleWallet"/>
             </VBox>
 
             <VBox styleClass="sidebar-cats" spacing="2">
@@ -45,6 +63,7 @@
         </VBox>
     </left>
 
+    <!-- ══ HEADER ══ -->
     <top>
         <HBox styleClass="header" spacing="12" alignment="CENTER_LEFT">
             <padding><Insets top="0" right="20" bottom="0" left="20"/></padding>
@@ -57,10 +76,10 @@
             <MenuButton styleClass="profile-menu-btn">
                 <graphic>
                     <HBox spacing="8" alignment="CENTER">
-                        <Label styleClass="profile-avatar" text="AD"/>
+                        <Label fx:id="userAvatarLabel" styleClass="profile-avatar"/>
                         <VBox alignment="CENTER_LEFT">
-                            <Label styleClass="header-username" text="Admin"/>
-                            <Label styleClass="header-role" text="ADMIN"/>
+                            <Label fx:id="userNameLabel" styleClass="header-username"/>
+                            <Label fx:id="userRoleLabel" styleClass="header-role"/>
                         </VBox>
                     </HBox>
                 </graphic>
@@ -74,69 +93,80 @@
         </HBox>
     </top>
 
+    <!-- ══ CONTENT ══ -->
     <center>
         <ScrollPane fitToWidth="true"
-                    style="-fx-background: #0f172a; -fx-background-color: #0f172a; -fx-border-color: transparent;">
+                    style="-fx-background: #0f172a; -fx-background-color: #0f172a;
+                           -fx-border-color: transparent;">
             <VBox spacing="24" style="-fx-background-color: #0f172a;">
                 <padding><Insets top="28" right="32" bottom="32" left="32"/></padding>
 
+                <!-- Hero -->
                 <VBox alignment="CENTER" spacing="8">
                     <Label text="❓" style="-fx-font-size: 48px;"/>
                     <Label text="Trung tâm Trợ giúp"
-                           style="-fx-text-fill: #f1f5f9; -fx-font-size: 22px; -fx-font-weight: bold;"/>
+                           style="-fx-text-fill: #f1f5f9; -fx-font-size: 22px;
+                                  -fx-font-weight: bold;"/>
                     <Label text="Tìm câu trả lời cho các câu hỏi thường gặp"
                            style="-fx-text-fill: #64748b; -fx-font-size: 13px;"/>
                 </VBox>
 
+                <!-- Search -->
                 <HBox spacing="10" alignment="CENTER">
                     <TextField fx:id="searchHelpField"
                                promptText="🔍  Tìm kiếm câu hỏi..."
                                onAction="#handleSearch"
                                prefWidth="480"
                                style="-fx-background-color: #1e293b;
-                                          -fx-text-fill: #f1f5f9;
-                                          -fx-prompt-text-fill: #475569;
-                                          -fx-border-color: #334155;
-                                          -fx-border-radius: 10;
-                                          -fx-background-radius: 10;
-                                          -fx-padding: 10 16 10 16;
-                                          -fx-font-size: 13px;"/>
+                                      -fx-text-fill: #f1f5f9;
+                                      -fx-prompt-text-fill: #475569;
+                                      -fx-border-color: #334155;
+                                      -fx-border-radius: 10;
+                                      -fx-background-radius: 10;
+                                      -fx-padding: 10 16 10 16;
+                                      -fx-font-size: 13px;"/>
                     <Button text="Tìm kiếm" onAction="#handleSearch"
                             styleClass="btn-primary"
                             style="-fx-padding: 10 20 10 20;"/>
                 </HBox>
 
+                <!-- Quick links -->
                 <HBox spacing="12" alignment="CENTER">
-                    <Button text="💳 Nạp tiền" styleClass="btn-secondary"
+                    <Button text="💳 Nạp tiền"  styleClass="btn-secondary"
                             onAction="#handleWallet"
                             style="-fx-padding: 8 16 8 16;"/>
-                    <Button text="⚡ Đấu giá" styleClass="btn-secondary"
+                    <Button text="⚡ Đấu giá"   styleClass="btn-secondary"
                             onAction="#handleLiveAuction"
                             style="-fx-padding: 8 16 8 16;"/>
-                    <Button text="📦 Đăng bán" styleClass="btn-secondary"
+                    <Button text="📦 Đăng bán"  styleClass="btn-secondary"
                             onAction="#handleProductManagement"
                             style="-fx-padding: 8 16 8 16;"/>
-                    <Button text="📋 Lịch sử" styleClass="btn-secondary"
+                    <Button text="📋 Lịch sử"   styleClass="btn-secondary"
                             onAction="#handleHistory"
                             style="-fx-padding: 8 16 8 16;"/>
                 </HBox>
 
+                <!-- FAQ title -->
                 <HBox alignment="CENTER_LEFT">
                     <Label text="Câu hỏi thường gặp"
-                           style="-fx-text-fill: #f1f5f9; -fx-font-size: 15px; -fx-font-weight: bold;"/>
+                           style="-fx-text-fill: #f1f5f9; -fx-font-size: 15px;
+                                  -fx-font-weight: bold;"/>
                 </HBox>
 
+                <!-- FAQ list (render động) -->
                 <VBox fx:id="faqListBox" spacing="10"/>
 
+                <!-- Contact -->
                 <VBox alignment="CENTER" spacing="6"
                       style="-fx-background-color: #1e293b;
-                                 -fx-background-radius: 12;
-                                 -fx-border-color: #334155;
-                                 -fx-border-radius: 12;
-                                 -fx-border-width: 1;
-                                 -fx-padding: 24;">
+                             -fx-background-radius: 12;
+                             -fx-border-color: #334155;
+                             -fx-border-radius: 12;
+                             -fx-border-width: 1;
+                             -fx-padding: 24;">
                     <Label text="Vẫn cần hỗ trợ?"
-                           style="-fx-text-fill: #f1f5f9; -fx-font-size: 15px; -fx-font-weight: bold;"/>
+                           style="-fx-text-fill: #f1f5f9; -fx-font-size: 15px;
+                                  -fx-font-weight: bold;"/>
                     <Label text="Liên hệ đội ngũ hỗ trợ của chúng tôi"
                            style="-fx-text-fill: #64748b; -fx-font-size: 13px;"/>
                     <HBox spacing="16" alignment="CENTER">
