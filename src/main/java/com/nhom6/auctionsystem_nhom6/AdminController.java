@@ -1,10 +1,13 @@
 package com.nhom6.auctionsystem_nhom6;
 
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.util.Duration;
 import org.example.auction.AuctionSession;
 import org.example.auction.AuctionStatus;
 import org.example.service.AuthService;
@@ -32,6 +35,9 @@ public class AdminController {
     private final AuthService authService = AppContext.getAuthService();
     private String currentTab = "users";
 
+    // Auto-refresh mỗi 3 giây để bắt sản phẩm mới từ Seller
+    private Timeline autoRefreshTimeline;
+
     // =========================================================
     // INITIALIZE
     // =========================================================
@@ -49,13 +55,25 @@ public class AdminController {
 
         refreshStats();
         showUsers();
+
+        // ── Auto-refresh stats + tab hiện tại mỗi 3 giây ─────
+        autoRefreshTimeline = new Timeline(
+                new KeyFrame(Duration.seconds(3), e -> {
+                    refreshStats();
+                    // Chỉ tự reload tab sản phẩm (tab quan trọng nhất cần realtime)
+                    if ("products".equals(currentTab)) {
+                        showProducts();
+                    }
+                })
+        );
+        autoRefreshTimeline.setCycleCount(Timeline.INDEFINITE);
+        autoRefreshTimeline.play();
     }
 
     // =========================================================
     // PROFILE HANDLERS
     // =========================================================
 
-    /** Mở màn hình hồ sơ cá nhân */
     @FXML
     private void handleProfile() {
         try { HelloApplication.showProfileView(); }
@@ -64,6 +82,10 @@ public class AdminController {
 
     @FXML
     private void handleLogout() {
+        // Dừng auto-refresh trước khi thoát
+        if (autoRefreshTimeline != null) {
+            autoRefreshTimeline.stop();
+        }
         AppContext.logout();
         try { HelloApplication.showLoginView(); }
         catch (Exception e) { e.printStackTrace(); }
@@ -76,15 +98,17 @@ public class AdminController {
         List<User> users = new ArrayList<>(authService.getAllUsers().values());
         totalUsersLabel.setText(String.valueOf(users.size()));
 
-        long totalProducts = AppContext.getAllProducts().size();
-        totalProductsLabel.setText(String.valueOf(totalProducts));
+        List<AppContext.ProductRecord> allProducts = AppContext.getAllProducts();
+        totalProductsLabel.setText(String.valueOf(allProducts.size()));
 
-        long pending = AppContext.getAllProducts().stream()
-                .filter(p -> "CHỜ DUYỆT".equals(p.status())).count();
+        long pending = allProducts.stream()
+                .filter(p -> "CHỜ DUYỆT".equals(p.status()))
+                .count();
         pendingLabel.setText(String.valueOf(pending));
 
         long activeSessions = AppContext.getGlobalSessions().stream()
-                .filter(s -> s.getStatus() == AuctionStatus.RUNNING).count();
+                .filter(s -> s.getStatus() == AuctionStatus.RUNNING)
+                .count();
         activeSessionsLabel.setText(String.valueOf(activeSessions));
     }
 
@@ -114,9 +138,11 @@ public class AdminController {
 
             Label username = colLabel(u.getUsername(), 160, true);
             Label fullName = colLabel(
-                    u.getFullName().isEmpty() ? "—" : u.getFullName(), 180, false);
+                    u.getFullName() == null || u.getFullName().isEmpty()
+                            ? "—" : u.getFullName(), 180, false);
             Label email    = colLabel(
-                    u.getEmail().isEmpty() ? "—" : u.getEmail(), 200, false);
+                    u.getEmail() == null || u.getEmail().isEmpty()
+                            ? "—" : u.getEmail(), 200, false);
 
             Label roleBadge = new Label(u.getRole());
             roleBadge.getStyleClass().addAll(
@@ -139,9 +165,7 @@ public class AdminController {
     }
 
     // =========================================================
-    // TAB: SẢN PHẨM
-    // Chỉ hiển thị sản phẩm CHỜ DUYỆT để Admin xét duyệt.
-    // Nếu không có sản phẩm nào chờ → hiện trạng thái rỗng.
+    // TAB: SẢN PHẨM — hiển thị CHỜ DUYỆT để Admin xét duyệt
     // =========================================================
     @FXML
     public void showProducts() {
@@ -152,8 +176,9 @@ public class AdminController {
                 "Tên sản phẩm", "Danh mục", "Người bán", "Trạng thái", "Hành động");
         contentBox.getChildren().add(header);
 
-        // Lọc CHỈ lấy sản phẩm CHỜ DUYỆT
-        List<AppContext.ProductRecord> pending = AppContext.getAllProducts().stream()
+        // Lấy TẤT CẢ sản phẩm từ mọi seller, lọc CHỜ DUYỆT
+        List<AppContext.ProductRecord> pending = AppContext.getAllProducts()
+                .stream()
                 .filter(p -> "CHỜ DUYỆT".equals(p.status()))
                 .toList();
 
@@ -173,15 +198,16 @@ public class AdminController {
             Label name     = colLabel(p.name(), 200, true);
             Label category = colLabel(p.category(), 120, false);
 
+            // Tra ngược productMap để tìm seller username
             String sellerName = AppContext.getSellerForProduct(p.id());
-            Label seller = colLabel(sellerName, 140, false);
+            Label seller = colLabel(
+                    sellerName.equals("—") ? "Không rõ" : sellerName,
+                    140, false);
 
             Label statusBadge = new Label(p.status());
-            statusBadge.getStyleClass().addAll(
-                    "history-badge", "badge-warn");   // CHỜ DUYỆT luôn là warn
+            statusBadge.getStyleClass().addAll("history-badge", "badge-warn");
             statusBadge.setMinWidth(130);
 
-            // Admin luôn thấy nút Duyệt + Từ chối (đây chỉ là CHỜ DUYỆT)
             Button approveBtn = new Button("✅ Duyệt");
             approveBtn.setStyle(
                     "-fx-background-color: #14532d; -fx-text-fill: #4ade80; "
@@ -272,42 +298,71 @@ public class AdminController {
     }
 
     private void handleApproveProduct(AppContext.ProductRecord p, String sellerName) {
-        AppContext.updateProduct(sellerName, new AppContext.ProductRecord(
+        // Nếu không tìm được seller thì thử tra lại
+        String resolvedSeller = sellerName.equals("—") || sellerName.equals("Không rõ")
+                ? AppContext.getSellerForProduct(p.id())
+                : sellerName;
+
+        if (resolvedSeller.equals("—")) {
+            showAlert(Alert.AlertType.ERROR,
+                    "Lỗi", "Không tìm được người bán cho sản phẩm này.");
+            return;
+        }
+
+        AppContext.updateProduct(resolvedSeller, new AppContext.ProductRecord(
                 p.id(), p.name(), p.category(),
                 p.startPrice(), p.currentPrice(), p.bidCount(),
-                "ĐÃ DUYỆT", p.startTime(), p.endTime(), p.topBidder()
+                "ĐÃ DUYỆT",
+                p.startTime(), p.endTime(), p.topBidder()
         ));
-        showProducts();   // reload — sản phẩm vừa duyệt sẽ biến mất khỏi danh sách
+
+        // Thông báo kết quả
+        showAlert(Alert.AlertType.INFORMATION,
+                "Duyệt thành công",
+                "✅ Đã duyệt sản phẩm \"" + p.name() + "\" của " + resolvedSeller + ".\n"
+                + "Seller có thể bắt đầu phiên đấu giá.");
+
+        showProducts(); // reload — sản phẩm vừa duyệt biến khỏi danh sách
     }
 
     private void handleRejectProduct(AppContext.ProductRecord p, String sellerName) {
-        AppContext.updateProduct(sellerName, new AppContext.ProductRecord(
-                p.id(), p.name(), p.category(),
-                p.startPrice(), p.currentPrice(), p.bidCount(),
-                "TỪ CHỐI", p.startTime(), p.endTime(), p.topBidder()
-        ));
-        showProducts();   // reload — sản phẩm bị từ chối cũng biến mất
-    }
+        String resolvedSeller = sellerName.equals("—") || sellerName.equals("Không rõ")
+                ? AppContext.getSellerForProduct(p.id())
+                : sellerName;
 
-    private void handleViewProduct(AppContext.ProductRecord p, String sellerName) {
-        Alert a = new Alert(Alert.AlertType.INFORMATION);
-        a.setTitle("Chi tiết sản phẩm");
-        a.setHeaderText(p.name());
-        a.setContentText(
-                "ID         : " + p.id()
-                + "\nDanh mục  : " + p.category()
-                + "\nGiá KĐ   : " + formatVND(p.startPrice())
-                + "\nGiá hiện  : " + formatVND(p.currentPrice())
-                + "\nNgười bán : " + sellerName
-                + "\nTrạng thái: " + p.status()
-        );
-        a.showAndWait();
+        if (resolvedSeller.equals("—")) {
+            showAlert(Alert.AlertType.ERROR,
+                    "Lỗi", "Không tìm được người bán cho sản phẩm này.");
+            return;
+        }
+
+        // Hỏi lý do từ chối (tùy chọn)
+        TextInputDialog reasonDialog = new TextInputDialog();
+        reasonDialog.setTitle("Từ chối sản phẩm");
+        reasonDialog.setHeaderText("Từ chối: \"" + p.name() + "\"");
+        reasonDialog.setContentText("Lý do từ chối (tùy chọn):");
+
+        reasonDialog.showAndWait().ifPresent(reason -> {
+            AppContext.updateProduct(resolvedSeller, new AppContext.ProductRecord(
+                    p.id(), p.name(), p.category(),
+                    p.startPrice(), p.currentPrice(), p.bidCount(),
+                    "TỪ CHỐI",
+                    p.startTime(), p.endTime(), p.topBidder()
+            ));
+
+            showProducts(); // reload
+        });
     }
 
     private void handleEnterSession(AuctionSession s) {
         AppContext.setActiveSession(s);
-        try { HelloApplication.showLiveAuctionView(); }
-        catch (Exception e) { e.printStackTrace(); }
+        if (autoRefreshTimeline != null) autoRefreshTimeline.pause();
+        try {
+            HelloApplication.showLiveAuctionView();
+        } catch (Exception e) {
+            e.printStackTrace();
+            if (autoRefreshTimeline != null) autoRefreshTimeline.play();
+        }
     }
 
     // =========================================================
@@ -346,6 +401,14 @@ public class AdminController {
         l.setStyle("-fx-text-fill: #64748b; "
                 + "-fx-font-size: 14px; -fx-padding: 40 0 40 0;");
         return l;
+    }
+
+    private void showAlert(Alert.AlertType type, String title, String content) {
+        Alert a = new Alert(type);
+        a.setTitle(title);
+        a.setHeaderText(null);
+        a.setContentText(content);
+        a.showAndWait();
     }
 
     private String roleBadgeStyle(String role) {
