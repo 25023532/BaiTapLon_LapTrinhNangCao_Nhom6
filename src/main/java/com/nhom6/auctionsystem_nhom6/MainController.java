@@ -39,9 +39,6 @@ public class MainController {
     @FXML private Label  badgeLabel;
 
     // ── Sidebar: nút theo role ────────────────────────────────
-    // SELLER thấy btnSellerProducts
-    // ADMIN  thấy btnAdminProducts
-    // BIDDER: cả 2 đều ẩn
     @FXML private Button btnSellerProducts;
     @FXML private Button btnAdminProducts;
 
@@ -148,19 +145,6 @@ public class MainController {
     // =========================================================
     // ROLE MENU + SIDEBAR
     // =========================================================
-    /**
-     * Điều chỉnh UI theo role:
-     *
-     * SIDEBAR:
-     *   SELLER → hiện "🏷️ Đăng bán sản phẩm"  (btnSellerProducts)
-     *   ADMIN  → hiện "📦 Quản lý sản phẩm"    (btnAdminProducts)
-     *   BIDDER → cả 2 nút đều ẩn
-     *
-     * PROFILE DROPDOWN:
-     *   BIDDER → menuItemHistory = "🛒 Lịch sử mua hàng"
-     *   SELLER → menuItemHistory = "📦 Lịch sử bán hàng"
-     *   ADMIN  → xóa menuItemHistory
-     */
     private void applyRoleMenu(User user) {
         String role    = user.getRole() == null ? "" : user.getRole().toUpperCase();
         boolean isSeller = "SELLER".equals(role);
@@ -202,7 +186,6 @@ public class MainController {
 
         String role = user.getRole() == null ? "" : user.getRole().toUpperCase();
 
-        // Seller → ưu tiên phiên do chính mình tạo
         if ("SELLER".equals(role)) {
             for (AuctionSession s : AppContext.getRunningSessions()) {
                 if (user.getUsername().equalsIgnoreCase(
@@ -212,7 +195,6 @@ public class MainController {
             }
         }
 
-        // Bidder hoặc không có phiên riêng → lấy phiên đầu tiên
         List<AuctionSession> running = AppContext.getRunningSessions();
         return running.isEmpty() ? null : running.get(0);
     }
@@ -230,29 +212,13 @@ public class MainController {
         }
     }
 
-    /**
-     * Xử lý tất cả message từ server.
-     *
-     * Các type hỗ trợ:
-     *   ONLINE_COUNT                 → cập nhật label online
-     *   CHAT                         → hiện message vào chat
-     *   NEW_BID                      → cập nhật giá + notify
-     *   SYSTEM                       → hiện system message
-     *   NOTIFY_ADMIN_NEW_PRODUCT     → Admin nhận khi Seller đăng sản phẩm
-     *   NOTIFY_SELLER_APPROVED       → Seller nhận khi Admin duyệt
-     *   NOTIFY_SELLER_REJECTED       → Seller nhận khi Admin từ chối
-     *   NOTIFY_BIDDER_SESSION_START  → Bidder nhận khi Seller bắt đầu phiên
-     *   NOTIFY_BIDDER_SESSION_END    → Bidder nhận khi phiên kết thúc
-     */
     private void handleServerMessage(String raw) {
         try {
-            // Lấy type từ JSON
             String type = extractJson(raw, "type");
             if (type == null || type.isEmpty()) return;
 
             switch (type) {
 
-                // ── Số người online ───────────────────────────
                 case "ONLINE_COUNT" -> {
                     String count = extractJson(raw, "count");
                     Platform.runLater(() -> {
@@ -261,7 +227,6 @@ public class MainController {
                     });
                 }
 
-                // ── Chat từ người khác ─────────────────────────
                 case "CHAT" -> {
                     String sender  = extractJson(raw, "username");
                     String message = extractJson(raw, "message");
@@ -271,7 +236,6 @@ public class MainController {
                                 addChatMessage(sender, message, false));
                 }
 
-                // ── Bid từ người khác ──────────────────────────
                 case "NEW_BID" -> {
                     String bidder    = extractJson(raw, "username");
                     String amountStr = extractJson(raw, "amount");
@@ -282,7 +246,6 @@ public class MainController {
                     try {
                         double amt = Double.parseDouble(amountStr);
 
-                        // Cập nhật AuctionSession local
                         AppContext.getGlobalSessions().stream()
                                 .filter(s -> s.getSessionId().equals(sessionId)
                                         || s.getItemName().equals(sessionId))
@@ -306,7 +269,6 @@ public class MainController {
                                     bidder + " đặt giá " + formatVND(amt),
                                     false);
 
-                            // Notify nếu đang tham gia phiên đó
                             if (session != null) {
                                 boolean participating =
                                         session.getBidHistory().stream()
@@ -324,16 +286,12 @@ public class MainController {
                     } catch (NumberFormatException ignored) {}
                 }
 
-                // ── System message ─────────────────────────────
                 case "SYSTEM" -> {
                     String message = extractJson(raw, "message");
                     Platform.runLater(() ->
                             addChatMessage("System", message, false));
                 }
 
-                // ══════════════════════════════════════════════
-                // ADMIN nhận: Seller vừa đăng sản phẩm mới
-                // ══════════════════════════════════════════════
                 case "NOTIFY_ADMIN_NEW_PRODUCT" -> {
                     String productId   = extractJson(raw, "productId");
                     String productName = extractJson(raw, "productName");
@@ -343,12 +301,9 @@ public class MainController {
                     String startTimeStr= extractJson(raw, "startTime");
                     String endTimeStr  = extractJson(raw, "endTime");
 
-                    // Thêm vào AppContext để Admin thấy trong ProductManagement
                     try {
-                        LocalDateTime startTime = LocalDateTime.parse(
-                                startTimeStr, ISO_DT);
-                        LocalDateTime endTime   = LocalDateTime.parse(
-                                endTimeStr, ISO_DT);
+                        LocalDateTime startTime = LocalDateTime.parse(startTimeStr, ISO_DT);
+                        LocalDateTime endTime   = LocalDateTime.parse(endTimeStr, ISO_DT);
 
                         boolean exists = AppContext.getAllProducts().stream()
                                 .anyMatch(p -> p.id().equals(productId));
@@ -361,11 +316,9 @@ public class MainController {
                                             startTime, endTime, "—"));
                         }
                     } catch (Exception e) {
-                        System.err.println("[MainController] Parse product error: "
-                                + e.getMessage());
+                        System.err.println("[MainController] Parse product error: " + e.getMessage());
                     }
 
-                    // Hiện notification cho Admin
                     Platform.runLater(() ->
                         pushNotification(
                                 NotificationManager.NotifType.SYSTEM,
@@ -377,14 +330,10 @@ public class MainController {
                     );
                 }
 
-                // ══════════════════════════════════════════════
-                // SELLER nhận: Admin đã duyệt sản phẩm
-                // ══════════════════════════════════════════════
                 case "NOTIFY_SELLER_APPROVED" -> {
                     String productId   = extractJson(raw, "productId");
                     String productName = extractJson(raw, "productName");
 
-                    // Cập nhật status trong AppContext
                     User me = AppContext.getCurrentUser();
                     if (me != null) {
                         AppContext.getProducts(me.getUsername()).stream()
@@ -407,15 +356,11 @@ public class MainController {
                     );
                 }
 
-                // ══════════════════════════════════════════════
-                // SELLER nhận: Admin từ chối sản phẩm
-                // ══════════════════════════════════════════════
                 case "NOTIFY_SELLER_REJECTED" -> {
                     String productId   = extractJson(raw, "productId");
                     String productName = extractJson(raw, "productName");
                     String reason      = extractJson(raw, "reason");
 
-                    // Cập nhật status trong AppContext
                     User me = AppContext.getCurrentUser();
                     if (me != null) {
                         AppContext.getProducts(me.getUsername()).stream()
@@ -437,9 +382,6 @@ public class MainController {
                     );
                 }
 
-                // ══════════════════════════════════════════════
-                // BIDDER nhận: Phiên đấu giá mới bắt đầu
-                // ══════════════════════════════════════════════
                 case "NOTIFY_BIDDER_SESSION_START" -> {
                     String sessionId  = extractJson(raw, "sessionId");
                     String itemName   = extractJson(raw, "itemName");
@@ -450,21 +392,17 @@ public class MainController {
                     String endTimeStr = extractJson(raw, "endTime");
 
                     try {
-                        LocalDateTime endTime = LocalDateTime.parse(
-                                endTimeStr, ISO_DT);
+                        LocalDateTime endTime = LocalDateTime.parse(endTimeStr, ISO_DT);
 
-                        // Tạo AuctionSession local nếu chưa có
                         boolean exists = AppContext.getGlobalSessions().stream()
                                 .anyMatch(s -> s.getSessionId().equals(sessionId));
 
                         if (!exists) {
                             AuctionSession newSession = new AuctionSession(
-                                    sessionId, itemName,
-                                    startPrice, minStep, endTime);
+                                    sessionId, itemName, startPrice, minStep, endTime);
                             newSession.start();
                             AppContext.registerSession(newSession, sellerName);
 
-                            // Thêm ProductRecord nếu chưa có
                             boolean productExists = AppContext.getAllProducts()
                                     .stream().anyMatch(p -> p.id().equals(sessionId));
                             if (!productExists) {
@@ -478,13 +416,11 @@ public class MainController {
                             }
                         }
 
-                        // Nếu Bidder chưa có session → tự động load phiên mới
                         Platform.runLater(() -> {
                             if (session == null) {
                                 AuctionSession found =
                                         AppContext.getGlobalSessions().stream()
-                                        .filter(s -> s.getSessionId()
-                                                .equals(sessionId))
+                                        .filter(s -> s.getSessionId().equals(sessionId))
                                         .findFirst().orElse(null);
                                 if (found != null) {
                                     session = found;
@@ -499,11 +435,9 @@ public class MainController {
                         });
 
                     } catch (Exception e) {
-                        System.err.println("[MainController] Parse session error: "
-                                + e.getMessage());
+                        System.err.println("[MainController] Parse session error: " + e.getMessage());
                     }
 
-                    // Notify cho tất cả (Bidder + Seller khác)
                     Platform.runLater(() ->
                         pushNotification(
                                 NotificationManager.NotifType.AUCTION_ENDING_SOON,
@@ -516,9 +450,6 @@ public class MainController {
                     );
                 }
 
-                // ══════════════════════════════════════════════
-                // BIDDER nhận: Phiên đấu giá kết thúc
-                // ══════════════════════════════════════════════
                 case "NOTIFY_BIDDER_SESSION_END" -> {
                     String itemName = extractJson(raw, "itemName");
                     Platform.runLater(() ->
@@ -531,8 +462,7 @@ public class MainController {
                 }
             }
         } catch (Exception e) {
-            System.err.println("[MainController] handleServerMessage lỗi: "
-                    + e.getMessage());
+            System.err.println("[MainController] handleServerMessage lỗi: " + e.getMessage());
         }
     }
 
@@ -541,7 +471,6 @@ public class MainController {
         String search = "\"" + key + "\":\"";
         int start = json.indexOf(search);
         if (start == -1) {
-            // Thử parse số (không có dấu nháy)
             String searchNum = "\"" + key + "\":";
             int s2 = json.indexOf(searchNum);
             if (s2 == -1) return "";
@@ -549,8 +478,7 @@ public class MainController {
             int e2 = json.indexOf(",", s2);
             if (e2 == -1) e2 = json.indexOf("}", s2);
             if (e2 == -1) return "";
-            return json.substring(s2, e2).trim()
-                    .replace("\"", "");
+            return json.substring(s2, e2).trim().replace("\"", "");
         }
         start += search.length();
         int end = json.indexOf("\"", start);
@@ -606,7 +534,7 @@ public class MainController {
     private void updateCountdown() {
         if (session == null) return;
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime end = session.getEndTime(); // luôn lấy mới nhất (anti-sniping)
+        LocalDateTime end = session.getEndTime();
         if (now.isAfter(end)) {
             hoursLabel.setText("00");
             minsLabel.setText("00");
@@ -625,7 +553,6 @@ public class MainController {
         minsLabel.setText(String.format("%02d",  (total % 3600) / 60));
         secsLabel.setText(String.format("%02d",  total % 60));
 
-        // Cảnh báo 5 phút cuối
         if (total == 300)
             pushNotification(
                     NotificationManager.NotifType.AUCTION_ENDING_SOON,
@@ -699,6 +626,28 @@ public class MainController {
         } catch (Exception e) {
             e.printStackTrace();
             showAlert("Lỗi hệ thống", e.getMessage());
+        }
+    }
+
+    // =========================================================
+    // SEARCH  ← FIX: thêm method này để khớp với FXML dòng 98
+    // =========================================================
+    @FXML
+    private void handleSearch(javafx.scene.input.KeyEvent event) {
+        if (searchField == null) return;
+        String keyword = searchField.getText().trim();
+        if (keyword.isEmpty()) return;
+
+        try {
+            HelloApplication.showAuctionListByKeyword(keyword);
+        } catch (Exception e) {
+            // Fallback: nếu chưa có showAuctionListByKeyword,
+            // dùng showAuctionListByCategory với keyword
+            try {
+                HelloApplication.showAuctionListByCategory(keyword);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
         }
     }
 
@@ -788,13 +737,11 @@ public class MainController {
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    /** SELLER bấm "Đăng bán sản phẩm" */
     @FXML private void handleSellerProducts() {
         try { HelloApplication.showMyProductsView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    /** ADMIN bấm "Quản lý sản phẩm" */
     @FXML private void handleAdminProducts() {
         try { HelloApplication.showProductManagementView(); }
         catch (Exception e) { e.printStackTrace(); }
@@ -861,7 +808,6 @@ public class MainController {
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    // Các handler phụ giữ tương thích
     @FXML private void handleRating() {
         try { HelloApplication.showRatingView(); }
         catch (Exception e) { e.printStackTrace(); }
