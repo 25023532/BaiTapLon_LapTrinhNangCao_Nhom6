@@ -12,11 +12,16 @@ public class HelloApplication extends Application {
 
     private static Stage  primaryStage;
     private static String pendingCategory = null;
-    private static String pendingKeyword  = null;   // ← THÊM MỚI
+    private static String pendingKeyword  = null;
 
     @Override
     public void start(Stage stage) throws Exception {
         primaryStage = stage;
+
+        // --- THÊM 2 DÒNG NÀY ---
+        ServerConfig.createDefaultIfMissing();   // tạo file config nếu chưa có
+        ServerSetupDialog.showIfNeeded();         // hỏi IP nếu đang dùng localhost
+        // -----------------------
 
         Image icon = new Image(
                 getClass().getResourceAsStream(
@@ -74,20 +79,19 @@ public class HelloApplication extends Application {
 
     public static void showAuctionListView() throws Exception {
         pendingCategory = null;
-        pendingKeyword  = null;   // ← reset khi xem toàn bộ
+        pendingKeyword  = null;
         load("auction-list-view.fxml", "AuctionSys – Danh sách phiên đấu giá");
     }
 
     public static void showAuctionListByCategory(String category) throws Exception {
         pendingCategory = category;
-        pendingKeyword  = null;   // ← reset keyword khi lọc theo category
+        pendingKeyword  = null;
         load("auction-list-view.fxml", "AuctionSys – " + category);
     }
 
-    // ← THÊM MỚI: tìm kiếm theo từ khóa
     public static void showAuctionListByKeyword(String keyword) throws Exception {
         pendingKeyword  = keyword;
-        pendingCategory = null;   // reset category khi tìm theo keyword
+        pendingCategory = null;
         load("auction-list-view.fxml", "AuctionSys – Tìm kiếm: " + keyword);
     }
 
@@ -112,7 +116,6 @@ public class HelloApplication extends Application {
                 "AuctionSys – Lịch sử phiên đấu giá");
     }
 
-    // ← THÊM MỚI: màn hình Admin
     public static void showAdminView() throws Exception {
         load("admin-view.fxml", "AuctionSys – Quản trị hệ thống");
     }
@@ -126,7 +129,6 @@ public class HelloApplication extends Application {
         return cat;
     }
 
-    // ← THÊM MỚI: getter cho keyword (gọi trong AuctionListController)
     public static String getPendingKeyword() {
         String kw = pendingKeyword;
         pendingKeyword = null;
