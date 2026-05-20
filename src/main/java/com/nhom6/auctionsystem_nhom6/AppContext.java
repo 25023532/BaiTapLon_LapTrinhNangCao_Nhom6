@@ -80,6 +80,11 @@ public class AppContext {
     private static final Map<String, List<HistoryRecord>>
             historyMap = new HashMap<>();
 
+    /**
+     * KEY = sellerUsername, VALUE = danh sách sản phẩm của seller đó.
+     * Mọi seller đăng sản phẩm đều được lưu vào đây với status CHỜ DUYỆT.
+     * Admin gọi getAllProducts() để lấy tất cả, lọc CHỜ DUYỆT để duyệt.
+     */
     private static final Map<String, List<ProductRecord>>
             productMap = new HashMap<>();
 
@@ -107,8 +112,15 @@ public class AppContext {
         }
     }
 
+    /**
+     * Seed data khởi tạo:
+     * - Chỉ tạo tài khoản mẫu (admin, seller, bidder).
+     * - KHÔNG tạo sản phẩm sẵn để tránh bypass luồng duyệt.
+     * - Chỉ seed lịch sử giao dịch / ví để demo.
+     */
     private static void seedData() {
         try {
+            // ── Tài khoản mặc định ────────────────────────────
             if (!authService.isRegistered("admin"))
                 authService.register(new Admin("A001", "admin", "admin123"));
             if (!authService.isRegistered("sellerlong"))
@@ -120,49 +132,28 @@ public class AppContext {
             if (!authService.isRegistered("bidder01"))
                 authService.register(new Bidder("B003", "bidder01", "bidder123"));
 
+            // ── Ví ────────────────────────────────────────────
             walletMap.put("bidder07",   5_000_000.0);
             walletMap.put("sellerlong", 12_000_000.0);
             walletMap.put("bidder03",   2_500_000.0);
             walletMap.put("bidder01",   0.0);
 
+            // ── Lịch sử giao dịch mẫu ─────────────────────────
             addTransaction("bidder07", new TransactionRecord(
                     "TX001", "NẠP TIỀN", 5_000_000,
                     "Nạp qua ngân hàng VCB", "THÀNH CÔNG",
                     LocalDateTime.now().minusDays(3)));
-            addTransaction("bidder07", new TransactionRecord(
-                    "TX002", "THANH TOÁN", -28_000_000,
-                    "iPhone 15 Pro Max – HD001", "THÀNH CÔNG",
-                    LocalDateTime.now().minusDays(1)));
             addTransaction("sellerlong", new TransactionRecord(
                     "TX003", "NẠP TIỀN", 12_000_000,
                     "Nạp qua MoMo", "THÀNH CÔNG",
                     LocalDateTime.now().minusDays(5)));
 
-            addHistory("bidder07", new HistoryRecord(
-                    "HD001", "iPhone 15 Pro Max", 28_000_000,
-                    "SellerLong", "THÀNH CÔNG", true,
-                    LocalDateTime.now().minusDays(1)));
-            addHistory("sellerlong", new HistoryRecord(
-                    "HD002", "MacBook Air M2", 22_000_000,
-                    "Bidder07", "CHỜ XỬ LÝ", true,
-                    LocalDateTime.now().minusHours(6)));
-
-            addProduct("sellerlong", new ProductRecord(
-                    "PR001", "MacBook Pro M3", "Laptop",
-                    22_000_000, 26_500_000, 12,
-                    "ĐANG ĐẤU GIÁ",
-                    LocalDateTime.now().minusHours(1),
-                    LocalDateTime.now().plusHours(2),
-                    "bidder07"));
-            addProduct("sellerlong", new ProductRecord(
-                    "PR002", "iPhone 15 Pro", "Điện thoại",
-                    18_000_000, 21_000_000, 7,
-                    "ĐÃ BÁN",
-                    LocalDateTime.now().minusDays(2),
-                    LocalDateTime.now().minusDays(1),
-                    "bidder03"));
-
+            // ── Lịch sử phiên mẫu (đã kết thúc) ──────────────
             seedSessionHistory();
+
+            // ── KHÔNG seed sản phẩm ───────────────────────────
+            // Mọi sản phẩm phải được seller tự đăng qua giao diện
+            // và đi qua luồng: CHỜ DUYỆT → ĐÃ DUYỆT → ĐANG ĐẤU GIÁ
 
             System.out.println("AppContext: Seed data thành công.");
         } catch (Exception e) {
@@ -199,20 +190,6 @@ public class AppContext {
                 base.minusDays(4), base.minusDays(3),
                 "KHÔNG CÓ NGƯỜI ĐẤU", "SELLER", 0, false);
         addSessionHistory("sellerlong", s2seller);
-
-        AuctionSessionRecord s3seller = new AuctionSessionRecord(
-                "SES-003", "Sony Alpha A7 IV", "sellerlong",
-                15_000_000, 17_500_000, "bidder03", 3,
-                base.minusDays(6), base.minusDays(5),
-                "THÀNH CÔNG", "SELLER", 0, false);
-        AuctionSessionRecord s3winner = new AuctionSessionRecord(
-                "SES-003", "Sony Alpha A7 IV", "sellerlong",
-                15_000_000, 17_500_000, "bidder03", 3,
-                base.minusDays(6), base.minusDays(5),
-                "THẮNG GIÁ", "BIDDER", 17_500_000, true);
-
-        addSessionHistory("sellerlong", s3seller);
-        addSessionHistory("bidder03",   s3winner);
     }
 
     // =========================================================
@@ -319,40 +296,85 @@ public class AppContext {
         }
     }
 
+    // ── CRUD sản phẩm ─────────────────────────────────────────
+
+    /**
+     * Lấy danh sách sản phẩm của một seller cụ thể.
+     * Dùng trong MyProductsController (seller xem sản phẩm của mình).
+     */
     public static List<ProductRecord> getProducts(String username) {
         return productMap.computeIfAbsent(username, k -> new ArrayList<>());
     }
+
+    /**
+     * Thêm sản phẩm cho seller.
+     * Luôn được gọi với status = CHỜ DUYỆT từ MyProductsController.
+     * Admin sẽ thấy ngay qua getAllProducts().
+     */
     public static void addProduct(String username, ProductRecord product) {
-        getProducts(username).add(product);
+        // Đảm bảo status phải là CHỜ DUYỆT khi mới thêm
+        ProductRecord enforced = "CHỜ DUYỆT".equals(product.status())
+                ? product
+                : new ProductRecord(
+                        product.id(), product.name(), product.category(),
+                        product.startPrice(), product.currentPrice(),
+                        product.bidCount(), "CHỜ DUYỆT",
+                        product.startTime(), product.endTime(),
+                        product.topBidder());
+        getProducts(username).add(enforced);
+
+        System.out.printf("AppContext: Seller \"%s\" đăng sản phẩm \"%s\" → CHỜ DUYỆT%n",
+                username, product.name());
     }
+
     public static void removeProduct(String username, String productId) {
         getProducts(username).removeIf(p -> p.id().equals(productId));
     }
+
     public static void updateProduct(String username, ProductRecord updated) {
         List<ProductRecord> list = getProducts(username);
         for (int i = 0; i < list.size(); i++) {
             if (list.get(i).id().equals(updated.id())) {
                 list.set(i, updated);
+                System.out.printf("AppContext: Cập nhật sản phẩm \"%s\" → %s%n",
+                        updated.name(), updated.status());
                 return;
             }
         }
-    }
-
-    /** Lấy tất cả sản phẩm của mọi seller */
-    public static List<ProductRecord> getAllProducts() {
-        List<ProductRecord> all = new ArrayList<>();
-        productMap.values().forEach(all::addAll);
-        return all;
+        System.out.printf("AppContext: WARN – không tìm thấy sản phẩm id=%s của seller=%s%n",
+                updated.id(), username);
     }
 
     /**
-     * FIX MỚI: Tìm tên seller của một sản phẩm theo productId.
-     *
-     * ProductRecord không lưu sellerUsername làm field vì seller
-     * được lưu làm KEY trong productMap. Hàm này tra ngược từ id → key.
-     *
+     * Lấy TẤT CẢ sản phẩm của mọi seller.
+     * AdminController dùng hàm này để hiện danh sách CHỜ DUYỆT.
+     */
+    public static List<ProductRecord> getAllProducts() {
+        List<ProductRecord> all = new ArrayList<>();
+        productMap.values().forEach(all::addAll);
+        return Collections.unmodifiableList(all);
+    }
+
+    /**
+     * Lấy tất cả sản phẩm CHỜ DUYỆT của mọi seller.
+     * Tiện dùng trong AdminController để tránh lọc lại.
+     */
+    public static List<ProductRecord> getAllPendingProducts() {
+        List<ProductRecord> pending = new ArrayList<>();
+        for (List<ProductRecord> sellerProducts : productMap.values()) {
+            for (ProductRecord p : sellerProducts) {
+                if ("CHỜ DUYỆT".equals(p.status())) {
+                    pending.add(p);
+                }
+            }
+        }
+        return Collections.unmodifiableList(pending);
+    }
+
+    /**
+     * Tìm tên seller của một sản phẩm theo productId.
+     * Tra ngược productMap: id → key (sellerUsername).
      * AdminController dùng: AppContext.getSellerForProduct(p.id())
-     * thay vì p.sellerUsername() (không tồn tại).
      */
     public static String getSellerForProduct(String productId) {
         for (Map.Entry<String, List<ProductRecord>> entry : productMap.entrySet()) {
@@ -362,7 +384,7 @@ public class AppContext {
                 }
             }
         }
-        return "—"; // Không tìm thấy
+        return "—";
     }
 
     // =========================================================
