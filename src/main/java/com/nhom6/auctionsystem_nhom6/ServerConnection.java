@@ -5,30 +5,20 @@ import java.net.Socket;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-/**
- * ServerConnection – quản lý kết nối socket đến AuctionServer.
- * Singleton, dùng chung trong toàn app.
- *
- * Hỗ trợ:
- *  - Seller đăng sản phẩm → sendProductPending() → Admin nhận notify
- *  - Admin duyệt/từ chối  → sendProductApproved/Rejected() → Seller nhận notify
- *  - Seller bắt đầu phiên → sendSessionStart() → Bidder nhận notify
- *  - Bid realtime         → sendBid()
- *  - Chat                 → sendChat()
- */
 public class ServerConnection {
 
-    private static final String HOST = "yamabiko.proxy.rlwy.net";
-    private static final int    PORT = 10654;
+    // ── KHÔNG hardcode HOST/PORT nữa — đọc từ ServerConfig ──
+    // private static final String HOST = "yamabiko.proxy.rlwy.net"; // XÓA
+    // private static final int    PORT = 10654;                      // XÓA
 
     private static final DateTimeFormatter DT =
             DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     private static ServerConnection instance;
 
-    private Socket         socket;
-    private PrintWriter    out;
-    private BufferedReader in;
+    private Socket          socket;
+    private PrintWriter     out;
+    private BufferedReader  in;
     private MessageListener listener;
 
     private ServerConnection() {}
@@ -39,26 +29,28 @@ public class ServerConnection {
     }
 
     // =========================================================
-    // KẾT NỐI
+    // KẾT NỐI — đọc HOST/PORT động từ ServerConfig
     // =========================================================
-
-    /**
-     * Kết nối đến server và gửi LOGIN kèm role.
-     * Server dùng role để phân loại (Admin/Seller/Bidder).
-     */
     public boolean connect(String username) {
+        // Đảm bảo file config tồn tại
+        ServerConfig.createDefaultIfMissing();
+
+        String host = ServerConfig.getHost();
+        int    port = ServerConfig.getPort();
+
         try {
-            socket = new Socket(HOST, PORT);
+            System.out.println("[Client] Đang kết nối "
+                    + host + ":" + port + " ...");
+
+            socket = new Socket(host, port);
             out    = new PrintWriter(
                     new OutputStreamWriter(socket.getOutputStream()), true);
             in     = new BufferedReader(
                     new InputStreamReader(socket.getInputStream()));
 
-            System.out.println("[Client] Đã kết nối server "
-                    + HOST + ":" + PORT);
-
             // Lắng nghe server trên thread nền
-            Thread reader = new Thread(this::listenFromServer, "ServerReader");
+            Thread reader = new Thread(
+                    this::listenFromServer, "ServerReader");
             reader.setDaemon(true);
             reader.start();
 
@@ -72,9 +64,15 @@ public class ServerConnection {
                     + "\"username\":\"" + esc(username) + "\","
                     + "\"role\":\"" + esc(role) + "\"}");
 
+            System.out.println("[Client] Kết nối thành công: "
+                    + username + " [" + role + "] → "
+                    + host + ":" + port);
             return true;
+
         } catch (IOException e) {
-            System.err.println("[Client] Offline: " + e.getMessage());
+            System.err.println("[Client] Không kết nối được "
+                    + host + ":" + port
+                    + " — Chạy offline. (" + e.getMessage() + ")");
             return false;
         }
     }
@@ -88,14 +86,12 @@ public class ServerConnection {
     // GỬI MESSAGE
     // =========================================================
 
-    /** Chat */
     public void sendChat(String username, String message) {
         sendJson("{\"action\":\"CHAT\","
                 + "\"username\":\"" + esc(username) + "\","
                 + "\"message\":\""  + esc(message)  + "\"}");
     }
 
-    /** Đặt giá */
     public void sendBid(String username, String sessionId, double amount) {
         sendJson("{\"action\":\"PLACE_BID\","
                 + "\"username\":\""  + esc(username)  + "\","
@@ -103,10 +99,6 @@ public class ServerConnection {
                 + "\"amount\":\""    + amount          + "\"}");
     }
 
-    /**
-     * Seller gọi khi thêm sản phẩm mới.
-     * Server → broadcastToRole("ADMIN") → Admin nhận NOTIFY_ADMIN_NEW_PRODUCT
-     */
     public void sendProductPending(String productId,
                                     String productName,
                                     String sellerName,
@@ -115,47 +107,35 @@ public class ServerConnection {
                                     LocalDateTime startTime,
                                     LocalDateTime endTime) {
         sendJson("{\"action\":\"PRODUCT_PENDING\","
-                + "\"productId\":\""   + esc(productId)           + "\","
-                + "\"productName\":\"" + esc(productName)         + "\","
-                + "\"sellerName\":\""  + esc(sellerName)          + "\","
-                + "\"category\":\""    + esc(category)            + "\","
-                + "\"startPrice\":\""  + startPrice               + "\","
-                + "\"startTime\":\""   + startTime.format(DT)     + "\","
-                + "\"endTime\":\""     + endTime.format(DT)       + "\"}");
+                + "\"productId\":\""   + esc(productId)       + "\","
+                + "\"productName\":\"" + esc(productName)      + "\","
+                + "\"sellerName\":\""  + esc(sellerName)       + "\","
+                + "\"category\":\""    + esc(category)         + "\","
+                + "\"startPrice\":\""  + startPrice            + "\","
+                + "\"startTime\":\""   + startTime.format(DT)  + "\","
+                + "\"endTime\":\""     + endTime.format(DT)    + "\"}");
     }
 
-    /**
-     * Admin gọi khi duyệt sản phẩm.
-     * Server → sendToUser(sellerUsername) → Seller nhận NOTIFY_SELLER_APPROVED
-     */
     public void sendProductApproved(String productId,
                                      String sellerUsername,
                                      String productName) {
         sendJson("{\"action\":\"PRODUCT_APPROVED\","
                 + "\"productId\":\""      + esc(productId)      + "\","
-                + "\"sellerUsername\":\"" + esc(sellerUsername) + "\","
-                + "\"productName\":\""    + esc(productName)    + "\"}");
+                + "\"sellerUsername\":\"" + esc(sellerUsername)  + "\","
+                + "\"productName\":\""    + esc(productName)     + "\"}");
     }
 
-    /**
-     * Admin gọi khi từ chối sản phẩm.
-     * Server → sendToUser(sellerUsername) → Seller nhận NOTIFY_SELLER_REJECTED
-     */
     public void sendProductRejected(String productId,
                                      String sellerUsername,
                                      String productName,
                                      String reason) {
         sendJson("{\"action\":\"PRODUCT_REJECTED\","
                 + "\"productId\":\""      + esc(productId)      + "\","
-                + "\"sellerUsername\":\"" + esc(sellerUsername) + "\","
-                + "\"productName\":\""    + esc(productName)    + "\","
-                + "\"reason\":\""         + esc(reason)         + "\"}");
+                + "\"sellerUsername\":\"" + esc(sellerUsername)  + "\","
+                + "\"productName\":\""    + esc(productName)     + "\","
+                + "\"reason\":\""         + esc(reason)          + "\"}");
     }
 
-    /**
-     * Seller gọi khi bắt đầu phiên đấu giá.
-     * Server → broadcastAll() → Bidder nhận NOTIFY_BIDDER_SESSION_START
-     */
     public void sendSessionStart(String sessionId,
                                   String itemName,
                                   double startPrice,
@@ -164,23 +144,21 @@ public class ServerConnection {
                                   String sellerName,
                                   String category) {
         sendJson("{\"action\":\"SESSION_START\","
-                + "\"sessionId\":\""  + esc(sessionId)       + "\","
-                + "\"itemName\":\""   + esc(itemName)         + "\","
-                + "\"startPrice\":\"" + startPrice            + "\","
-                + "\"minStep\":\""    + minStep               + "\","
+                + "\"sessionId\":\""  + esc(sessionId)      + "\","
+                + "\"itemName\":\""   + esc(itemName)        + "\","
+                + "\"startPrice\":\"" + startPrice           + "\","
+                + "\"minStep\":\""    + minStep              + "\","
                 + "\"endTime\":\""    + endTime.format(DT)   + "\","
-                + "\"sellerName\":\"" + esc(sellerName)       + "\","
-                + "\"category\":\""   + esc(category)         + "\"}");
+                + "\"sellerName\":\"" + esc(sellerName)      + "\","
+                + "\"category\":\""   + esc(category)        + "\"}");
     }
 
-    /** Gửi khi phiên kết thúc */
     public void sendSessionEnd(String sessionId, String itemName) {
         sendJson("{\"action\":\"SESSION_END\","
                 + "\"sessionId\":\"" + esc(sessionId) + "\","
                 + "\"itemName\":\""  + esc(itemName)  + "\"}");
     }
 
-    /** Gửi raw JSON */
     public void sendJson(String json) {
         if (out != null) {
             out.println(json);
@@ -188,7 +166,6 @@ public class ServerConnection {
         }
     }
 
-    /** Giữ tương thích với code cũ dùng send("CHAT:...") hoặc send("BID:...") */
     public void send(String message) {
         if (message.startsWith("CHAT:")) {
             String[] p = message.split(":", 3);
@@ -210,7 +187,6 @@ public class ServerConnection {
     // =========================================================
     // LISTENER & ĐỌC TIN
     // =========================================================
-
     public void setListener(MessageListener listener) {
         this.listener = listener;
     }
@@ -234,7 +210,6 @@ public class ServerConnection {
     // =========================================================
     // UTIL
     // =========================================================
-
     public boolean isConnected() {
         return socket != null && socket.isConnected() && !socket.isClosed();
     }
@@ -244,7 +219,6 @@ public class ServerConnection {
         catch (IOException e) { e.printStackTrace(); }
     }
 
-    /** Escape ký tự đặc biệt trong JSON string */
     private String esc(String s) {
         if (s == null) return "";
         return s.replace("\\", "\\\\")
