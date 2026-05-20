@@ -226,6 +226,11 @@ public class HelpController {
         catch (Exception e) { e.printStackTrace(); }
     }
 
+    @FXML private void handleSessionHistory() {
+        try { HelloApplication.showAuctionSessionHistoryView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
     @FXML private void handleProfile() {
         try { HelloApplication.showProfileView(); }
         catch (Exception e) { e.printStackTrace(); }
