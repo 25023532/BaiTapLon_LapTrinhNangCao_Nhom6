@@ -35,7 +35,7 @@ public class AdminController {
     private final AuthService authService = AppContext.getAuthService();
     private String currentTab = "users";
 
-    // Auto-refresh mỗi 3 giây để bắt sản phẩm mới từ Seller
+    // Auto-refresh mỗi 3 giây để bắt sản phẩm mới từ bất kỳ seller nào
     private Timeline autoRefreshTimeline;
 
     // =========================================================
@@ -45,7 +45,6 @@ public class AdminController {
     public void initialize() {
         User me = AppContext.getCurrentUser();
 
-        // ── Avatar + tên ──────────────────────────────────────
         String name = me.getUsername();
         adminNameLabel.setText(name);
         String avatar = name.length() >= 2
@@ -56,11 +55,11 @@ public class AdminController {
         refreshStats();
         showUsers();
 
-        // ── Auto-refresh stats + tab hiện tại mỗi 3 giây ─────
+        // Auto-refresh: cập nhật stats + tab sản phẩm liên tục
+        // Đảm bảo bất kỳ seller nào đăng sản phẩm đều hiện lên ngay
         autoRefreshTimeline = new Timeline(
                 new KeyFrame(Duration.seconds(3), e -> {
                     refreshStats();
-                    // Chỉ tự reload tab sản phẩm (tab quan trọng nhất cần realtime)
                     if ("products".equals(currentTab)) {
                         showProducts();
                     }
@@ -73,7 +72,6 @@ public class AdminController {
     // =========================================================
     // PROFILE HANDLERS
     // =========================================================
-
     @FXML
     private void handleProfile() {
         try { HelloApplication.showProfileView(); }
@@ -82,25 +80,24 @@ public class AdminController {
 
     @FXML
     private void handleLogout() {
-        // Dừng auto-refresh trước khi thoát
-        if (autoRefreshTimeline != null) {
-            autoRefreshTimeline.stop();
-        }
+        if (autoRefreshTimeline != null) autoRefreshTimeline.stop();
         AppContext.logout();
         try { HelloApplication.showLoginView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
 
     // =========================================================
-    // THỐNG KÊ
+    // THỐNG KÊ — đọc trực tiếp từ getAllProducts()
     // =========================================================
     private void refreshStats() {
         List<User> users = new ArrayList<>(authService.getAllUsers().values());
         totalUsersLabel.setText(String.valueOf(users.size()));
 
+        // getAllProducts() gộp sản phẩm của TẤT CẢ seller
         List<AppContext.ProductRecord> allProducts = AppContext.getAllProducts();
         totalProductsLabel.setText(String.valueOf(allProducts.size()));
 
+        // Đếm CHỜ DUYỆT từ mọi seller
         long pending = allProducts.stream()
                 .filter(p -> "CHỜ DUYỆT".equals(p.status()))
                 .count();
@@ -165,7 +162,10 @@ public class AdminController {
     }
 
     // =========================================================
-    // TAB: SẢN PHẨM — hiển thị CHỜ DUYỆT để Admin xét duyệt
+    // TAB: SẢN PHẨM CHỜ DUYỆT
+    // Hiển thị sản phẩm CHỜ DUYỆT của TẤT CẢ seller đã đăng ký.
+    // Bất kỳ seller nào (dù mới tạo tài khoản) đăng sản phẩm
+    // đều hiện lên đây nhờ getAllPendingProducts().
     // =========================================================
     @FXML
     public void showProducts() {
@@ -176,11 +176,8 @@ public class AdminController {
                 "Tên sản phẩm", "Danh mục", "Người bán", "Trạng thái", "Hành động");
         contentBox.getChildren().add(header);
 
-        // Lấy TẤT CẢ sản phẩm từ mọi seller, lọc CHỜ DUYỆT
-        List<AppContext.ProductRecord> pending = AppContext.getAllProducts()
-                .stream()
-                .filter(p -> "CHỜ DUYỆT".equals(p.status()))
-                .toList();
+        // getAllPendingProducts() = lọc CHỜ DUYỆT từ productMap của MỌI seller
+        List<AppContext.ProductRecord> pending = AppContext.getAllPendingProducts();
 
         if (pending.isEmpty()) {
             contentBox.getChildren().add(
@@ -190,43 +187,65 @@ public class AdminController {
         }
 
         for (AppContext.ProductRecord p : pending) {
-            HBox row = new HBox(0);
-            row.setAlignment(Pos.CENTER_LEFT);
-            row.getStyleClass().add("history-row");
-            row.setPadding(new Insets(10, 20, 10, 20));
-
-            Label name     = colLabel(p.name(), 200, true);
-            Label category = colLabel(p.category(), 120, false);
-
-            // Tra ngược productMap để tìm seller username
+            // Tra ngược productMap để lấy đúng sellerUsername
             String sellerName = AppContext.getSellerForProduct(p.id());
-            Label seller = colLabel(
-                    sellerName.equals("—") ? "Không rõ" : sellerName,
-                    140, false);
 
-            Label statusBadge = new Label(p.status());
-            statusBadge.getStyleClass().addAll("history-badge", "badge-warn");
-            statusBadge.setMinWidth(130);
-
-            Button approveBtn = new Button("✅ Duyệt");
-            approveBtn.setStyle(
-                    "-fx-background-color: #14532d; -fx-text-fill: #4ade80; "
-                    + "-fx-background-radius: 6; -fx-cursor: hand; "
-                    + "-fx-font-size: 12px; -fx-padding: 5 10 5 10;");
-            approveBtn.setOnAction(e -> handleApproveProduct(p, sellerName));
-
-            Button rejectBtn = new Button("❌ Từ chối");
-            rejectBtn.getStyleClass().add("btn-danger");
-            rejectBtn.setOnAction(e -> handleRejectProduct(p, sellerName));
-
-            HBox actions = new HBox(8, approveBtn, rejectBtn);
-            actions.setAlignment(Pos.CENTER);
-
-            row.getChildren().addAll(name, category, seller, statusBadge, actions);
+            HBox row = buildPendingRow(p, sellerName);
             contentBox.getChildren().add(row);
         }
 
         refreshStats();
+    }
+
+    /**
+     * Tạo một hàng hiển thị sản phẩm CHỜ DUYỆT với nút Duyệt / Từ chối.
+     */
+    private HBox buildPendingRow(AppContext.ProductRecord p, String sellerName) {
+        HBox row = new HBox(0);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.getStyleClass().add("history-row");
+        row.setPadding(new Insets(10, 20, 10, 20));
+
+        Label name     = colLabel(p.name(), 200, true);
+        Label category = colLabel(p.category(), 120, false);
+        Label seller   = colLabel(
+                "—".equals(sellerName) ? "Không rõ" : sellerName,
+                140, false);
+
+        // Hiển thị thêm giá khởi điểm trong cột seller để Admin dễ quyết định
+        VBox sellerBox = new VBox(2);
+        Label sellerLbl = new Label("👤 " + ("—".equals(sellerName) ? "Không rõ" : sellerName));
+        sellerLbl.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 12px;");
+        Label priceLbl = new Label("Giá KĐ: " + formatVND(p.startPrice()));
+        priceLbl.setStyle("-fx-text-fill: #38bdf8; -fx-font-size: 11px;");
+        sellerBox.getChildren().addAll(sellerLbl, priceLbl);
+        sellerBox.setMinWidth(160);
+        HBox.setHgrow(sellerBox, Priority.ALWAYS);
+
+        Label statusBadge = new Label("⏳ " + p.status());
+        statusBadge.getStyleClass().addAll("history-badge", "badge-warn");
+        statusBadge.setMinWidth(130);
+
+        // Nút Duyệt
+        Button approveBtn = new Button("✅ Duyệt");
+        approveBtn.setStyle(
+                "-fx-background-color: #14532d; -fx-text-fill: #4ade80; "
+                + "-fx-background-radius: 6; -fx-cursor: hand; "
+                + "-fx-font-size: 12px; -fx-padding: 5 12 5 12;");
+        approveBtn.setOnAction(e -> handleApproveProduct(p, sellerName));
+
+        // Nút Từ chối
+        Button rejectBtn = new Button("❌ Từ chối");
+        rejectBtn.getStyleClass().add("btn-danger");
+        rejectBtn.setOnAction(e -> handleRejectProduct(p, sellerName));
+
+        HBox actions = new HBox(8, approveBtn, rejectBtn);
+        actions.setAlignment(Pos.CENTER);
+        actions.setMinWidth(180);
+
+        // Dùng sellerBox thay cho label seller đơn giản
+        row.getChildren().addAll(name, category, sellerBox, statusBadge, actions);
+        return row;
     }
 
     // =========================================================
@@ -297,58 +316,61 @@ public class AdminController {
         });
     }
 
+    /**
+     * Duyệt sản phẩm: đổi status CHỜ DUYỆT → ĐÃ DUYỆT.
+     * Seller sẽ thấy nút "Bắt đầu đấu giá" xuất hiện trong màn hình của họ.
+     */
     private void handleApproveProduct(AppContext.ProductRecord p, String sellerName) {
-        // Nếu không tìm được seller thì thử tra lại
-        String resolvedSeller = sellerName.equals("—") || sellerName.equals("Không rõ")
-                ? AppContext.getSellerForProduct(p.id())
-                : sellerName;
-
-        if (resolvedSeller.equals("—")) {
-            showAlert(Alert.AlertType.ERROR,
-                    "Lỗi", "Không tìm được người bán cho sản phẩm này.");
+        // Tra lại seller nếu cần (phòng trường hợp sellerName = "—")
+        String resolved = resolvedSeller(p.id(), sellerName);
+        if ("—".equals(resolved)) {
+            showAlert(Alert.AlertType.ERROR, "Lỗi",
+                    "Không tìm được người bán.\nVui lòng thử lại.");
             return;
         }
 
-        AppContext.updateProduct(resolvedSeller, new AppContext.ProductRecord(
+        AppContext.updateProduct(resolved, new AppContext.ProductRecord(
                 p.id(), p.name(), p.category(),
                 p.startPrice(), p.currentPrice(), p.bidCount(),
                 "ĐÃ DUYỆT",
                 p.startTime(), p.endTime(), p.topBidder()
         ));
 
-        // Thông báo kết quả
-        showAlert(Alert.AlertType.INFORMATION,
-                "Duyệt thành công",
-                "✅ Đã duyệt sản phẩm \"" + p.name() + "\" của " + resolvedSeller + ".\n"
+        showAlert(Alert.AlertType.INFORMATION, "Duyệt thành công",
+                "✅ Đã duyệt sản phẩm:\n\"" + p.name() + "\"\n"
+                + "Người bán: " + resolved + "\n\n"
                 + "Seller có thể bắt đầu phiên đấu giá.");
 
-        showProducts(); // reload — sản phẩm vừa duyệt biến khỏi danh sách
+        showProducts(); // reload — sản phẩm biến khỏi danh sách chờ
     }
 
+    /**
+     * Từ chối sản phẩm: đổi status CHỜ DUYỆT → TỪ CHỐI.
+     * Seller sẽ thấy thông báo bị từ chối và có thể xóa rồi đăng lại.
+     */
     private void handleRejectProduct(AppContext.ProductRecord p, String sellerName) {
-        String resolvedSeller = sellerName.equals("—") || sellerName.equals("Không rõ")
-                ? AppContext.getSellerForProduct(p.id())
-                : sellerName;
-
-        if (resolvedSeller.equals("—")) {
-            showAlert(Alert.AlertType.ERROR,
-                    "Lỗi", "Không tìm được người bán cho sản phẩm này.");
+        String resolved = resolvedSeller(p.id(), sellerName);
+        if ("—".equals(resolved)) {
+            showAlert(Alert.AlertType.ERROR, "Lỗi",
+                    "Không tìm được người bán.\nVui lòng thử lại.");
             return;
         }
 
-        // Hỏi lý do từ chối (tùy chọn)
         TextInputDialog reasonDialog = new TextInputDialog();
         reasonDialog.setTitle("Từ chối sản phẩm");
-        reasonDialog.setHeaderText("Từ chối: \"" + p.name() + "\"");
+        reasonDialog.setHeaderText("Từ chối: \"" + p.name() + "\" của " + resolved);
         reasonDialog.setContentText("Lý do từ chối (tùy chọn):");
 
         reasonDialog.showAndWait().ifPresent(reason -> {
-            AppContext.updateProduct(resolvedSeller, new AppContext.ProductRecord(
+            AppContext.updateProduct(resolved, new AppContext.ProductRecord(
                     p.id(), p.name(), p.category(),
                     p.startPrice(), p.currentPrice(), p.bidCount(),
                     "TỪ CHỐI",
                     p.startTime(), p.endTime(), p.topBidder()
             ));
+
+            System.out.printf("AdminController: Từ chối \"%s\" của %s. Lý do: %s%n",
+                    p.name(), resolved, reason.isEmpty() ? "(không có)" : reason);
 
             showProducts(); // reload
         });
@@ -363,6 +385,22 @@ public class AdminController {
             e.printStackTrace();
             if (autoRefreshTimeline != null) autoRefreshTimeline.play();
         }
+    }
+
+    // =========================================================
+    // HELPER — tìm seller chắc chắn
+    // =========================================================
+
+    /**
+     * Trả về sellerName đã biết nếu hợp lệ,
+     * ngược lại tra lại từ productMap.
+     */
+    private String resolvedSeller(String productId, String sellerName) {
+        if (sellerName != null && !sellerName.isBlank()
+                && !"—".equals(sellerName) && !"Không rõ".equals(sellerName)) {
+            return sellerName;
+        }
+        return AppContext.getSellerForProduct(productId);
     }
 
     // =========================================================
