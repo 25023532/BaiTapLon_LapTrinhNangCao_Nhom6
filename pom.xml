@@ -67,17 +67,14 @@
     <build>
         <plugins>
 
-            <!-- ── Compiler ─────────────────────────────────── -->
+            <!-- ── Compiler — giữ nguyên Java 25 như bản gốc ── -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
                 <configuration>
-                    <source>21</source>
-                    <target>21</target>
-                    <compilerArgs>
-                        <arg>--enable-preview</arg>
-                    </compilerArgs>
+                    <source>25</source>
+                    <target>25</target>
                 </configuration>
             </plugin>
 
@@ -106,9 +103,8 @@
 
             <!-- ── Fat JAR cho AuctionWebSocketServer ────────── -->
             <!--
-                Build server standalone:
-                mvn clean package -DskipTests
-                java -jar target/AuctionSystem_Nhom6-1.0-SNAPSHOT-server.jar
+                Build: mvn clean package -DskipTests
+                Chạy : java -jar target/AuctionSystem_Nhom6-1.0-SNAPSHOT-server.jar
             -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
