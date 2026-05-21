@@ -423,40 +423,35 @@ public class MyProductsController {
         dialog.showAndWait().ifPresent(product -> {
             if (product == null) return;
 
-            // Lưu sản phẩm vào AppContext
             AppContext.addProduct(username, product);
 
-            // Gửi thông báo cho Admin qua WebSocket
-            ServerConnection conn = ServerConnection.getInstance();
-            if (conn.isConnected()) {
-                conn.sendJson(String.format(
-                        "{\"action\":\"NOTIFY_ADMIN_NEW_PRODUCT\","
-                        + "\"productId\":\"%s\","
-                        + "\"productName\":\"%s\","
-                        + "\"sellerName\":\"%s\","
-                        + "\"category\":\"%s\","
-                        + "\"startPrice\":%.0f,"
-                        + "\"startTime\":\"%s\","
-                        + "\"endTime\":\"%s\"}",
-                        product.id(),
-                        product.name(),
-                        username,
-                        product.category(),
-                        product.startPrice(),
-                        product.startTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
-                        product.endTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-                ));
-            }
+            try {
+                double step = Math.max(product.startPrice() * 0.05, 500_000);
+                org.example.auction.AuctionSession session =
+                        new org.example.auction.AuctionSession(
+                                product.id(), product.name(),
+                                product.startPrice(), step, product.endTime());
+                session.start();
+                AppContext.registerSession(session, username);
+                AppContext.setActiveSession(session);
 
-            // Thông báo cho seller biết trạng thái chờ duyệt
-            Alert info = new Alert(Alert.AlertType.INFORMATION);
-            info.setTitle("Đăng ký thành công");
-            info.setHeaderText("✅ Sản phẩm đã được gửi lên!");
-            info.setContentText(
-                    "\"" + product.name() + "\" đang chờ Admin xét duyệt.\n\n"
-                    + "Bạn sẽ nhận thông báo khi sản phẩm được duyệt hoặc từ chối.\n"
-                    + "Sau khi được duyệt, bạn có thể bắt đầu phiên đấu giá.");
-            info.showAndWait();
+                // ✅ Gửi lên server để bidder khác nhận được
+                ServerConnection conn = ServerConnection.getInstance();
+                if (conn.isConnected()) {
+                    conn.sendSessionStart(
+                            product.id(),
+                            product.name(),
+                            product.startPrice(),
+                            step,
+                            product.endTime(),
+                            username,
+                            product.category()
+                    );
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
 
             refreshStats();
             renderList(AppContext.getProducts(username));

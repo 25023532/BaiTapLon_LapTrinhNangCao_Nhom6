@@ -292,6 +292,60 @@ public class MainController {
                             addChatMessage("System", message, false));
                 }
 
+                case "NOTIFY_BIDDER_SESSION_START" -> {
+                    String sessionId  = extractJson(raw, "sessionId");
+                    String itemName   = extractJson(raw, "itemName");
+                    String sellerName = extractJson(raw, "sellerName");
+                    String category   = extractJson(raw, "category");
+                    double startPrice, minStep;
+                    try {
+                        startPrice = Double.parseDouble(extractJson(raw, "startPrice"));
+                        minStep    = Double.parseDouble(extractJson(raw, "minStep"));
+                    } catch (NumberFormatException e) {
+                        startPrice = 0; minStep = 500_000;
+                    }
+                    LocalDateTime endTime;
+                    try {
+                        endTime = LocalDateTime.parse(extractJson(raw, "endTime"),
+                                DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                    } catch (Exception e) {
+                        endTime = LocalDateTime.now().plusHours(1);
+                    }
+
+                    final LocalDateTime finalEndTime   = endTime;
+                    final double finalStartPrice = startPrice;
+                    final double finalMinStep    = minStep;
+
+                    Platform.runLater(() -> {
+                        try {
+                            org.example.auction.AuctionSession newSession =
+                                    new org.example.auction.AuctionSession(
+                                            sessionId, itemName,
+                                            finalStartPrice, finalMinStep, finalEndTime);
+                            newSession.start();
+                            AppContext.registerSession(newSession, sellerName);
+
+                            if (AppContext.getActiveSession() == null) {
+                                AppContext.setActiveSession(newSession);
+                                session = newSession;
+                                showAuctionCard(true);
+                                loadAuctionInfo();
+                                refreshBidHistory();
+                                startCountdown();
+                            }
+
+                            pushNotification(
+                                    NotificationManager.NotifType.SYSTEM,
+                                    "🔴 Phiên mới bắt đầu!",
+                                    "\"" + itemName + "\" của " + sellerName
+                                            + " vừa mở. Giá khởi điểm: "
+                                            + String.format("₫ %,.0f", finalStartPrice));
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    });
+                }
+
                 case "NOTIFY_ADMIN_NEW_PRODUCT" -> {
                     String productId   = extractJson(raw, "productId");
                     String productName = extractJson(raw, "productName");
@@ -356,99 +410,6 @@ public class MainController {
                     );
                 }
 
-                case "NOTIFY_SELLER_REJECTED" -> {
-                    String productId   = extractJson(raw, "productId");
-                    String productName = extractJson(raw, "productName");
-                    String reason      = extractJson(raw, "reason");
-
-                    User me = AppContext.getCurrentUser();
-                    if (me != null) {
-                        AppContext.getProducts(me.getUsername()).stream()
-                                .filter(p -> p.id().equals(productId))
-                                .findFirst()
-                                .ifPresent(p -> AppContext.updateProduct(
-                                        me.getUsername(),
-                                        p.withUpdated(p.currentPrice(),
-                                                p.bidCount(), "TỪ CHỐI",
-                                                p.topBidder())));
-                    }
-
-                    Platform.runLater(() ->
-                        pushNotification(
-                                NotificationManager.NotifType.SYSTEM,
-                                "❌ Sản phẩm bị từ chối",
-                                "\"" + productName + "\" — Lý do: " + reason
-                        )
-                    );
-                }
-
-                case "NOTIFY_BIDDER_SESSION_START" -> {
-                    String sessionId  = extractJson(raw, "sessionId");
-                    String itemName   = extractJson(raw, "itemName");
-                    String sellerName = extractJson(raw, "sellerName");
-                    String category   = extractJson(raw, "category");
-                    double startPrice = parseDouble(extractJson(raw, "startPrice"));
-                    double minStep    = parseDouble(extractJson(raw, "minStep"));
-                    String endTimeStr = extractJson(raw, "endTime");
-
-                    try {
-                        LocalDateTime endTime = LocalDateTime.parse(endTimeStr, ISO_DT);
-
-                        boolean exists = AppContext.getGlobalSessions().stream()
-                                .anyMatch(s -> s.getSessionId().equals(sessionId));
-
-                        if (!exists) {
-                            AuctionSession newSession = new AuctionSession(
-                                    sessionId, itemName, startPrice, minStep, endTime);
-                            newSession.start();
-                            AppContext.registerSession(newSession, sellerName);
-
-                            boolean productExists = AppContext.getAllProducts()
-                                    .stream().anyMatch(p -> p.id().equals(sessionId));
-                            if (!productExists) {
-                                AppContext.addProduct(sellerName,
-                                        new AppContext.ProductRecord(
-                                                sessionId, itemName, category,
-                                                startPrice, startPrice, 0,
-                                                "ĐANG ĐẤU GIÁ",
-                                                LocalDateTime.now(),
-                                                endTime, "—"));
-                            }
-                        }
-
-                        Platform.runLater(() -> {
-                            if (session == null) {
-                                AuctionSession found =
-                                        AppContext.getGlobalSessions().stream()
-                                        .filter(s -> s.getSessionId().equals(sessionId))
-                                        .findFirst().orElse(null);
-                                if (found != null) {
-                                    session = found;
-                                    AppContext.setActiveSession(session);
-                                    sessionStartTime = LocalDateTime.now();
-                                    showAuctionCard(true);
-                                    loadAuctionInfo();
-                                    refreshBidHistory();
-                                    startCountdown();
-                                }
-                            }
-                        });
-
-                    } catch (Exception e) {
-                        System.err.println("[MainController] Parse session error: " + e.getMessage());
-                    }
-
-                    Platform.runLater(() ->
-                        pushNotification(
-                                NotificationManager.NotifType.AUCTION_ENDING_SOON,
-                                "⚡ Phiên đấu giá mới bắt đầu!",
-                                String.format(
-                                    "\"%s\" bởi %s — Giá khởi điểm: %s. "
-                                    + "Vào Đấu giá trực tiếp để tham gia!",
-                                    itemName, sellerName, formatVND(startPrice))
-                        )
-                    );
-                }
 
                 case "NOTIFY_BIDDER_SESSION_END" -> {
                     String itemName = extractJson(raw, "itemName");
@@ -542,6 +503,7 @@ public class MainController {
             if (statusLabel != null) statusLabel.setText("● KẾT THÚC");
             countdownTimer.stop();
             saveSessionToHistory();
+            handleAuctionEnd();
             pushNotification(
                     NotificationManager.NotifType.SYSTEM,
                     "🏁 Phiên đấu giá kết thúc",
@@ -585,8 +547,20 @@ public class MainController {
         User user = AppContext.getCurrentUser();
         if (user == null) { showAlert("Lỗi", "Bạn chưa đăng nhập."); return; }
 
+        double newPrice = session.getCurrentPrice() + session.getMinBidStep();
+
+        // ✅ Kiểm tra số dư
+        double balance = AppContext.getWalletBalance(user.getUsername());
+        if (balance < newPrice) {
+            showAlert("Số dư không đủ",
+                    "Bạn cần có ít nhất " + formatVND(newPrice)
+                            + " trong ví để đặt giá này.\n"
+                            + "Số dư hiện tại: " + formatVND(balance)
+                            + "\nCần nạp thêm: " + formatVND(newPrice - balance));
+            return;
+        }
+
         try {
-            double newPrice = session.getCurrentPrice() + session.getMinBidStep();
             Bid bid = new Bid(UUID.randomUUID().toString(),
                     user.getUsername(), newPrice);
             session.placeBid(bid);
@@ -596,11 +570,11 @@ public class MainController {
             refreshBidHistory();
             addChatMessage("System",
                     user.getUsername() + " đã đặt giá "
-                    + formatVND(newPrice), false);
+                            + formatVND(newPrice), false);
 
             pushNotification(
                     NotificationManager.NotifType.BID_PLACED,
-                    "✅ Đặt giá thành công",
+                    "Đặt giá thành công",
                     String.format("Bạn đã đặt %s cho \"%s\"",
                             formatVND(newPrice), session.getItemName()));
 
@@ -615,12 +589,10 @@ public class MainController {
             ServerConnection conn = ServerConnection.getInstance();
             if (conn.isConnected())
                 conn.sendBid(user.getUsername(),
-                        session.getSessionId(), newPrice);
+                        session.getItemName(), newPrice);
 
         } catch (InvalidBidException e) {
             showAlert("Bid không hợp lệ", e.getMessage());
-            pushNotification(NotificationManager.NotifType.SYSTEM,
-                    "Bid không hợp lệ", e.getMessage());
         } catch (AuctionClosedException e) {
             showAlert("Phiên đấu giá đã đóng", e.getMessage());
         } catch (Exception e) {
@@ -865,6 +837,49 @@ public class MainController {
         bubble.getChildren().addAll(senderLabel, msgLabel);
         chatMessagesBox.getChildren().add(bubble);
         Platform.runLater(() -> chatScrollPane.setVvalue(1.0));
+    }
+
+    // =========================================================
+    // KET THUC PHIEN
+    // =========================================================
+    private void handleAuctionEnd() {
+        if (session == null) return;
+        User me = AppContext.getCurrentUser();
+        if (me == null) return;
+
+        var history = session.getBidHistory();
+        if (history.isEmpty()) return;
+
+        var winnerBid = history.get(history.size() - 1);
+        String winner    = winnerBid.getBidderId();
+        double finalPrice = winnerBid.getAmount();
+
+        if (winner.equals(me.getUsername())) {
+            // ✅ Thêm đơn chờ thanh toán
+            AppContext.addHistory(me.getUsername(), new AppContext.HistoryRecord(
+                    "BID-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase(),
+                    session.getItemName(),
+                    finalPrice,
+                    AppContext.getSessionSeller(session.getSessionId()),
+                    "CHỜ XỬ LÝ",
+                    true,
+                    LocalDateTime.now()
+            ));
+
+            pushNotification(
+                    NotificationManager.NotifType.SYSTEM,
+                    "🏆 Bạn đã thắng!",
+                    "Vào Ví & Giao dịch → Thanh toán để hoàn tất.");
+        } else {
+            boolean participated = history.stream()
+                    .anyMatch(b -> b.getBidderId().equals(me.getUsername()));
+            if (participated) {
+                pushNotification(
+                        NotificationManager.NotifType.SYSTEM,
+                        "😔 Bạn đã thua",
+                        "Người thắng: " + winner + " (" + formatVND(finalPrice) + ")");
+            }
+        }
     }
 
     // =========================================================

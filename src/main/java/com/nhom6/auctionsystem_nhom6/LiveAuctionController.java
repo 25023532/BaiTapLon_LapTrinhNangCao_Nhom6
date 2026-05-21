@@ -445,46 +445,47 @@ public class LiveAuctionController {
 
     private void placeBid(double amount) {
         User user = AppContext.getCurrentUser();
-        Bid  bid  = new Bid(UUID.randomUUID().toString(),
-                user.getUsername(), amount);
+
+        // ✅ Kiểm tra số dư
+        double balance = AppContext.getWalletBalance(user.getUsername());
+        if (balance < amount) {
+            showAlert("Số dư không đủ",
+                    "Số dư hiện tại: " + formatVND(balance)
+                            + "\nCần nạp thêm: " + formatVND(amount - balance));
+            return;
+        }
+
+        Bid bid = new Bid(UUID.randomUUID().toString(), user.getUsername(), amount);
         try {
             currentSession.placeBid(bid);
-
-            lastBidCount = currentSession.getBidHistory().size();
             liveCurrentPrice.setText(formatVND(currentSession.getCurrentPrice()));
-            updateLeaderLabel();
-            updateQuickBidLabels();
+            liveLeaderLabel.setText("👑 " + user.getUsername());
             refreshBidHistory();
-            bidCountLabel.setText(lastBidCount + " lượt");
-            loadLiveSessionList();
+            updateQuickBidLabels();
+            addChatMsg("System", user.getUsername() + " đặt giá "
+                    + formatVND(amount), false);
+            bidCountLabel.setText(currentSession.getBidHistory().size() + " lượt");
 
-            addChatMsg("System",
-                    "✅ " + user.getUsername()
-                    + " đặt giá " + formatVND(amount), false);
-
-            try {
-                if (currentSession.isLastBidTriggeredExtension()) {
-                    showAntiSnipingNotice();
-                }
-            } catch (Exception ignored) {}
+            if (currentSession.isLastBidTriggeredExtension())
+                showAntiSnipingNotice();
 
             AppContext.addHistory(user.getUsername(), new AppContext.HistoryRecord(
                     "BID-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase(),
                     currentSession.getItemName(), amount,
                     AppContext.getSessionSeller(currentSession.getSessionId()),
-                    "CHỜ XỬ LÝ", false, LocalDateTime.now()
+                    "CHỜ XỬ LÝ", true, LocalDateTime.now()
             ));
 
             ServerConnection conn = ServerConnection.getInstance();
             if (conn.isConnected())
                 conn.sendBid(user.getUsername(),
-                        currentSession.getItemName(), amount);
+                        currentSession.getSessionId(), amount);
 
         } catch (InvalidBidException e) {
             showAlert("Bid không hợp lệ",
-                    e.getMessage() + "\n\nGiá tối thiểu cần đặt: "
-                    + formatVND(currentSession.getCurrentPrice()
-                                + currentSession.getMinBidStep()));
+                    e.getMessage() + "\nGiá tối thiểu: "
+                            + formatVND(currentSession.getCurrentPrice()
+                            + currentSession.getMinBidStep()));
         } catch (AuctionClosedException e) {
             showAlert("Phiên đã đóng", e.getMessage());
         }
