@@ -1,4 +1,4 @@
-package com.nhom6.auctionsystem_nhom6.server;
+package com.nhom6.auctionsystem_nhom6;
 
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
