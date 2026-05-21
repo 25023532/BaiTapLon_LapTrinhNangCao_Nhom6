@@ -86,6 +86,7 @@ public class MainController {
     private AuctionSession session;
     private Timeline       countdownTimer;
     private LocalDateTime  sessionStartTime;
+    private boolean auctionEnded = false;
 
     // ── Notification ──────────────────────────────────────────
     private final NotificationManager notifManager = new NotificationManager();
@@ -497,6 +498,8 @@ public class MainController {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime end = session.getEndTime();
         if (now.isAfter(end)) {
+            if (auctionEnded) return;
+            auctionEnded = true;
             hoursLabel.setText("00");
             minsLabel.setText("00");
             secsLabel.setText("00");
@@ -578,13 +581,6 @@ public class MainController {
                     String.format("Bạn đã đặt %s cho \"%s\"",
                             formatVND(newPrice), session.getItemName()));
 
-            AppContext.addHistory(user.getUsername(),
-                    new AppContext.HistoryRecord(
-                            "BID-" + UUID.randomUUID().toString()
-                                    .substring(0, 6).toUpperCase(),
-                            session.getItemName(), newPrice,
-                            AppContext.getSessionSeller(session.getSessionId()),
-                            "CHỜ XỬ LÝ", true, LocalDateTime.now()));
 
             ServerConnection conn = ServerConnection.getInstance();
             if (conn.isConnected())

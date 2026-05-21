@@ -66,6 +66,7 @@ public class LiveAuctionController {
     private Timeline       countdownTimer;
     private Timeline       uiRefreshTimer;
     private boolean        sessionSelected = false;
+    private boolean auctionEnded = false;
     private int            lastBidCount    = 0;
 
     // ✅ Lưu số online thật từ server để dùng cho cả onlineLabel và participantsLabel
@@ -373,6 +374,38 @@ public class LiveAuctionController {
         }));
         countdownTimer.setCycleCount(Timeline.INDEFINITE);
         countdownTimer.play();
+    }
+
+    private void handleAuctionEnd() {
+        if (currentSession == null) return;
+        User me = AppContext.getCurrentUser();
+        if (me == null) return;
+
+        var history = currentSession.getBidHistory();
+        if (history.isEmpty()) return;
+
+        var winnerBid  = history.get(history.size() - 1);
+        String winner  = winnerBid.getBidderId();
+        double finalPrice = winnerBid.getAmount();
+
+        if (winner.equals(me.getUsername())) {
+            AppContext.addHistory(me.getUsername(), new AppContext.HistoryRecord(
+                    "BID-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase(),
+                    currentSession.getItemName(),
+                    finalPrice,
+                    AppContext.getSessionSeller(currentSession.getSessionId()),
+                    "CHỜ XỬ LÝ",
+                    true,
+                    LocalDateTime.now()
+            ));
+            addChatMsg("System", "🏆 Bạn đã thắng! Vào Ví để thanh toán.", false);
+        } else {
+            boolean participated = history.stream()
+                    .anyMatch(b -> b.getBidderId().equals(me.getUsername()));
+            if (participated) {
+                addChatMsg("System", "😔 Bạn đã thua. Người thắng: " + winner, false);
+            }
+        }
     }
 
     // =========================================================

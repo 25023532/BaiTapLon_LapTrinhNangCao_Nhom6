@@ -107,24 +107,12 @@ public class AuctionListController {
 
             LocalDateTime now = LocalDateTime.now();
             String status;
+            boolean skip = false;
 
-            // AuctionSession KHÔNG có getStartTime() — chỉ có getEndTime()
-            // Dùng AuctionStatus để phân biệt UPCOMING vs RUNNING
-            if (s.getStatus() == AuctionStatus.OPEN) {
-                // Seller chưa bấm start → Sắp diễn ra
-                status = "UPCOMING";
-            } else if (s.getStatus() == AuctionStatus.RUNNING) {
-                // Đang chạy — kiểm tra thêm thời gian kết thúc
-                status = now.isAfter(s.getEndTime()) ? "ENDED" : "RUNNING";
-            } else {
-                // FINISHED / PAID / CANCELED
-                status = "ENDED";
-            }
-
-            // Tra thêm thông tin từ ProductRecord
+            // Tìm startTime từ ProductRecord
+            LocalDateTime startTime = s.getEndTime().minusHours(1); // fallback
             String category   = "Chung";
             String sellerName = AppContext.getSessionSeller(s.getSessionId());
-            LocalDateTime startTime = s.getEndTime().minusHours(1); // fallback
 
             for (AppContext.ProductRecord p : AppContext.getAllProducts()) {
                 if (p.id().equals(s.getSessionId())) {
@@ -132,6 +120,18 @@ public class AuctionListController {
                     startTime = p.startTime();
                     break;
                 }
+            }
+
+            if (s.getStatus() == AuctionStatus.OPEN) {
+                if (startTime.isBefore(now.plusHours(24))) {
+                    status = "UPCOMING";
+                } else {
+                    continue;
+                }
+            } else if (s.getStatus() == AuctionStatus.RUNNING) {
+                status = now.isAfter(s.getEndTime()) ? "ENDED" : "RUNNING";
+            } else {
+                status = "ENDED";
             }
 
             allSessions.add(new SessionRecord(
@@ -150,7 +150,6 @@ public class AuctionListController {
         }
 
         // ── NGUỒN 2: ProductRecord của Seller hiện tại ───────
-        // Chỉ thêm những sản phẩm CHƯA có trong globalSessions
         if (isSeller) {
             for (AppContext.ProductRecord p :
                     AppContext.getProducts(user.getUsername())) {
@@ -159,15 +158,19 @@ public class AuctionListController {
                         .anyMatch(s -> s.id().equals(p.id()));
                 if (alreadyIn) continue;
 
-                // ProductRecord có startTime + endTime → tính theo thời gian thực
                 LocalDateTime now2 = LocalDateTime.now();
                 String status;
+
                 if (now2.isBefore(p.startTime())) {
-                    status = "UPCOMING";   // chưa đến giờ bắt đầu
+                    if (p.startTime().isBefore(now2.plusHours(24))) {
+                        status = "UPCOMING";
+                    } else {
+                        continue;
+                    }
                 } else if (now2.isAfter(p.endTime())) {
-                    status = "ENDED";      // đã hết thời gian
+                    status = "ENDED";
                 } else {
-                    status = "RUNNING";    // đang trong khoảng thời gian
+                    status = "RUNNING";
                 }
 
                 allSessions.add(new SessionRecord(
