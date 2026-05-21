@@ -195,6 +195,11 @@ public class AppContext {
         return walletMap.getOrDefault(username, 0.0);
     }
 
+    /** Put a single wallet entry without clearing others — used by WALLET_UPDATE sync */
+    public static void putWallet(String username, double balance) {
+        walletMap.put(username, balance);
+    }
+
     public static boolean deposit(String username, double amount) {
         if (amount <= 0) return false;
         walletMap.put(username,
@@ -203,6 +208,9 @@ public class AppContext {
                 "TX-" + System.currentTimeMillis(), "NẠP TIỀN",
                 amount, "Nạp tiền vào ví", "THÀNH CÔNG",
                 LocalDateTime.now()));
+        // Propagate to server
+        ServerConnection conn = ServerConnection.getInstance();
+        if (conn.isConnected()) conn.sendDeposit(username, amount);
         return true;
     }
 
@@ -216,6 +224,9 @@ public class AppContext {
                 "TX-" + System.currentTimeMillis(), "THANH TOÁN",
                 -amount, description, "THÀNH CÔNG",
                 LocalDateTime.now()));
+        // Propagate to server
+        ServerConnection conn = ServerConnection.getInstance();
+        if (conn.isConnected()) conn.sendPayment(username, amount, description);
         return true;
     }
 
@@ -244,6 +255,9 @@ public class AppContext {
     }
     public static void addHistory(String u, HistoryRecord r) {
         getHistory(u).add(r);
+        // Propagate to server
+        ServerConnection conn = ServerConnection.getInstance();
+        if (conn.isConnected()) conn.sendAddHistory(u, r);
     }
 
     // ─────────────────────────────────────────────────────────
@@ -361,6 +375,9 @@ public class AppContext {
         System.out.printf(
                 "AppContext: [ADD] seller=%s product=\"%s\" → CHỜ DUYỆT%n",
                 username, product.name());
+        // Propagate to server
+        ServerConnection conn = ServerConnection.getInstance();
+        if (conn.isConnected()) conn.sendAddProduct(username, enforced);
     }
 
     public static void removeProduct(String username, String productId) {
@@ -381,6 +398,9 @@ public class AppContext {
                 System.out.printf(
                         "AppContext: [UPDATE] seller=%s product=\"%s\" → %s%n",
                         username, updated.name(), updated.status());
+                // Propagate to server
+                ServerConnection conn = ServerConnection.getInstance();
+                if (conn.isConnected()) conn.sendUpdateProduct(username, updated);
                 return;
             }
         }
@@ -428,6 +448,9 @@ public class AppContext {
         sessionHistoryMap
                 .computeIfAbsent(u, k -> new CopyOnWriteArrayList<>())
                 .add(r);
+        // Propagate to server
+        ServerConnection conn = ServerConnection.getInstance();
+        if (conn.isConnected()) conn.sendAddSessionHistory(u, r);
     }
 
     public static List<AuctionSessionRecord> getSessionHistory(String username) {
@@ -437,6 +460,62 @@ public class AppContext {
         sorted.sort(Comparator.comparing(
                 AuctionSessionRecord::endTime).reversed());
         return Collections.unmodifiableList(sorted);
+    }
+
+    // =========================================================
+    // SYNC METHODS — overwrite local cache with server state
+    // =========================================================
+    public static void syncWallets(Map<String, Double> newWallets) {
+        walletMap.clear();
+        walletMap.putAll(newWallets);
+    }
+
+    public static void syncTransactions(Map<String, List<TransactionRecord>> newTx) {
+        transactionMap.clear();
+        for (var e : newTx.entrySet()) {
+            transactionMap.put(e.getKey(), new ArrayList<>(e.getValue()));
+        }
+    }
+
+    public static void syncProducts(Map<String, List<ProductRecord>> newProducts) {
+        productMap.clear();
+        for (var e : newProducts.entrySet()) {
+            productMap.put(e.getKey(), new ArrayList<>(e.getValue()));
+        }
+    }
+
+    public static void syncHistory(Map<String, List<HistoryRecord>> newHistory) {
+        historyMap.clear();
+        for (var e : newHistory.entrySet()) {
+            historyMap.put(e.getKey(), new ArrayList<>(e.getValue()));
+        }
+    }
+
+    public static void syncSessionHistory(Map<String, List<AuctionSessionRecord>> newSH) {
+        sessionHistoryMap.clear();
+        for (var e : newSH.entrySet()) {
+            sessionHistoryMap.put(e.getKey(), new CopyOnWriteArrayList<>(e.getValue()));
+        }
+    }
+
+    public static void syncRunningSession(String sessionId, String itemName,
+                                           double startPrice, double minStep,
+                                           LocalDateTime endTime, String sellerName) {
+        try {
+            org.example.auction.AuctionSession existing =
+                    globalSessions.stream()
+                            .filter(s -> s.getSessionId().equals(sessionId))
+                            .findFirst().orElse(null);
+            if (existing == null) {
+                org.example.auction.AuctionSession s =
+                        new org.example.auction.AuctionSession(
+                                sessionId, itemName, startPrice, minStep, endTime);
+                s.start();
+                registerSession(s, sellerName);
+            }
+        } catch (Exception e) {
+            System.err.println("syncRunningSession error: " + e.getMessage());
+        }
     }
 
     public static void finalizeSession(AuctionSession session,

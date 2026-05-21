@@ -87,6 +87,9 @@ public class RegisterController {
 
         try {
             authService.register(newUser);
+            // Notify server about new registration
+            ServerConnection conn = ServerConnection.getInstance();
+            if (conn.isConnected()) conn.sendRegister(newUser);
             showSuccess("Đăng ký thành công! Bạn có thể đăng nhập ngay.");
             clearForm();
         } catch (Exception e) {

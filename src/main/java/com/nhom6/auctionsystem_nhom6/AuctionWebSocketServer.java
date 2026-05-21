@@ -14,13 +14,15 @@ import java.util.concurrent.ConcurrentHashMap;
  * WebSocket Server — deploy lên Railway / Render / bất kỳ cloud nào.
  * Chạy: java -jar auction-server.jar [PORT]
  * Railway tự cung cấp biến môi trường PORT.
+ *
+ * Là source of truth: lưu trữ toàn bộ state trên filesystem qua ServerDatabase
+ * và broadcast cập nhật real-time đến tất cả client đã kết nối.
  */
 public class AuctionWebSocketServer extends WebSocketServer {
 
     // =========================================================
     // CLIENT REGISTRY
     // =========================================================
-    /** Thông tin mỗi client đã đăng nhập */
     record ClientInfo(String username, String role) {}
 
     private final Map<WebSocket, ClientInfo> clients   = new ConcurrentHashMap<>();
@@ -28,6 +30,11 @@ public class AuctionWebSocketServer extends WebSocketServer {
 
     private static final DateTimeFormatter LOG_FMT =
             DateTimeFormatter.ofPattern("HH:mm:ss");
+
+    // =========================================================
+    // SERVER DATABASE — source of truth
+    // =========================================================
+    private final ServerDatabase db = new ServerDatabase();
 
     // =========================================================
     // CONSTRUCTOR
@@ -42,8 +49,10 @@ public class AuctionWebSocketServer extends WebSocketServer {
     // =========================================================
     @Override
     public void onStart() {
-        log("✅ AuctionServer WebSocket đang chạy trên port "
-                + getPort());
+        log("✅ AuctionServer WebSocket đang chạy trên port " + getPort());
+        log("   Database loaded: " + db.getWallets().size() + " wallets, "
+                + db.getProducts().size() + " sellers, "
+                + db.getRunningSessions().size() + " running sessions");
     }
 
     @Override
@@ -88,6 +97,31 @@ public class AuctionWebSocketServer extends WebSocketServer {
                 broadcastOnlineCount();
                 broadcastAll(json("type", "SYSTEM",
                         "message", username + " đã tham gia hệ thống."));
+
+                // ✅ SYNC: gửi toàn bộ database state cho client mới
+                sendSyncData(conn, username);
+            }
+
+            // ── Đăng ký tài khoản mới ─────────────────────────
+            case "REGISTER" -> {
+                String username = extract(raw, "username");
+                String role     = extract(raw, "role");
+                String fullName = extract(raw, "fullName");
+                String email    = extract(raw, "email");
+                log("📝 REGISTER: " + username + " [" + role + "]");
+                broadcastAll(json("type", "USER_REGISTERED",
+                        "username", username,
+                        "role", role,
+                        "fullName", fullName,
+                        "email", email));
+            }
+
+            // ── Xóa tài khoản ─────────────────────────────────
+            case "UNREGISTER" -> {
+                String username = extract(raw, "username");
+                log("🗑 UNREGISTER: " + username);
+                broadcastAll(json("type", "USER_UNREGISTERED",
+                        "username", username));
             }
 
             // ── Chat ──────────────────────────────────────────
@@ -99,14 +133,158 @@ public class AuctionWebSocketServer extends WebSocketServer {
                         + "\"message\":\""  + esc(message)  + "\"}");
             }
 
+            // ── Nạp tiền ──────────────────────────────────────
+            case "DEPOSIT" -> {
+                String username = extract(raw, "username");
+                double amount   = Double.parseDouble(extract(raw, "amount"));
+                double newBal   = db.getWallets().getOrDefault(username, 0.0) + amount;
+                db.updateWallet(username, newBal);
+                String txId = "TX-" + System.currentTimeMillis();
+                db.addTransaction(username, new AppContext.TransactionRecord(
+                        txId, "NẠP TIỀN", amount, "Nạp tiền vào ví",
+                        "THÀNH CÔNG", LocalDateTime.now()));
+                log("💰 DEPOSIT: " + username + " +" + amount);
+                broadcastWalletUpdate(username, newBal);
+            }
+
+            // ── Thanh toán ────────────────────────────────────
+            case "PAYMENT" -> {
+                String username  = extract(raw, "username");
+                double amount    = Double.parseDouble(extract(raw, "amount"));
+                String desc      = extract(raw, "description");
+                double curBal    = db.getWallets().getOrDefault(username, 0.0);
+                if (curBal >= amount) {
+                    double newBal = curBal - amount;
+                    db.updateWallet(username, newBal);
+                    String txId = "TX-" + System.currentTimeMillis();
+                    db.addTransaction(username, new AppContext.TransactionRecord(
+                            txId, "THANH TOÁN", -amount, desc,
+                            "THÀNH CÔNG", LocalDateTime.now()));
+                    log("💸 PAYMENT: " + username + " -" + amount + " (" + desc + ")");
+                    broadcastWalletUpdate(username, newBal);
+                } else {
+                    log("⚠️ PAYMENT FAILED (insufficient): " + username);
+                }
+            }
+
+            // ── Thêm sản phẩm ─────────────────────────────────
+            case "ADD_PRODUCT" -> {
+                String seller   = extract(raw, "seller");
+                String id       = extract(raw, "id");
+                String name     = extract(raw, "name");
+                String category = extract(raw, "category");
+                double startP   = Double.parseDouble(extract(raw, "startPrice"));
+                String status   = extract(raw, "status");
+                LocalDateTime startTime = LocalDateTime.parse(extract(raw, "startTime"), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                LocalDateTime endTime   = LocalDateTime.parse(extract(raw, "endTime"), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                db.putProduct(seller, new AppContext.ProductRecord(
+                        id, name, category, startP, startP, 0,
+                        status, startTime, endTime, "—"));
+                log("📦 ADD_PRODUCT: " + seller + " → " + name);
+                broadcastProductUpdate(seller, db.getProducts().get(seller)
+                        .stream().filter(p -> p.id().equals(id)).findFirst().orElse(null));
+            }
+
+            // ── Cập nhật sản phẩm ─────────────────────────────
+            case "UPDATE_PRODUCT" -> {
+                String seller = extract(raw, "seller");
+                String id     = extract(raw, "id");
+                AppContext.ProductRecord existing = db.getProducts().getOrDefault(seller, List.of())
+                        .stream().filter(p -> p.id().equals(id)).findFirst().orElse(null);
+                if (existing != null) {
+                    String name     = extract(raw, "name");
+                    String category = extract(raw, "category");
+                    String status   = extract(raw, "status");
+                    double currentP = Double.parseDouble(extract(raw, "currentPrice"));
+                    int bidCount    = Integer.parseInt(extract(raw, "bidCount"));
+                    String topB     = extract(raw, "topBidder");
+                    LocalDateTime endTime = LocalDateTime.parse(extract(raw, "endTime"), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                    db.putProduct(seller, new AppContext.ProductRecord(
+                            id, name.isEmpty() ? existing.name() : name,
+                            category.isEmpty() ? existing.category() : category,
+                            existing.startPrice(), currentP, bidCount,
+                            status.isEmpty() ? existing.status() : status,
+                            existing.startTime(), endTime,
+                            topB.isEmpty() ? existing.topBidder() : topB));
+                    log("✏️ UPDATE_PRODUCT: " + seller + " → " + id);
+                    broadcastProductUpdate(seller, db.getProducts().get(seller)
+                            .stream().filter(p -> p.id().equals(id)).findFirst().orElse(null));
+                }
+            }
+
+            // ── Thêm lịch sử đấu giá ──────────────────────────
+            case "ADD_HISTORY" -> {
+                String username = extract(raw, "username");
+                String id       = extract(raw, "id");
+                String itemName = extract(raw, "itemName");
+                double amount   = Double.parseDouble(extract(raw, "amount"));
+                String counter  = extract(raw, "counterparty");
+                String status   = extract(raw, "status");
+                boolean wonBid  = Boolean.parseBoolean(extract(raw, "wonBid"));
+                LocalDateTime time = LocalDateTime.parse(extract(raw, "timestamp"), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                db.addHistory(username, new AppContext.HistoryRecord(
+                        id, itemName, amount, counter, status, wonBid, time));
+                log("📜 ADD_HISTORY: " + username + " → " + itemName);
+                broadcastAddHistory(username, new AppContext.HistoryRecord(
+                        id, itemName, amount, counter, status, wonBid, time));
+            }
+
+            // ── Thêm lịch sử phiên ────────────────────────────
+            case "ADD_SESSION_HISTORY" -> {
+                String username  = extract(raw, "username");
+                String sessionId = extract(raw, "sessionId");
+                String itemName  = extract(raw, "itemName");
+                String sellerName= extract(raw, "sellerName");
+                double startP    = Double.parseDouble(extract(raw, "startPrice"));
+                double finalP    = Double.parseDouble(extract(raw, "finalPrice"));
+                String winner    = extract(raw, "winnerName");
+                int totalBids    = Integer.parseInt(extract(raw, "totalBids"));
+                LocalDateTime startT = LocalDateTime.parse(extract(raw, "startTime"), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                LocalDateTime endT   = LocalDateTime.parse(extract(raw, "endTime"), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                String result    = extract(raw, "result");
+                String myRole    = extract(raw, "myRole");
+                double myFinalBid= Double.parseDouble(extract(raw, "myFinalBid"));
+                boolean iWon     = Boolean.parseBoolean(extract(raw, "iWon"));
+                db.addSessionHistory(username, new AppContext.AuctionSessionRecord(
+                        sessionId, itemName, sellerName, startP, finalP,
+                        winner.equals("null") ? null : winner,
+                        totalBids, startT, endT, result, myRole, myFinalBid, iWon));
+                log("🏁 ADD_SESSION_HISTORY: " + username + " → " + sessionId);
+                broadcastAddSessionHistory(username, new AppContext.AuctionSessionRecord(
+                        sessionId, itemName, sellerName, startP, finalP,
+                        winner.equals("null") ? null : winner,
+                        totalBids, startT, endT, result, myRole, myFinalBid, iWon));
+            }
+
             // ── Đặt giá ───────────────────────────────────────
             case "PLACE_BID" -> {
                 String username  = extract(raw, "username");
-                String amount    = extract(raw, "amount");
+                String amountStr = extract(raw, "amount");
                 String sessionId = extract(raw, "sessionId");
+                double amount    = Double.parseDouble(amountStr);
+
+                // Update running session on server
+                ServerDatabase.RunningSessionInfo rs = db.getRunningSession(sessionId);
+                if (rs != null) {
+                    List<ServerDatabase.BidEntry> bids = new ArrayList<>(rs.bidHistory());
+                    bids.add(new ServerDatabase.BidEntry(username, amount,
+                            LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)));
+                    ServerDatabase.RunningSessionInfo updated = new ServerDatabase.RunningSessionInfo(
+                            rs.sessionId(), rs.itemName(), rs.sellerName(),
+                            rs.startPrice(), rs.minStep(), rs.startTime(),
+                            rs.endTime(), rs.category(), amount, bids.size(), username, bids);
+                    db.addRunningSession(sessionId, updated);
+
+                    // Update product current price in database
+                    db.putProduct(rs.sellerName(), new AppContext.ProductRecord(
+                            sessionId, rs.itemName(), rs.category(),
+                            rs.startPrice(), amount, bids.size(),
+                            "ĐANG ĐẤU GIÁ", rs.startTime(), rs.endTime(), username));
+                }
+
                 broadcastAll("{\"type\":\"NEW_BID\","
                         + "\"username\":\""  + esc(username)  + "\","
-                        + "\"amount\":\""    + esc(amount)    + "\","
+                        + "\"amount\":\""    + esc(amountStr)+ "\","
                         + "\"sessionId\":\"" + esc(sessionId) + "\"}");
             }
 
@@ -115,17 +293,30 @@ public class AuctionWebSocketServer extends WebSocketServer {
                 String sessionId  = extract(raw, "sessionId");
                 String itemName   = extract(raw, "itemName");
                 String sellerName = extract(raw, "sellerName");
-                String startPrice = extract(raw, "startPrice");
-                String minStep    = extract(raw, "minStep");
-                String endTime    = extract(raw, "endTime");
+                double startPrice = Double.parseDouble(extract(raw, "startPrice"));
+                double minStep    = Double.parseDouble(extract(raw, "minStep"));
+                LocalDateTime endTime = LocalDateTime.parse(extract(raw, "endTime"), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
                 String category   = extract(raw, "category");
+
+                // Track running session on server
+                db.addRunningSession(sessionId, new ServerDatabase.RunningSessionInfo(
+                        sessionId, itemName, sellerName, startPrice, minStep,
+                        LocalDateTime.now(), endTime, category, startPrice, 0, "—",
+                        new ArrayList<>()));
+
+                // Update product status
+                db.putProduct(sellerName, new AppContext.ProductRecord(
+                        sessionId, itemName, category, startPrice, startPrice, 0,
+                        "ĐANG ĐẤU GIÁ",
+                        LocalDateTime.now(), endTime, "—"));
+
                 broadcastAll("{\"type\":\"SESSION_START\","
                         + "\"sessionId\":\""  + esc(sessionId)  + "\","
                         + "\"itemName\":\""   + esc(itemName)   + "\","
                         + "\"sellerName\":\"" + esc(sellerName) + "\","
-                        + "\"startPrice\":\"" + esc(startPrice) + "\","
-                        + "\"minStep\":\""    + esc(minStep)    + "\","
-                        + "\"endTime\":\""    + esc(endTime)    + "\","
+                        + "\"startPrice\":\"" + startPrice + "\","
+                        + "\"minStep\":\""    + minStep + "\","
+                        + "\"endTime\":\""    + esc(endTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)) + "\","
                         + "\"category\":\""   + esc(category)   + "\"}");
             }
 
@@ -134,12 +325,25 @@ public class AuctionWebSocketServer extends WebSocketServer {
                 String sessionId = extract(raw, "sessionId");
                 String itemName  = extract(raw, "itemName");
                 String winner    = extract(raw, "winner");
-                String finalPrice= extract(raw, "finalPrice");
+                double finalPrice= Double.parseDouble(extract(raw, "finalPrice"));
+
+                ServerDatabase.RunningSessionInfo rs = db.getRunningSession(sessionId);
+                if (rs != null) {
+                    // Update product final state
+                    db.putProduct(rs.sellerName(), new AppContext.ProductRecord(
+                            sessionId, rs.itemName(), rs.category(),
+                            rs.startPrice(), finalPrice, rs.bidCount(),
+                            winner != null && !winner.isBlank() ? "ĐÃ BÁN" : "ĐÃ KẾT THÚC",
+                            rs.startTime(), LocalDateTime.now(),
+                            winner != null && !winner.isBlank() ? winner : "—"));
+                }
+                db.removeRunningSession(sessionId);
+
                 broadcastAll("{\"type\":\"SESSION_END\","
                         + "\"sessionId\":\"" + esc(sessionId) + "\","
                         + "\"itemName\":\""  + esc(itemName)  + "\","
                         + "\"winner\":\""    + esc(winner)    + "\","
-                        + "\"finalPrice\":\"" + esc(finalPrice) + "\"}");
+                        + "\"finalPrice\":\"" + finalPrice + "\"}");
             }
 
             // ── Seller gửi sản phẩm chờ duyệt → Admin ─────────
@@ -151,7 +355,6 @@ public class AuctionWebSocketServer extends WebSocketServer {
                 String startPrice  = extract(raw, "startPrice");
                 String startTime   = extract(raw, "startTime");
                 String endTime     = extract(raw, "endTime");
-                // Gửi đến TẤT CẢ Admin đang online
                 broadcastToRole("ADMIN", "{\"type\":\"PRODUCT_PENDING\","
                         + "\"productId\":\""   + esc(productId)   + "\","
                         + "\"productName\":\"" + esc(productName) + "\","
@@ -182,8 +385,9 @@ public class AuctionWebSocketServer extends WebSocketServer {
                 String reason         = extract(raw, "reason");
                 sendToUser(sellerUsername, "{\"type\":\"PRODUCT_REJECTED\","
                         + "\"productId\":\""   + esc(productId)   + "\","
-                        + "\"productName\":\"" + esc(productName) + "\","
-                        + "\"reason\":\""      + esc(reason)      + "\"}");
+                        + "\"sellerUsername\":\"" + esc(sellerUsername) + "\","
+                        + "\"productName\":\"" + esc(productName)    + "\","
+                        + "\"reason\":\""      + esc(reason)         + "\"}");
                 log("❌ PRODUCT_REJECTED → " + sellerUsername + ": " + reason);
             }
 
@@ -209,20 +413,52 @@ public class AuctionWebSocketServer extends WebSocketServer {
     }
 
     // =========================================================
+    // SYNC — gửi toàn bộ database state cho client mới đăng nhập
+    // =========================================================
+    private void sendSyncData(WebSocket conn, String username) {
+        log("🔄 SYNC → " + username);
+
+        // SYNC_USERS
+        conn.send(syncMsg("SYNC_USERS", db.serializeUsers()));
+
+        // SYNC_WALLETS
+        conn.send(syncMsg("SYNC_WALLETS", db.serializeWallets()));
+
+        // SYNC_TRANSACTIONS
+        conn.send(syncMsg("SYNC_TRANSACTIONS", db.serializeTransactions()));
+
+        // SYNC_PRODUCTS
+        conn.send(syncMsg("SYNC_PRODUCTS", db.serializeProducts()));
+
+        // SYNC_HISTORY
+        conn.send(syncMsg("SYNC_HISTORY", db.serializeHistory()));
+
+        // SYNC_SESSION_HISTORY
+        conn.send(syncMsg("SYNC_SESSION_HISTORY", db.serializeSessionHistory()));
+
+        // SYNC_RUNNING_SESSIONS
+        conn.send(syncMsg("SYNC_RUNNING_SESSIONS", db.serializeRunningSessions()));
+
+        log("✅ SYNC done → " + username);
+    }
+
+    private String syncMsg(String type, String data) {
+        return "{\"type\":\"" + type + "\",\"data\":\"" + esc(data) + "\"}";
+    }
+
+    // =========================================================
     // BROADCAST HELPERS
     // =========================================================
     private void broadcastAll(String message) {
-        for (WebSocket conn : clients.keySet()) {
-            try {
-                if (conn.isOpen()) conn.send(message);
-            } catch (Exception ignored) {}
+        for (WebSocket c : clients.keySet()) {
+            try { if (c.isOpen()) c.send(message); }
+            catch (Exception ignored) {}
         }
     }
 
     private void broadcastToRole(String role, String message) {
         for (Map.Entry<WebSocket, ClientInfo> e : clients.entrySet()) {
-            if (role.equalsIgnoreCase(e.getValue().role())
-                    && e.getKey().isOpen()) {
+            if (role.equalsIgnoreCase(e.getValue().role()) && e.getKey().isOpen()) {
                 try { e.getKey().send(message); }
                 catch (Exception ignored) {}
             }
@@ -230,9 +466,9 @@ public class AuctionWebSocketServer extends WebSocketServer {
     }
 
     private void sendToUser(String username, String message) {
-        WebSocket conn = userIndex.get(username);
-        if (conn != null && conn.isOpen()) {
-            try { conn.send(message); }
+        WebSocket c = userIndex.get(username);
+        if (c != null && c.isOpen()) {
+            try { c.send(message); }
             catch (Exception ignored) {}
         } else {
             log("⚠️  User offline, không gửi được: " + username);
@@ -242,6 +478,59 @@ public class AuctionWebSocketServer extends WebSocketServer {
     private void broadcastOnlineCount() {
         broadcastAll("{\"type\":\"ONLINE_COUNT\","
                 + "\"count\":\"" + clients.size() + "\"}");
+    }
+
+    // ── Broadcast helpers for real-time mutations ─────────────
+    private void broadcastWalletUpdate(String username, double balance) {
+        broadcastAll("{\"type\":\"WALLET_UPDATE\","
+                + "\"username\":\"" + esc(username) + "\","
+                + "\"balance\":\"" + balance + "\"}");
+    }
+
+    private void broadcastProductUpdate(String seller, AppContext.ProductRecord p) {
+        if (p == null) return;
+        broadcastAll("{\"type\":\"UPDATE_PRODUCT\","
+                + "\"seller\":\"" + esc(seller) + "\","
+                + "\"id\":\"" + esc(p.id()) + "\","
+                + "\"name\":\"" + esc(p.name()) + "\","
+                + "\"category\":\"" + esc(p.category()) + "\","
+                + "\"startPrice\":\"" + p.startPrice() + "\","
+                + "\"currentPrice\":\"" + p.currentPrice() + "\","
+                + "\"bidCount\":\"" + p.bidCount() + "\","
+                + "\"status\":\"" + esc(p.status()) + "\","
+                + "\"startTime\":\"" + p.startTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "\","
+                + "\"endTime\":\"" + p.endTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "\","
+                + "\"topBidder\":\"" + esc(p.topBidder()) + "\"}");
+    }
+
+    private void broadcastAddHistory(String username, AppContext.HistoryRecord r) {
+        broadcastAll("{\"type\":\"ADD_HISTORY\","
+                + "\"username\":\"" + esc(username) + "\","
+                + "\"id\":\"" + esc(r.id()) + "\","
+                + "\"itemName\":\"" + esc(r.itemName()) + "\","
+                + "\"amount\":\"" + r.amount() + "\","
+                + "\"counterparty\":\"" + esc(r.counterparty()) + "\","
+                + "\"status\":\"" + esc(r.status()) + "\","
+                + "\"wonBid\":\"" + r.wonBid() + "\","
+                + "\"timestamp\":\"" + r.time().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "\"}");
+    }
+
+    private void broadcastAddSessionHistory(String username, AppContext.AuctionSessionRecord r) {
+        broadcastAll("{\"type\":\"ADD_SESSION_HISTORY\","
+                + "\"username\":\"" + esc(username) + "\","
+                + "\"sessionId\":\"" + esc(r.sessionId()) + "\","
+                + "\"itemName\":\"" + esc(r.itemName()) + "\","
+                + "\"sellerName\":\"" + esc(r.sellerName()) + "\","
+                + "\"startPrice\":\"" + r.startPrice() + "\","
+                + "\"finalPrice\":\"" + r.finalPrice() + "\","
+                + "\"winnerName\":\"" + (r.winnerName() == null ? "null" : esc(r.winnerName())) + "\","
+                + "\"totalBids\":\"" + r.totalBids() + "\","
+                + "\"startTime\":\"" + r.startTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "\","
+                + "\"endTime\":\"" + r.endTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "\","
+                + "\"result\":\"" + esc(r.result()) + "\","
+                + "\"myRole\":\"" + esc(r.myRole()) + "\","
+                + "\"myFinalBid\":\"" + r.myFinalBid() + "\","
+                + "\"iWon\":\"" + r.iWon() + "\"}");
     }
 
     // =========================================================
@@ -288,7 +577,6 @@ public class AuctionWebSocketServer extends WebSocketServer {
     // MAIN — chạy standalone hoặc deploy Railway/Render
     // =========================================================
     public static void main(String[] args) {
-        // Railway cung cấp PORT qua biến môi trường
         String envPort = System.getenv("PORT");
         int port = 1234;
         if (envPort != null && !envPort.isBlank()) {

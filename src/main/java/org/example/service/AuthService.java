@@ -66,6 +66,9 @@ public class AuthService {
         users.remove(username);
         UserStorage.saveAll(users); // Lưu lại sau khi xóa
         System.out.println("[AuthService] Đã xóa tài khoản: " + username);
+        // Notify server
+        ServerConnection conn = ServerConnection.getInstance();
+        if (conn.isConnected()) conn.sendUnregister(username);
     }
 
     // =========================================================
@@ -76,5 +79,14 @@ public class AuthService {
     // =========================================================
     public Map<String, User> getAllUsers() {
         return Collections.unmodifiableMap(users);
+    }
+
+    // =========================================================
+    // SYNC — overwrite local user cache with server state
+    // =========================================================
+    public void syncUsers(Map<String, User> newUsers) {
+        users.clear();
+        users.putAll(newUsers);
+        System.out.println("[AuthService] Synced " + newUsers.size() + " users from server.");
     }
 }
