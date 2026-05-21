@@ -42,7 +42,6 @@ public class MyProductsController {
         if (user == null) return;
         username = user.getUsername();
 
-        // Thêm "SẮP DIỄN RA" và "ĐÃ KẾT THÚC" vào filter
         statusFilter.getItems().addAll(
                 "Tất cả", "CHỜ DUYỆT", "TỪ CHỐI",
                 "SẮP DIỄN RA", "ĐANG ĐẤU GIÁ", "ĐÃ KẾT THÚC",
@@ -53,14 +52,13 @@ public class MyProductsController {
     }
 
     // =========================================================
-    // STATS — tính theo displayStatus thực tế
+    // STATS
     // =========================================================
     private void refreshStats() {
         List<AppContext.ProductRecord> list = AppContext.getProducts(username);
 
         totalProductsLabel.setText(String.valueOf(list.size()));
 
-        // "Đang đấu giá" = tính theo thời gian thực
         activeProductsLabel.setText(String.valueOf(
                 list.stream()
                     .filter(p -> "ĐANG ĐẤU GIÁ".equals(
@@ -107,7 +105,6 @@ public class MyProductsController {
     }
 
     private HBox buildProductRow(AppContext.ProductRecord p) {
-        // Tính status hiển thị thực tế theo thời gian
         String displayStatus = AppContext.computeDisplayStatus(p);
 
         HBox row = new HBox(16);
@@ -169,7 +166,7 @@ public class MyProductsController {
 
         info.getChildren().addAll(name, metaRow);
 
-        // Giá + badge — dùng displayStatus cho màu badge
+        // Giá + badge
         VBox priceBox = new VBox(4);
         priceBox.setAlignment(Pos.CENTER_RIGHT);
         Label startP = new Label("Khởi điểm: " + formatVND(p.startPrice()));
@@ -180,7 +177,7 @@ public class MyProductsController {
         badge.getStyleClass().addAll("history-badge", badgeStyle(displayStatus));
         priceBox.getChildren().addAll(startP, curP, badge);
 
-        // Buttons theo displayStatus
+        // Buttons
         VBox actions = new VBox(6);
         actions.setAlignment(Pos.CENTER);
         buildActionButtons(p, displayStatus, actions);
@@ -192,15 +189,6 @@ public class MyProductsController {
     // =========================================================
     // PHÂN QUYỀN NÚT THEO DISPLAY STATUS
     // =========================================================
-    /**
-     * CHỜ DUYỆT    → ⏳ disabled  +  🗑 Hủy đăng
-     * TỪ CHỐI      → ❌ disabled  +  🗑 Xóa
-     * SẮP DIỄN RA  → ✏️ Sửa       (Admin đã duyệt, chưa đến giờ)
-     * ĐANG ĐẤU GIÁ → 🔴 Vào phiên (đang trong giờ đấu giá)
-     * ĐÃ KẾT THÚC  → (không có nút thao tác)
-     * ĐÃ BÁN       → 🗑 Xóa
-     * ĐÃ HỦY       → 🗑 Xóa
-     */
     private void buildActionButtons(AppContext.ProductRecord p,
                                      String displayStatus,
                                      VBox actions) {
@@ -233,7 +221,6 @@ public class MyProductsController {
             }
 
             case "SẮP DIỄN RA" -> {
-                // Đã duyệt, chưa đến giờ → cho sửa thời gian kết thúc
                 Button editBtn = new Button("✏️ Sửa");
                 editBtn.getStyleClass().add("btn-secondary");
                 editBtn.setOnAction(e -> handleEdit(p));
@@ -244,7 +231,6 @@ public class MyProductsController {
             }
 
             case "ĐANG ĐẤU GIÁ" -> {
-                // Đang trong giờ → vào phiên
                 Button liveBtn = new Button("🔴 Vào phiên");
                 liveBtn.getStyleClass().add("btn-primary");
                 liveBtn.setStyle(
@@ -255,11 +241,11 @@ public class MyProductsController {
             }
 
             case "ĐÃ KẾT THÚC" -> {
-                // Phiên đã kết thúc — không có nút thao tác
+                // Không có nút thao tác
             }
 
             default -> {
-                // ĐÃ BÁN / ĐÃ HỦY → cho xóa
+                // ĐÃ BÁN / ĐÃ HỦY
                 Button delBtn = new Button("🗑 Xóa");
                 delBtn.getStyleClass().add("btn-danger");
                 delBtn.setOnAction(e -> handleDelete(p));
@@ -269,7 +255,7 @@ public class MyProductsController {
     }
 
     // =========================================================
-    // ADD PRODUCT — status luôn CHỜ DUYỆT
+    // ADD PRODUCT — status luôn CHỜ DUYỆT, không hiện Alert
     // =========================================================
     @FXML
     private void handleAddProduct() {
@@ -328,7 +314,7 @@ public class MyProductsController {
 
         HBox startRow = new HBox(8, startDate, new Label("lúc"), startTime);
         startRow.setAlignment(Pos.CENTER_LEFT);
-        HBox endRow   = new HBox(8, endDate, new Label("lúc"), endTime);
+        HBox endRow = new HBox(8, endDate, new Label("lúc"), endTime);
         endRow.setAlignment(Pos.CENTER_LEFT);
 
         String ls =
@@ -345,7 +331,7 @@ public class MyProductsController {
         grid.add(lP, 0, 3); grid.add(priceField, 1, 3);
         grid.add(lS, 0, 4); grid.add(startRow,   1, 4);
         grid.add(lE, 0, 5); grid.add(endRow,     1, 5);
-        grid.add(errLabel, 0, 6, 2, 1);
+        grid.add(errLabel,   0, 6, 2, 1);
 
         dialog.getDialogPane().setContent(grid);
 
@@ -387,64 +373,92 @@ public class MyProductsController {
             }
 
             if (!endDT.isAfter(startDT)) {
-                errLabel.setText("⚠ Thời gian kết thúc phải sau thời gian bắt đầu.");
+                errLabel.setText(
+                        "⚠ Thời gian kết thúc phải sau thời gian bắt đầu.");
                 return null;
             }
             if (startDT.isBefore(LocalDateTime.now())) {
-                errLabel.setText("⚠ Thời gian bắt đầu phải từ hiện tại trở đi.");
+                errLabel.setText(
+                        "⚠ Thời gian bắt đầu phải từ hiện tại trở đi.");
                 return null;
             }
 
-            // Kiểm tra trùng với sản phẩm đã duyệt của seller này
-            String conflict = AppContext.findTimeConflictForSeller(
-                    username, startDT, endDT, null);
+            // ✅ Check trùng với TẤT CẢ sản phẩm còn active của seller
+            // (CHỜ DUYỆT, SẮP DIỄN RA, ĐANG ĐẤU GIÁ — bỏ qua TỪ CHỐI/ĐÃ BÁN/ĐÃ HỦY)
+            String conflict = findTimeConflict(startDT, endDT, null);
             if (conflict != null) {
                 errLabel.setText(
-                        "⚠ Trùng thời gian với sản phẩm đã được duyệt:\n\""
-                        + conflict + "\"");
+                        "⚠ Trùng thời gian với sản phẩm: \"" + conflict + "\"\n"
+                        + "Vui lòng chọn khoảng thời gian khác.");
                 return null;
             }
 
-            // Status = CHỜ DUYỆT — AppContext.addProduct() cũng enforce lại
             return new AppContext.ProductRecord(
                     "P-" + UUID.randomUUID().toString()
                               .substring(0, 6).toUpperCase(),
                     nameVal,
                     catBox.getValue() == null ? "Khác" : catBox.getValue(),
                     price, price, 0,
-                    "CHỜ DUYỆT",
+                    "CHỜ DUYỆT",   // ← luôn CHỜ DUYỆT, không tạo session
                     startDT, endDT, "—"
             );
         });
 
+        // ✅ Không hiện Alert sau khi đăng — lưu và reload list luôn
         dialog.showAndWait().ifPresent(product -> {
             if (product == null) return;
             AppContext.addProduct(username, product);
 
-            // Thông báo WebSocket cho Admin (nếu online)
+            // Thông báo WebSocket cho Admin
             ServerConnection conn = ServerConnection.getInstance();
             if (conn.isConnected()) {
                 conn.sendJson(String.format(
                         "{\"action\":\"NOTIFY_ADMIN_NEW_PRODUCT\","
                         + "\"productId\":\"%s\","
                         + "\"productName\":\"%s\","
-                        + "\"sellerName\":\"%s\"}",
-                        product.id(), product.name(), username));
+                        + "\"sellerName\":\"%s\","
+                        + "\"category\":\"%s\","
+                        + "\"startPrice\":%.0f,"
+                        + "\"startTime\":\"%s\","
+                        + "\"endTime\":\"%s\"}",
+                        product.id(),
+                        product.name(),
+                        username,
+                        product.category(),
+                        product.startPrice(),
+                        product.startTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+                        product.endTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                ));
             }
 
             refreshStats();
             renderList(AppContext.getProducts(username));
-
-            Alert info = new Alert(Alert.AlertType.INFORMATION);
-            info.setTitle("Đăng ký thành công");
-            info.setHeaderText("✅ Sản phẩm đã được gửi lên!");
-            info.setContentText(
-                    "\"" + product.name() + "\" đang chờ Admin xét duyệt.\n\n"
-                    + "Sau khi được duyệt, sản phẩm sẽ tự động chuyển sang:\n"
-                    + "  🕐 SẮP DIỄN RA  →  🔴 ĐANG ĐẤU GIÁ  →  🏁 ĐÃ KẾT THÚC\n"
-                    + "theo đúng thời gian bạn đã đặt.");
-            info.showAndWait();
         });
+    }
+
+    // =========================================================
+    // KIỂM TRA TRÙNG THỜI GIAN
+    // Block: CHỜ DUYỆT, SẮP DIỄN RA, ĐANG ĐẤU GIÁ
+    // Bỏ qua: TỪ CHỐI, ĐÃ BÁN, ĐÃ KẾT THÚC, ĐÃ HỦY
+    // =========================================================
+    private String findTimeConflict(LocalDateTime newStart,
+                                     LocalDateTime newEnd,
+                                     String excludeId) {
+        for (AppContext.ProductRecord p : AppContext.getProducts(username)) {
+            if (excludeId != null && excludeId.equals(p.id())) continue;
+
+            // Tính display status để check đúng trạng thái thực tế
+            String ds = AppContext.computeDisplayStatus(p);
+            if ("TỪ CHỐI".equals(ds)
+                    || "ĐÃ BÁN".equals(ds)
+                    || "ĐÃ KẾT THÚC".equals(ds)
+                    || "ĐÃ HỦY".equals(ds)) continue;
+
+            boolean overlap = newStart.isBefore(p.endTime())
+                           && newEnd.isAfter(p.startTime());
+            if (overlap) return p.name() + " [" + ds + "]";
+        }
+        return null;
     }
 
     // =========================================================
@@ -459,7 +473,6 @@ public class MyProductsController {
         if (existing != null) {
             AppContext.setActiveSession(existing);
         } else {
-            // Tạo session nếu chưa có (Admin đã duyệt, đúng giờ)
             if (p.endTime().isBefore(LocalDateTime.now())) {
                 showAlert("Hết hạn", "Phiên đấu giá đã hết thời gian.");
                 return;
@@ -474,7 +487,6 @@ public class MyProductsController {
                 AppContext.registerSession(newSess, username);
                 AppContext.setActiveSession(newSess);
 
-                // Ghi lại status "ĐANG ĐẤU GIÁ" trong productMap
                 AppContext.updateProduct(username, new AppContext.ProductRecord(
                         p.id(), p.name(), p.category(),
                         p.startPrice(), p.startPrice(), 0,
@@ -492,7 +504,7 @@ public class MyProductsController {
     }
 
     // =========================================================
-    // EDIT — chỉ sửa thời gian kết thúc và tên/danh mục
+    // EDIT
     // =========================================================
     private void handleEdit(AppContext.ProductRecord p) {
         Dialog<AppContext.ProductRecord> dialog = new Dialog<>();
@@ -562,12 +574,11 @@ public class MyProductsController {
                 return null;
             }
 
-            // Kiểm tra trùng (bỏ qua chính sản phẩm đang sửa)
-            String conflict = AppContext.findTimeConflictForSeller(
-                    username, p.startTime(), newEnd, p.id());
+            // Kiểm tra trùng, bỏ qua chính sản phẩm đang sửa
+            String conflict = findTimeConflict(p.startTime(), newEnd, p.id());
             if (conflict != null) {
                 errLabel.setText(
-                        "⚠ Trùng thời gian với sản phẩm:\n\"" + conflict + "\"");
+                        "⚠ Trùng thời gian với sản phẩm: \"" + conflict + "\"");
                 return null;
             }
 
@@ -610,7 +621,7 @@ public class MyProductsController {
     }
 
     // =========================================================
-    // FILTER — lọc theo displayStatus
+    // FILTER
     // =========================================================
     @FXML private void handleFilter() { applyFilters(); }
     @FXML private void handleSearch() { applyFilters(); }
