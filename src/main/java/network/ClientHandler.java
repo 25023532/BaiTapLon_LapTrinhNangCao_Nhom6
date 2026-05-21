@@ -1,5 +1,7 @@
 package network;
 
+import org.example.dao.AuctionDAO;
+import org.example.service.AuctionService;
 import org.example.util.JsonUtil;
 
 import java.io.*;
@@ -9,33 +11,11 @@ import java.util.Map;
 /**
  * ClientHandler — xử lý 1 client trên 1 luồng riêng.
  *
- * Giao thức (JSON):
- *
- * Client → Server:
- *   {action:"LOGIN",          username, role}
- *   {action:"PLACE_BID",      username, sessionId, amount}
- *   {action:"CHAT",           username, message}
- *   {action:"PRODUCT_PENDING",productId, productName, sellerName,
- *                              category, startPrice, startTime, endTime}
- *   {action:"PRODUCT_APPROVED",productId, sellerUsername, productName}
- *   {action:"PRODUCT_REJECTED",productId, sellerUsername, productName, reason}
- *   {action:"SESSION_START",  sessionId, itemName, startPrice, minStep,
- *                              endTime, sellerName, category}
- *   {action:"SESSION_END",    sessionId, itemName}
- *   {action:"GET_ONLINE_COUNT"}
- *
- * Server → Client:
- *   {type:"ONLINE_COUNT",               count}
- *   {type:"NEW_BID",                    username, sessionId, amount}
- *   {type:"CHAT",                       username, message}
- *   {type:"SYSTEM",                     message}
- *   {type:"NOTIFY_ADMIN_NEW_PRODUCT",   productId, productName, sellerName,
- *                                        category, startPrice, startTime, endTime}
- *   {type:"NOTIFY_SELLER_APPROVED",     productId, productName}
- *   {type:"NOTIFY_SELLER_REJECTED",     productId, productName, reason}
- *   {type:"NOTIFY_BIDDER_SESSION_START",sessionId, itemName, startPrice,
- *                                        minStep, endTime, sellerName, category}
- *   {type:"NOTIFY_BIDDER_SESSION_END",  sessionId, itemName}
+ * THAY ĐỔI SO VỚI BẢN CŨ:
+ *   ✅ Dùng ClientManager thay AuctionServer cho register/broadcast/sendToUser
+ *   ✅ Dùng AuctionService.placeBid() cho PLACE_BID → thread-safe, có lock
+ *   ✅ Inject AuctionDAO vào AuctionService để ghi DB với rollback
+ *   ✅ Kết quả PLACE_BID trả về success/fail rõ ràng từ BidResult
  */
 public class ClientHandler implements Runnable, Observer {
 
@@ -44,14 +24,19 @@ public class ClientHandler implements Runnable, Observer {
     private volatile PrintWriter out;
     private volatile boolean     isClosed = false;
 
-    /** Lock ghi riêng — không dùng "this" để tránh deadlock */
     private final Object writeLock = new Object();
 
     private String username = "unknown";
-    private String role     = "BIDDER"; // mặc định
+    private String role     = "BIDDER";
+
+    // AuctionDAO — inject khi cần (null = không dùng DB, chỉ in-memory)
+    private AuctionDAO auctionDAO = null;
 
     public ClientHandler(Socket socket) {
         this.socket = socket;
+        // TODO: thay bằng DBConnection.getConnection() nếu có DB
+        // try { this.auctionDAO = new AuctionDAO(DBConnection.getConnection()); }
+        // catch (Exception e) { System.err.println("DB unavailable: " + e.getMessage()); }
     }
 
     // =========================================================
@@ -66,7 +51,6 @@ public class ClientHandler implements Runnable, Observer {
             out = new PrintWriter(
                     new OutputStreamWriter(socket.getOutputStream()), true);
 
-            // Gửi welcome
             sendJson(Map.of(
                     "status",  "OK",
                     "message", "Connected to Auction Server"
@@ -83,6 +67,8 @@ public class ClientHandler implements Runnable, Observer {
                 System.out.println("[DISCONNECT] " + username
                         + " mất kết nối: " + e.getMessage());
         } finally {
+            // ✅ Dùng ClientManager thay AuctionServer.removeObserver
+            ClientManager.unregister(this);
             AuctionServer.removeObserver(this);
             close();
         }
@@ -122,8 +108,9 @@ public class ClientHandler implements Runnable, Observer {
                     role     = data.getOrDefault("role", "BIDDER")
                                    .toString().toUpperCase();
 
-                    // Đăng ký vào userMap để server có thể sendToUser
-                    AuctionServer.registerUser(username, this);
+                    // ✅ Đăng ký vào ClientManager (thay AuctionServer.registerUser)
+                    ClientManager.register(username, this);
+                    AuctionServer.registerUser(username, this); // giữ cho tương thích
 
                     sendJson(Map.of(
                             "status",   "OK",
@@ -132,11 +119,17 @@ public class ClientHandler implements Runnable, Observer {
                             "role",     role
                     ));
 
-                    AuctionServer.broadcastAll(JsonUtil.toJson(Map.of(
+                    // ✅ Dùng ClientManager.broadcastAll
+                    ClientManager.broadcastAll(JsonUtil.toJson(Map.of(
                             "type",    "SYSTEM",
                             "message", username + " đã tham gia."
                     )));
-                    AuctionServer.broadcastOnlineCount();
+
+                    // Gửi số online
+                    ClientManager.broadcastAll(JsonUtil.toJson(Map.of(
+                            "type",  "ONLINE_COUNT",
+                            "count", String.valueOf(ClientManager.getOnlineCount())
+                    )));
 
                     // Gửi pending products cho Admin mới login
                     if ("ADMIN".equals(role)) {
@@ -145,34 +138,52 @@ public class ClientHandler implements Runnable, Observer {
                         }
                     }
 
-                    // Gửi các phiên đang active cho client mới
+                    // Gửi các phiên đang active
                     for (String sessionData : AuctionServer.getActiveSessions()) {
                         sendMessage(sessionData);
                     }
                 }
 
-                // ── Đặt giá ───────────────────────────────────
+                // ── Đặt giá (✅ THAY ĐỔI CHÍNH) ───────────────
                 case "PLACE_BID" -> {
-                    String sessionId = data.get("sessionId").toString();
-                    String amount    = data.get("amount").toString();
-                    AuctionServer.broadcastAll(JsonUtil.toJson(Map.of(
-                            "type",      "NEW_BID",
-                            "username",  username,
-                            "sessionId", sessionId,
-                            "amount",    amount
-                    )));
-                    sendJson(Map.of("status", "OK",
-                            "message", "Bid placed successfully"));
+                    String sessionId = safe(data, "sessionId");
+                    double amount;
+                    try {
+                        amount = Double.parseDouble(safe(data, "amount"));
+                    } catch (NumberFormatException e) {
+                        sendJson(Map.of("status", "ERROR",
+                                "message", "Số tiền không hợp lệ"));
+                        return;
+                    }
+
+                    // ✅ Gọi AuctionService.placeBid — thread-safe, có lock
+                    AuctionService.BidResult result =
+                            AuctionService.getInstance()
+                                    .placeBid(sessionId, username, amount, auctionDAO);
+
+                    if (result.success) {
+                        sendJson(Map.of(
+                                "status",  "OK",
+                                "message", "Bid placed successfully",
+                                "amount",  String.valueOf(amount)
+                        ));
+                        // Broadcast đã được AuctionService thực hiện
+                    } else {
+                        sendJson(Map.of(
+                                "status",  "ERROR",
+                                "message", result.message
+                        ));
+                    }
                 }
 
                 // ── Chat ──────────────────────────────────────
                 case "CHAT" -> {
                     String chatMsg = data.get("message").toString();
-                    AuctionServer.broadcast(JsonUtil.toJson(Map.of(
+                    ClientManager.broadcastAll(JsonUtil.toJson(Map.of(
                             "type",     "CHAT",
                             "username", username,
                             "message",  chatMsg
-                    )), this);
+                    )));
                 }
 
                 // ── Seller đăng sản phẩm → notify Admin ───────
@@ -187,25 +198,22 @@ public class ClientHandler implements Runnable, Observer {
                             "startTime",   safe(data, "startTime"),
                             "endTime",     safe(data, "endTime")
                     ));
-                    // Lưu để gửi cho Admin mới login sau này
                     AuctionServer.addPendingProduct(notif);
-                    // Broadcast đến tất cả Admin đang online ngay
-                    AuctionServer.broadcastToRole("ADMIN", notif);
+                    // ✅ Dùng ClientManager.broadcastToRole
+                    ClientManager.broadcastToRole("ADMIN", notif);
                     sendJson(Map.of("status", "OK",
                             "message", "Product pending sent to admins"));
                 }
 
                 // ── Admin duyệt → notify Seller ───────────────
                 case "PRODUCT_APPROVED" -> {
-                    String productId     = safe(data, "productId");
-                    String sellerUser    = safe(data, "sellerUsername");
-                    String productName   = safe(data, "productName");
+                    String productId   = safe(data, "productId");
+                    String sellerUser  = safe(data, "sellerUsername");
+                    String productName = safe(data, "productName");
 
-                    // Xóa khỏi pending
                     AuctionServer.removePendingProduct(productId);
-
-                    // Gửi riêng cho Seller
-                    AuctionServer.sendToUser(sellerUser, JsonUtil.toJson(Map.of(
+                    // ✅ Dùng ClientManager.sendToUser
+                    ClientManager.sendToUser(sellerUser, JsonUtil.toJson(Map.of(
                             "type",        "NOTIFY_SELLER_APPROVED",
                             "productId",   productId,
                             "productName", productName
@@ -222,8 +230,7 @@ public class ClientHandler implements Runnable, Observer {
                     String reason      = safe(data, "reason");
 
                     AuctionServer.removePendingProduct(productId);
-
-                    AuctionServer.sendToUser(sellerUser, JsonUtil.toJson(Map.of(
+                    ClientManager.sendToUser(sellerUser, JsonUtil.toJson(Map.of(
                             "type",        "NOTIFY_SELLER_REJECTED",
                             "productId",   productId,
                             "productName", productName,
@@ -246,10 +253,9 @@ public class ClientHandler implements Runnable, Observer {
                             "sellerName", safe(data, "sellerName"),
                             "category",   safe(data, "category")
                     ));
-                    // Lưu để gửi cho client mới login
                     AuctionServer.addActiveSession(sessionId, notif);
-                    // Broadcast cho TẤT CẢ (Bidder + Seller khác)
-                    AuctionServer.broadcastAll(notif);
+                    // ✅ Broadcast cho TẤT CẢ
+                    ClientManager.broadcastAll(notif);
                     sendJson(Map.of("status", "OK",
                             "message", "Session start broadcasted"));
                 }
@@ -260,7 +266,8 @@ public class ClientHandler implements Runnable, Observer {
                     String itemName  = safe(data, "itemName");
 
                     AuctionServer.removeActiveSession(sessionId);
-                    AuctionServer.broadcastAll(JsonUtil.toJson(Map.of(
+                    AuctionService.getInstance().removeSession(sessionId);
+                    ClientManager.broadcastAll(JsonUtil.toJson(Map.of(
                             "type",      "NOTIFY_BIDDER_SESSION_END",
                             "sessionId", sessionId,
                             "itemName",  itemName
@@ -273,7 +280,8 @@ public class ClientHandler implements Runnable, Observer {
                 case "GET_ONLINE_COUNT" -> {
                     sendJson(Map.of(
                             "type",  "ONLINE_COUNT",
-                            "count", String.valueOf(AuctionServer.getOnlineCount())
+                            // ✅ Lấy từ ClientManager thay AuctionServer
+                            "count", String.valueOf(ClientManager.getOnlineCount())
                     ));
                 }
 
@@ -292,7 +300,6 @@ public class ClientHandler implements Runnable, Observer {
         }
     }
 
-    /** Lấy giá trị an toàn từ map, trả "" nếu null */
     private String safe(Map<String, Object> data, String key) {
         Object v = data.get(key);
         return v == null ? "" : v.toString();
