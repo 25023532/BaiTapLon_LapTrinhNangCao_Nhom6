@@ -13,13 +13,6 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-/**
- * AppContext – trạng thái toàn cục, dùng chung trong 1 JVM / 1 Stage.
- *
- * Vì HelloApplication dùng 1 Stage duy nhất (setRoot), tất cả
- * static field được share hoàn toàn giữa mọi controller.
- * Không cần file JSON hay WebSocket để sync.
- */
 public class AppContext {
 
     // =========================================================
@@ -73,12 +66,6 @@ public class AppContext {
             historyMap = new HashMap<>();
     private static final Map<String, List<AuctionSessionRecord>>
             sessionHistoryMap = new HashMap<>();
-
-    /**
-     * KEY = sellerUsername → VALUE = list sản phẩm của seller đó.
-     * Đây là nguồn dữ liệu duy nhất. Vì cùng JVM nên Admin và Seller
-     * đọc/ghi cùng object này — không cần sync thêm.
-     */
     private static final Map<String, List<ProductRecord>>
             productMap = new HashMap<>();
 
@@ -101,11 +88,6 @@ public class AppContext {
         }
     }
 
-    /**
-     * Seed data:
-     * – Chỉ tạo tài khoản + ví mẫu.
-     * – KHÔNG tạo sản phẩm cứng (mọi sản phẩm phải đi qua luồng duyệt).
-     */
     private static void seedData() {
         try {
             if (!authService.isRegistered("admin"))
@@ -256,45 +238,98 @@ public class AppContext {
         }
     }
 
-    // ─── CRUD — đọc/ghi trực tiếp productMap (cùng JVM) ─────
-
+    // =========================================================
+    // TÍNH STATUS HIỂN THỊ THEO THỜI GIAN THỰC
+    // =========================================================
     /**
-     * Lấy sản phẩm của một seller.
-     * Trả về list trực tiếp từ productMap — luôn mới nhất.
+     * Sau khi Admin duyệt (ĐÃ DUYỆT), status hiển thị tự động
+     * chuyển theo thời gian thực:
+     *
+     *   now < startTime             → "SẮP DIỄN RA"
+     *   startTime <= now < endTime  → "ĐANG ĐẤU GIÁ"
+     *   now >= endTime              → "ĐÃ KẾT THÚC"
+     *
+     * Các status khác (CHỜ DUYỆT, TỪ CHỐI, ĐÃ BÁN, ĐÃ HỦY) giữ nguyên.
      */
+    public static String computeDisplayStatus(ProductRecord p) {
+        String raw = p.status();
+        // Chỉ tính lại với sản phẩm đã qua tay Admin
+        if ("CHỜ DUYỆT".equals(raw) || "TỪ CHỐI".equals(raw)
+                || "ĐÃ BÁN".equals(raw) || "ĐÃ HỦY".equals(raw)) {
+            return raw;
+        }
+        // ĐÃ DUYỆT hoặc đang trong vòng đời → tính theo giờ
+        if ("ĐÃ DUYỆT".equals(raw)
+                || "SẮP DIỄN RA".equals(raw)
+                || "ĐANG ĐẤU GIÁ".equals(raw)
+                || "ĐÃ KẾT THÚC".equals(raw)) {
+            LocalDateTime now = LocalDateTime.now();
+            if (now.isBefore(p.startTime()))    return "SẮP DIỄN RA";
+            else if (now.isBefore(p.endTime())) return "ĐANG ĐẤU GIÁ";
+            else                                return "ĐÃ KẾT THÚC";
+        }
+        return raw;
+    }
+
+    // =========================================================
+    // KIỂM TRA TRÙNG THỜI GIAN TOÀN HỆ THỐNG
+    // =========================================================
+    /**
+     * Kiểm tra [newStart, newEnd] có trùng với bất kỳ sản phẩm nào
+     * của seller đã được duyệt (ĐÃ DUYỆT / SẮP DIỄN RA / ĐANG ĐẤU GIÁ).
+     * Bỏ qua CHỜ DUYỆT và TỪ CHỐI vì chưa chắc được duyệt.
+     *
+     * @param sellerUsername  seller đang đăng
+     * @param newStart        thời gian bắt đầu mới
+     * @param newEnd          thời gian kết thúc mới
+     * @param excludeId       id sản phẩm bỏ qua khi sửa chính nó
+     * @return tên sản phẩm bị trùng, hoặc null nếu không trùng
+     */
+    public static String findTimeConflictForSeller(String sellerUsername,
+                                                    LocalDateTime newStart,
+                                                    LocalDateTime newEnd,
+                                                    String excludeId) {
+        for (ProductRecord p : getProducts(sellerUsername)) {
+            if (excludeId != null && excludeId.equals(p.id())) continue;
+            String ds = computeDisplayStatus(p);
+            // Chỉ kiểm tra với sản phẩm đã được duyệt và còn trong vòng đời
+            if (!"ĐÃ DUYỆT".equals(ds)
+                    && !"SẮP DIỄN RA".equals(ds)
+                    && !"ĐANG ĐẤU GIÁ".equals(ds)) continue;
+            boolean overlap = newStart.isBefore(p.endTime())
+                           && newEnd.isAfter(p.startTime());
+            if (overlap) return p.name();
+        }
+        return null;
+    }
+
+    // =========================================================
+    // PRODUCT MAP
+    // =========================================================
     public static List<ProductRecord> getProducts(String username) {
         return productMap.computeIfAbsent(username, k -> new ArrayList<>());
     }
 
     /**
      * Seller đăng sản phẩm mới.
-     * Status luôn được enforce là CHỜ DUYỆT dù caller truyền gì.
-     * Admin sẽ thấy ngay qua getAllPendingProducts().
+     * Status luôn được enforce là CHỜ DUYỆT — không thể bypass.
      */
     public static void addProduct(String username, ProductRecord product) {
-        // Enforce CHỜ DUYỆT — không cho phép bypass
         ProductRecord enforced = new ProductRecord(
                 product.id(), product.name(), product.category(),
                 product.startPrice(), product.currentPrice(),
                 product.bidCount(), "CHỜ DUYỆT",
                 product.startTime(), product.endTime(), product.topBidder());
-
         productMap.computeIfAbsent(username, k -> new ArrayList<>()).add(enforced);
-
-        System.out.printf("AppContext: [ADD] seller=%s product=\"%s\" status=CHỜ DUYỆT%n",
+        System.out.printf("AppContext: [ADD] seller=%s product=\"%s\" → CHỜ DUYỆT%n",
                 username, product.name());
     }
 
-    /** Xóa sản phẩm theo id. */
     public static void removeProduct(String username, String productId) {
         productMap.computeIfAbsent(username, k -> new ArrayList<>())
                   .removeIf(p -> p.id().equals(productId));
     }
 
-    /**
-     * Cập nhật sản phẩm (Admin duyệt/từ chối, Seller sửa, v.v.).
-     * Tìm theo productId trong list của seller, replace tại chỗ.
-     */
     public static void updateProduct(String username, ProductRecord updated) {
         List<ProductRecord> list =
                 productMap.computeIfAbsent(username, k -> new ArrayList<>());
@@ -306,13 +341,11 @@ public class AppContext {
                 return;
             }
         }
-        System.out.printf("AppContext: [UPDATE-WARN] productId=%s không tìm thấy " +
+        System.out.printf("AppContext: [UPDATE-WARN] id=%s không tìm thấy " +
                 "trong list của seller=%s%n", updated.id(), username);
     }
 
-    /**
-     * Tất cả sản phẩm của mọi seller — dùng cho Admin thống kê.
-     */
+    /** Tất cả sản phẩm của mọi seller — dùng cho Admin thống kê */
     public static List<ProductRecord> getAllProducts() {
         List<ProductRecord> all = new ArrayList<>();
         productMap.values().forEach(all::addAll);
@@ -322,30 +355,21 @@ public class AppContext {
     /**
      * Tất cả sản phẩm CHỜ DUYỆT của mọi seller.
      * AdminController gọi hàm này để render danh sách cần duyệt.
-     * Vì cùng JVM, kết quả luôn phản ánh đúng thời điểm thực.
      */
     public static List<ProductRecord> getAllPendingProducts() {
         List<ProductRecord> pending = new ArrayList<>();
-        for (List<ProductRecord> sellerList : productMap.values()) {
-            for (ProductRecord p : sellerList) {
-                if ("CHỜ DUYỆT".equals(p.status())) {
-                    pending.add(p);
-                }
-            }
-        }
+        for (List<ProductRecord> sellerList : productMap.values())
+            for (ProductRecord p : sellerList)
+                if ("CHỜ DUYỆT".equals(p.status())) pending.add(p);
         System.out.println("AppContext: getAllPendingProducts() → " + pending.size());
         return Collections.unmodifiableList(pending);
     }
 
-    /**
-     * Tra ngược productMap: productId → sellerUsername.
-     */
+    /** Tra ngược productMap: productId → sellerUsername */
     public static String getSellerForProduct(String productId) {
-        for (Map.Entry<String, List<ProductRecord>> entry : productMap.entrySet()) {
-            for (ProductRecord p : entry.getValue()) {
+        for (Map.Entry<String, List<ProductRecord>> entry : productMap.entrySet())
+            for (ProductRecord p : entry.getValue())
                 if (p.id().equals(productId)) return entry.getKey();
-            }
-        }
         return "—";
     }
 
