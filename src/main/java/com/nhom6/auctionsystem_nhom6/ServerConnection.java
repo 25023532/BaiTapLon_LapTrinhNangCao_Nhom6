@@ -1,25 +1,28 @@
 package com.nhom6.auctionsystem_nhom6;
 
-import java.io.*;
-import java.net.Socket;
+import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.handshake.ServerHandshake;
+
+import java.net.URI;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.concurrent.TimeUnit;
 
+/**
+ * WebSocket client — kết nối qua internet (khác mạng LAN).
+ * Thay thế hoàn toàn TCP Socket cũ.
+ * API giữ nguyên để không cần sửa Controller.
+ */
 public class ServerConnection {
-
-    // ── KHÔNG hardcode HOST/PORT nữa — đọc từ ServerConfig ──
-    // private static final String HOST = "yamabiko.proxy.rlwy.net"; // XÓA
-    // private static final int    PORT = 10654;                      // XÓA
 
     private static final DateTimeFormatter DT =
             DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     private static ServerConnection instance;
 
-    private Socket          socket;
-    private PrintWriter     out;
-    private BufferedReader  in;
+    private WebSocketClient wsClient;
     private MessageListener listener;
+    private String          lastUsername;
 
     private ServerConnection() {}
 
@@ -29,50 +32,81 @@ public class ServerConnection {
     }
 
     // =========================================================
-    // KẾT NỐI — đọc HOST/PORT động từ ServerConfig
+    // KẾT NỐI
     // =========================================================
     public boolean connect(String username) {
-        // Đảm bảo file config tồn tại
-        ServerConfig.createDefaultIfMissing();
+        this.lastUsername = username;
 
-        String host = ServerConfig.getHost();
-        int    port = ServerConfig.getPort();
+        ServerConfig.createDefaultIfMissing();
+        String url = ServerConfig.getWebSocketUrl();
+
+        // Đóng kết nối cũ nếu còn
+        disconnect();
 
         try {
-            System.out.println("[Client] Đang kết nối "
-                    + host + ":" + port + " ...");
+            System.out.println("[WS] Đang kết nối: " + url);
 
-            socket = new Socket(host, port);
-            out    = new PrintWriter(
-                    new OutputStreamWriter(socket.getOutputStream()), true);
-            in     = new BufferedReader(
-                    new InputStreamReader(socket.getInputStream()));
+            wsClient = new WebSocketClient(new URI(url)) {
 
-            // Lắng nghe server trên thread nền
-            Thread reader = new Thread(
-                    this::listenFromServer, "ServerReader");
-            reader.setDaemon(true);
-            reader.start();
+                @Override
+                public void onOpen(ServerHandshake handshake) {
+                    System.out.println("[WS] Kết nối thành công → " + url);
+                    // Gửi LOGIN ngay khi kết nối
+                    String role = "BIDDER";
+                    if (AppContext.getCurrentUser() != null)
+                        role = AppContext.getCurrentUser().getRole().toUpperCase();
+                    sendJson("{\"action\":\"LOGIN\","
+                            + "\"username\":\"" + esc(username) + "\","
+                            + "\"role\":\""     + esc(role)     + "\"}");
+                    // Yêu cầu số online
+                    sendJson("{\"action\":\"GET_ONLINE_COUNT\"}");
+                }
 
-            // Lấy role từ AppContext
-            String role = "BIDDER";
-            if (AppContext.getCurrentUser() != null)
-                role = AppContext.getCurrentUser().getRole().toUpperCase();
+                @Override
+                public void onMessage(String message) {
+                    System.out.println("[WS nhận] " + message);
+                    if (listener != null)
+                        javafx.application.Platform.runLater(
+                                () -> listener.onMessage(message));
+                }
 
-            // Gửi LOGIN với role để server phân loại
-            sendJson("{\"action\":\"LOGIN\","
-                    + "\"username\":\"" + esc(username) + "\","
-                    + "\"role\":\"" + esc(role) + "\"}");
+                @Override
+                public void onClose(int code, String reason, boolean remote) {
+                    System.out.println("[WS] Đóng kết nối: " + reason
+                            + " (code=" + code + ")");
+                }
 
-            System.out.println("[Client] Kết nối thành công: "
-                    + username + " [" + role + "] → "
-                    + host + ":" + port);
-            return true;
+                @Override
+                public void onError(Exception ex) {
+                    System.err.println("[WS] Lỗi: " + ex.getMessage());
+                }
+            };
 
-        } catch (IOException e) {
-            System.err.println("[Client] Không kết nối được "
-                    + host + ":" + port
-                    + " — Chạy offline. (" + e.getMessage() + ")");
+            // connectBlocking() chờ tối đa 5 giây
+            // Chạy trong background thread để không block JavaFX
+            final boolean[] result = {false};
+            Thread t = new Thread(() -> {
+                try {
+                    result[0] = wsClient.connectBlocking(5, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }, "WS-Connect");
+            t.setDaemon(true);
+            t.start();
+            t.join(6000); // Chờ tối đa 6 giây
+
+            if (wsClient.isOpen()) {
+                System.out.println("[WS] ✅ Kết nối OK: " + username);
+                return true;
+            } else {
+                System.out.println("[WS] ❌ Kết nối thất bại → Chạy offline.");
+                return false;
+            }
+
+        } catch (Exception e) {
+            System.err.println("[WS] Không kết nối được " + url
+                    + " — " + e.getMessage());
             return false;
         }
     }
@@ -83,7 +117,7 @@ public class ServerConnection {
     }
 
     // =========================================================
-    // GỬI MESSAGE
+    // GỬI MESSAGE — API giữ nguyên, Controller không cần sửa
     // =========================================================
 
     public void sendChat(String username, String message) {
@@ -107,22 +141,22 @@ public class ServerConnection {
                                     LocalDateTime startTime,
                                     LocalDateTime endTime) {
         sendJson("{\"action\":\"PRODUCT_PENDING\","
-                + "\"productId\":\""   + esc(productId)       + "\","
-                + "\"productName\":\"" + esc(productName)      + "\","
-                + "\"sellerName\":\""  + esc(sellerName)       + "\","
-                + "\"category\":\""    + esc(category)         + "\","
-                + "\"startPrice\":\""  + startPrice            + "\","
-                + "\"startTime\":\""   + startTime.format(DT)  + "\","
-                + "\"endTime\":\""     + endTime.format(DT)    + "\"}");
+                + "\"productId\":\""   + esc(productId)      + "\","
+                + "\"productName\":\"" + esc(productName)     + "\","
+                + "\"sellerName\":\""  + esc(sellerName)      + "\","
+                + "\"category\":\""    + esc(category)        + "\","
+                + "\"startPrice\":\""  + startPrice           + "\","
+                + "\"startTime\":\""   + startTime.format(DT) + "\","
+                + "\"endTime\":\""     + endTime.format(DT)   + "\"}");
     }
 
     public void sendProductApproved(String productId,
                                      String sellerUsername,
                                      String productName) {
         sendJson("{\"action\":\"PRODUCT_APPROVED\","
-                + "\"productId\":\""      + esc(productId)      + "\","
-                + "\"sellerUsername\":\"" + esc(sellerUsername)  + "\","
-                + "\"productName\":\""    + esc(productName)     + "\"}");
+                + "\"productId\":\""      + esc(productId)     + "\","
+                + "\"sellerUsername\":\"" + esc(sellerUsername) + "\","
+                + "\"productName\":\""    + esc(productName)    + "\"}");
     }
 
     public void sendProductRejected(String productId,
@@ -130,10 +164,10 @@ public class ServerConnection {
                                      String productName,
                                      String reason) {
         sendJson("{\"action\":\"PRODUCT_REJECTED\","
-                + "\"productId\":\""      + esc(productId)      + "\","
-                + "\"sellerUsername\":\"" + esc(sellerUsername)  + "\","
-                + "\"productName\":\""    + esc(productName)     + "\","
-                + "\"reason\":\""         + esc(reason)          + "\"}");
+                + "\"productId\":\""      + esc(productId)     + "\","
+                + "\"sellerUsername\":\"" + esc(sellerUsername) + "\","
+                + "\"productName\":\""    + esc(productName)    + "\","
+                + "\"reason\":\""         + esc(reason)         + "\"}");
     }
 
     public void sendSessionStart(String sessionId,
@@ -144,88 +178,82 @@ public class ServerConnection {
                                   String sellerName,
                                   String category) {
         sendJson("{\"action\":\"SESSION_START\","
-                + "\"sessionId\":\""  + esc(sessionId)      + "\","
-                + "\"itemName\":\""   + esc(itemName)        + "\","
-                + "\"startPrice\":\"" + startPrice           + "\","
-                + "\"minStep\":\""    + minStep              + "\","
-                + "\"endTime\":\""    + endTime.format(DT)   + "\","
-                + "\"sellerName\":\"" + esc(sellerName)      + "\","
-                + "\"category\":\""   + esc(category)        + "\"}");
+                + "\"sessionId\":\""  + esc(sessionId)    + "\","
+                + "\"itemName\":\""   + esc(itemName)      + "\","
+                + "\"startPrice\":\"" + startPrice         + "\","
+                + "\"minStep\":\""    + minStep            + "\","
+                + "\"endTime\":\""    + endTime.format(DT) + "\","
+                + "\"sellerName\":\"" + esc(sellerName)    + "\","
+                + "\"category\":\""   + esc(category)      + "\"}");
     }
 
-    public void sendSessionEnd(String sessionId, String itemName) {
+    public void sendSessionEnd(String sessionId, String itemName,
+                                String winner, double finalPrice) {
         sendJson("{\"action\":\"SESSION_END\","
                 + "\"sessionId\":\"" + esc(sessionId) + "\","
-                + "\"itemName\":\""  + esc(itemName)  + "\"}");
+                + "\"itemName\":\""  + esc(itemName)  + "\","
+                + "\"winner\":\""    + esc(winner)    + "\","
+                + "\"finalPrice\":\"" + finalPrice    + "\"}");
     }
 
+    public void sendPaymentSuccess(String username,
+                                    String itemName, double amount) {
+        sendJson("{\"action\":\"PAYMENT_SUCCESS\","
+                + "\"username\":\"" + esc(username) + "\","
+                + "\"itemName\":\""  + esc(itemName) + "\","
+                + "\"amount\":\""    + amount        + "\"}");
+    }
+
+    /** Gửi JSON thô — dùng khi cần gửi custom message */
     public void sendJson(String json) {
-        if (out != null) {
-            out.println(json);
-            System.out.println("[Client gửi] " + json);
+        if (wsClient != null && wsClient.isOpen()) {
+            wsClient.send(json);
+            System.out.println("[WS gửi] " + json);
+        } else {
+            System.out.println("[WS] Offline — bỏ qua: " + json);
         }
     }
 
+    /** Legacy support */
     public void send(String message) {
         if (message.startsWith("CHAT:")) {
             String[] p = message.split(":", 3);
             if (p.length == 3) { sendChat(p[1], p[2]); return; }
         }
-        if (message.startsWith("BID:")) {
-            String[] p = message.split(":", 3);
-            if (p.length == 3) {
-                try {
-                    sendBid(p[1], "default-session",
-                            Double.parseDouble(p[2]));
-                } catch (NumberFormatException e) { sendJson(message); }
-                return;
-            }
-        }
         sendJson(message);
     }
 
     // =========================================================
-    // LISTENER & ĐỌC TIN
+    // LISTENER
     // =========================================================
     public void setListener(MessageListener listener) {
         this.listener = listener;
     }
 
-    private void listenFromServer() {
+    // =========================================================
+    // STATUS
+    // =========================================================
+    public boolean isConnected() {
+        return wsClient != null && wsClient.isOpen();
+    }
+
+    public void disconnect() {
         try {
-            String line;
-            while ((line = in.readLine()) != null) {
-                System.out.println("[Client nhận] " + line);
-                if (listener != null) {
-                    final String msg = line;
-                    javafx.application.Platform.runLater(
-                            () -> listener.onMessage(msg));
-                }
-            }
-        } catch (IOException e) {
-            System.out.println("[Client] Mất kết nối server.");
-        }
+            if (wsClient != null && !wsClient.isClosed())
+                wsClient.close();
+        } catch (Exception ignored) {}
     }
 
     // =========================================================
     // UTIL
     // =========================================================
-    public boolean isConnected() {
-        return socket != null && socket.isConnected() && !socket.isClosed();
-    }
-
-    public void disconnect() {
-        try { if (socket != null) socket.close(); }
-        catch (IOException e) { e.printStackTrace(); }
-    }
-
     private String esc(String s) {
         if (s == null) return "";
         return s.replace("\\", "\\\\")
                 .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\r", "\\r")
-                .replace("\t", "\\t");
+                .replace("\n",  "\\n")
+                .replace("\r",  "\\r")
+                .replace("\t",  "\\t");
     }
 
     public interface MessageListener {
