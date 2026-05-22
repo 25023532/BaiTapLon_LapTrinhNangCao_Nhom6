@@ -8,7 +8,7 @@
 <?import javafx.scene.shape.Rectangle?>
 
 <StackPane xmlns:fx="http://javafx.com/fxml"
-           fx:controller="com.nhom6.auctionsystem_nhom6.LoginController"
+           fx:controller="com.nhom6.auctionsystem_nhom6.controller.LoginController"
            style="-fx-background-color: #050d1a;">
 
     <!-- ══ BACKGROUND DECORATIONS ══ -->

@@ -3,6 +3,7 @@ package com.nhom6.auctionsystem_nhom6.controller;
 import com.nhom6.auctionsystem_nhom6.AppContext;
 import com.nhom6.auctionsystem_nhom6.HelloApplication;
 import com.nhom6.auctionsystem_nhom6.ServerConnection;
+import com.nhom6.auctionsystem_nhom6.NotificationService;
 
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;

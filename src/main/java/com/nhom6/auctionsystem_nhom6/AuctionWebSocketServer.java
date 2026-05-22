@@ -182,7 +182,7 @@ public class AuctionWebSocketServer extends WebSocketServer {
                         status, startTime, endTime, "—"));
                 log("📦 ADD_PRODUCT: " + seller + " → " + name);
                 broadcastProductUpdate(seller, db.getProducts().get(seller)
-                        .stream().filter(p -> p.id().equals(id)).findFirst().orElse(null));
+                        .stream().filter(p -> p.id().equals(id)).findFirst().orElse(null), conn);
             }
 
             // ── Cập nhật sản phẩm ─────────────────────────────
@@ -208,7 +208,7 @@ public class AuctionWebSocketServer extends WebSocketServer {
                             topB.isEmpty() ? existing.topBidder() : topB));
                     log("✏️ UPDATE_PRODUCT: " + seller + " → " + id);
                     broadcastProductUpdate(seller, db.getProducts().get(seller)
-                            .stream().filter(p -> p.id().equals(id)).findFirst().orElse(null));
+                            .stream().filter(p -> p.id().equals(id)).findFirst().orElse(null), conn);
                 }
             }
 
@@ -487,9 +487,9 @@ public class AuctionWebSocketServer extends WebSocketServer {
                 + "\"balance\":\"" + balance + "\"}");
     }
 
-    private void broadcastProductUpdate(String seller, AppContext.ProductRecord p) {
+    private void broadcastProductUpdate(String seller, AppContext.ProductRecord p, WebSocket exclude) {
         if (p == null) return;
-        broadcastAll("{\"type\":\"UPDATE_PRODUCT\","
+        String msg = "{\"type\":\"UPDATE_PRODUCT\","
                 + "\"seller\":\"" + esc(seller) + "\","
                 + "\"id\":\"" + esc(p.id()) + "\","
                 + "\"name\":\"" + esc(p.name()) + "\","
@@ -500,7 +500,13 @@ public class AuctionWebSocketServer extends WebSocketServer {
                 + "\"status\":\"" + esc(p.status()) + "\","
                 + "\"startTime\":\"" + p.startTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "\","
                 + "\"endTime\":\"" + p.endTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "\","
-                + "\"topBidder\":\"" + esc(p.topBidder()) + "\"}");
+                + "\"topBidder\":\"" + esc(p.topBidder()) + "\"}";
+
+        for (WebSocket c : clients.keySet()) {
+            try {
+                if (c.isOpen() && c != exclude) c.send(msg);
+            } catch (Exception ignored) {}
+        }
     }
 
     private void broadcastAddHistory(String username, AppContext.HistoryRecord r) {

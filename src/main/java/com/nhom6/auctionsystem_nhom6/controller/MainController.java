@@ -3,6 +3,8 @@ package com.nhom6.auctionsystem_nhom6.controller;
 import com.nhom6.auctionsystem_nhom6.AppContext;
 import com.nhom6.auctionsystem_nhom6.HelloApplication;
 import com.nhom6.auctionsystem_nhom6.ServerConnection;
+import com.nhom6.auctionsystem_nhom6.NotificationManager;
+import com.nhom6.auctionsystem_nhom6.NotificationPopup;
 
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;

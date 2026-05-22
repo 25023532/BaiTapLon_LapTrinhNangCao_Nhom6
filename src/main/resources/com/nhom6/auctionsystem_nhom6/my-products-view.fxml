@@ -4,7 +4,7 @@
 <?import javafx.geometry.Insets?>
 
 <BorderPane xmlns:fx="http://javafx.com/fxml"
-            fx:controller="com.nhom6.auctionsystem_nhom6.MyProductsController"
+            fx:controller="com.nhom6.auctionsystem_nhom6.controller.MyProductsController"
             styleClass="main-root">
 
     <!-- ══ HEADER ══ -->

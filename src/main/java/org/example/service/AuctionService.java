@@ -100,7 +100,7 @@ public class AuctionService {
             }
 
             // 2. Kiểm tra phiên còn active
-            if (!session.isActive()) {
+            if (session.getStatus() != org.example.auction.AuctionStatus.RUNNING) {
                 return BidResult.fail("Phiên đấu giá đã kết thúc.");
             }
 

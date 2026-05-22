@@ -1,6 +1,7 @@
 package org.example.service;
 
 import org.example.user.User;
+import com.nhom6.auctionsystem_nhom6.ServerConnection;
 
 import java.util.*;
 
@@ -85,6 +86,10 @@ public class AuthService {
     // SYNC — overwrite local user cache with server state
     // =========================================================
     public void syncUsers(Map<String, User> newUsers) {
+        if (newUsers == null || newUsers.isEmpty()) {
+            System.out.println("[AuthService] Server trả về 0 users, giữ nguyên local.");
+            return;
+        }
         users.clear();
         users.putAll(newUsers);
         System.out.println("[AuthService] Synced " + newUsers.size() + " users from server.");

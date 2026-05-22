@@ -6,7 +6,7 @@
 
 <BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
-            fx:controller="com.nhom6.auctionsystem_nhom6.AdminController"
+            fx:controller="com.nhom6.auctionsystem_nhom6.controller.AdminController"
             styleClass="main-root">
 
     <!-- ── SIDEBAR ── -->

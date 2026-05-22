@@ -40,15 +40,7 @@
     "fullName": ""
   },
   {
-    "id": "6F3247A9",
-    "username": "haiphong",
-    "hashedPassword": "89d6977592c7ebaeeb7eb2dc7480ad7ee99e98c6c8c05b0dd0edbab1a432f43c",
-    "role": "BIDDER",
-    "email": "linhphongmin@gmail.com",
-    "fullName": "Nguyen Huy Hai Phong"
-  },
-  {
-    "id": "56542DA2",
+    "id": "9D59B6B7",
     "username": "1111",
     "hashedPassword": "bcb15f821479b4d5772bd0ca866c00ad5f926e3580720659cc80d39c9d09802a",
     "role": "BIDDER",
@@ -56,7 +48,7 @@
     "fullName": "1111"
   },
   {
-    "id": "D98C28A2",
+    "id": "F589A33F",
     "username": "2222",
     "hashedPassword": "4cc8f4d609b717356701c57a03e737e5ac8fe885da8c7163d3de47e01849c635",
     "role": "SELLER",

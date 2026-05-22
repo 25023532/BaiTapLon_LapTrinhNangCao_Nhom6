@@ -13,8 +13,12 @@ module com.nhom6.auctionsystem_nhom6 {
     // ── Logging (Java-WebSocket dùng SLF4J) ───────────────────
     requires org.slf4j;
 
+    // ── SQL  ───────────────────
+    requires java.sql;
+
     // ── Mở cho FXML reflection ────────────────────────────────
     opens com.nhom6.auctionsystem_nhom6 to javafx.fxml;
+    opens com.nhom6.auctionsystem_nhom6.controller to javafx.fxml;
     opens network                        to javafx.fxml;
     opens org.example.auction            to javafx.fxml;
     opens org.example.user               to javafx.fxml;
@@ -25,6 +29,7 @@ module com.nhom6.auctionsystem_nhom6 {
 
     // ── Export ────────────────────────────────────────────────
     exports com.nhom6.auctionsystem_nhom6;
+    exports com.nhom6.auctionsystem_nhom6.controller;
     exports network;
     exports org.example.auction;
     exports org.example.user;

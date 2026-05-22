@@ -409,6 +409,20 @@ public class AppContext {
                 updated.id(), username);
     }
 
+    public static void updateProductSilent(String username, ProductRecord updated) {
+        List<ProductRecord> list =
+                productMap.computeIfAbsent(username, k -> new ArrayList<>());
+        for (int i = 0; i < list.size(); i++) {
+            if (list.get(i).id().equals(updated.id())) {
+                list.set(i, updated);
+                System.out.printf(
+                        "AppContext: [UPDATE-SILENT] seller=%s product=\"%s\" → %s%n",
+                        username, updated.name(), updated.status());
+                return;
+            }
+        }
+    }
+
     /** Tất cả sản phẩm mọi seller — Admin dùng để thống kê */
     public static List<ProductRecord> getAllProducts() {
         List<ProductRecord> all = new ArrayList<>();

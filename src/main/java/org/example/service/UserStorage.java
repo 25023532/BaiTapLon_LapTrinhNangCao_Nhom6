@@ -50,6 +50,7 @@ public class UserStorage {
     public static Map<String, User> loadAll() {
         Map<String, User> users = new LinkedHashMap<>();
         File file = new File(FILE_PATH);
+        System.out.println("[Storage] Đọc từ: " + file.getAbsolutePath());
 
         if (!file.exists()) {
             System.out.println("[Storage] Chưa có file users.json, bắt đầu mới.");

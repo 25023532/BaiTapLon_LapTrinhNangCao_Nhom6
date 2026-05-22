@@ -2,6 +2,7 @@ package org.example.dao;
 
 import org.example.auction.AuctionSession;
 import org.example.auction.Bid;
+import com.nhom6.auctionsystem_nhom6.AppContext;
 
 import java.sql.*;
 import java.time.LocalDateTime;
@@ -97,9 +98,18 @@ public class AuctionDAO {
                 ps.setDouble(3,    session.getStartingPrice());
                 ps.setDouble(4,    session.getCurrentPrice());
                 ps.setDouble(5,    session.getMinBidStep());
-                ps.setString(6,    session.getSellerName());
-                ps.setString(7,    session.getCategory());
-                ps.setTimestamp(8, Timestamp.valueOf(session.getStartTime()));
+                ps.setString(6,    AppContext.getSessionSeller(session.getSessionId()));
+                ps.setString(7,   AppContext.getAllProducts().stream()
+                        .filter(p -> p.id().equals(session.getSessionId()))
+                        .map(p -> p.category())
+                        .findFirst().orElse("Chung"));
+                ps.setTimestamp(8, Timestamp.valueOf(
+                        AppContext.getAllProducts().stream()
+                                .filter(p -> p.id().equals(session.getSessionId()))
+                                .map(p -> p.startTime())
+                                .findFirst()
+                                .orElse(session.getEndTime().minusHours(1))
+                ));
                 ps.setTimestamp(9, Timestamp.valueOf(session.getEndTime()));
                 ps.setString(10,   session.getStatus().name());
                 ps.executeUpdate();
@@ -208,9 +218,6 @@ public class AuctionDAO {
                 rs.getString("item_name"),
                 rs.getDouble("start_price"),
                 rs.getDouble("min_bid_step"),
-                rs.getString("seller_name"),
-                rs.getString("category"),
-                rs.getTimestamp("start_time").toLocalDateTime(),
                 rs.getTimestamp("end_time").toLocalDateTime()
         );
     }
