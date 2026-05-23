@@ -33,15 +33,13 @@ public class AdminController {
     @FXML private Label      adminAvatarLabel;
     @FXML private VBox       contentBox;
 
+    // ── Tab buttons — cần fx:id để cập nhật active style ──────
+    @FXML private Button tabBtnUsers;
+    @FXML private Button tabBtnProducts;
+    @FXML private Button tabBtnSessions;
+
     private final AuthService authService = AppContext.getAuthService();
-
-    /**
-     * Tab hiện tại: "users" | "products" | "sessions"
-     * Dùng để auto-refresh chỉ reload đúng tab đang hiển thị.
-     */
     private String currentTab = "users";
-
-    /** Timeline tự động cập nhật stats + content mỗi 2 giây */
     private Timeline autoRefreshTimeline;
 
     // =========================================================
@@ -56,25 +54,37 @@ public class AdminController {
                 name.length() >= 2 ? name.substring(0, 2).toUpperCase()
                                    : name.toUpperCase());
 
-        // Hiển thị tab mặc định
         refreshStats();
-        showUsers();
+        showUsers(); // tab mặc định — setActiveTab() gọi bên trong
 
         // Auto-refresh mỗi 2 giây
-        // Vì cùng JVM, productMap luôn cập nhật ngay khi Seller addProduct()
-        // → chỉ cần gọi lại showProducts() / refreshStats() để re-render
         autoRefreshTimeline = new Timeline(new KeyFrame(Duration.seconds(2), e ->
                 Platform.runLater(() -> {
                     refreshStats();
-                    // Chỉ reload nội dung nếu đang ở tab products
-                    // (tránh xóa mất nội dung tab khác)
-                    if ("products".equals(currentTab)) {
+                    if ("products".equals(currentTab))
                         renderProductsContent();
-                    }
                 })
         ));
         autoRefreshTimeline.setCycleCount(Timeline.INDEFINITE);
         autoRefreshTimeline.play();
+    }
+
+    // =========================================================
+    // ACTIVE TAB HIGHLIGHT
+    // =========================================================
+    /**
+     * Xóa tab-active khỏi tất cả nút, sau đó set vào nút được chọn.
+     * Gọi ở đầu mỗi showXxx() để đồng bộ UI.
+     */
+    private void setActiveTab(Button activeBtn) {
+        for (Button btn : List.of(tabBtnUsers, tabBtnProducts, tabBtnSessions)) {
+            btn.getStyleClass().removeAll("tab-active");
+            // Đảm bảo luôn có class tab-btn
+            if (!btn.getStyleClass().contains("tab-btn"))
+                btn.getStyleClass().add("tab-btn");
+        }
+        if (!activeBtn.getStyleClass().contains("tab-active"))
+            activeBtn.getStyleClass().add("tab-active");
     }
 
     // =========================================================
@@ -93,7 +103,7 @@ public class AdminController {
     }
 
     // =========================================================
-    // STATS — luôn đọc thẳng từ productMap (cùng JVM)
+    // STATS
     // =========================================================
     private void refreshStats() {
         List<User> users = new ArrayList<>(authService.getAllUsers().values());
@@ -116,6 +126,7 @@ public class AdminController {
     // =========================================================
     @FXML public void showUsers() {
         currentTab = "users";
+        setActiveTab(tabBtnUsers); // ✅ highlight tab Người dùng
         contentBox.getChildren().clear();
 
         contentBox.getChildren().add(buildHeader(
@@ -131,7 +142,8 @@ public class AdminController {
             HBox row = makeRow();
 
             Label roleBadge = new Label(u.getRole());
-            roleBadge.getStyleClass().addAll("history-badge", roleBadgeStyle(u.getRole()));
+            roleBadge.getStyleClass().addAll(
+                    "history-badge", roleBadgeStyle(u.getRole()));
             roleBadge.setMinWidth(120);
 
             Button delBtn = new Button("🗑 Xóa");
@@ -153,30 +165,20 @@ public class AdminController {
     }
 
     // =========================================================
-    // TAB: SẢN PHẨM CHỜ DUYỆT
+    // TAB: SẢN PHẨM
     // =========================================================
-
-    /**
-     * Được gọi khi Admin click tab "Sản phẩm".
-     * Chỉ đặt currentTab rồi delegate sang renderProductsContent().
-     */
     @FXML public void showProducts() {
         currentTab = "products";
+        setActiveTab(tabBtnProducts); // ✅ highlight tab Sản phẩm
         renderProductsContent();
     }
 
-    /**
-     * Render nội dung tab sản phẩm.
-     * Tách riêng để auto-refresh có thể gọi mà không đổi currentTab.
-     *
-     * getAllPendingProducts() đọc thẳng productMap tĩnh trong cùng JVM
-     * → luôn thấy sản phẩm mới nhất mà bất kỳ Seller nào vừa addProduct().
-     */
     private void renderProductsContent() {
         contentBox.getChildren().clear();
 
         contentBox.getChildren().add(buildHeader(
-                "Tên sản phẩm", "Danh mục", "Người bán", "Trạng thái", "Hành động"));
+                "Tên sản phẩm", "Danh mục", "Người bán",
+                "Trạng thái", "Hành động"));
 
         List<AppContext.ProductRecord> pending = AppContext.getAllPendingProducts();
 
@@ -192,32 +194,25 @@ public class AdminController {
         }
     }
 
-    /** Tạo một hàng cho sản phẩm CHỜ DUYỆT */
     private HBox buildPendingRow(AppContext.ProductRecord p, String sellerName) {
         HBox row = makeRow();
 
-        // Tên sản phẩm
         Label name = col(p.name(), 200, true);
+        Label cat  = col(p.category(), 120, false);
 
-        // Danh mục
-        Label cat = col(p.category(), 120, false);
-
-        // Người bán + giá khởi điểm
         VBox sellerBox = new VBox(3);
         sellerBox.setMinWidth(160);
         HBox.setHgrow(sellerBox, Priority.ALWAYS);
         Label sellerLbl = new Label("👤 " + ("—".equals(sellerName) ? "?" : sellerName));
         sellerLbl.setStyle("-fx-text-fill:#94a3b8;-fx-font-size:12px;");
-        Label priceLbl  = new Label("Giá KĐ: " + fmtVND(p.startPrice()));
+        Label priceLbl = new Label("Giá KĐ: " + fmtVND(p.startPrice()));
         priceLbl.setStyle("-fx-text-fill:#38bdf8;-fx-font-size:11px;");
         sellerBox.getChildren().addAll(sellerLbl, priceLbl);
 
-        // Badge
         Label badge = new Label("⏳ CHỜ DUYỆT");
         badge.getStyleClass().addAll("history-badge", "badge-warn");
         badge.setMinWidth(130);
 
-        // Nút Duyệt
         Button approveBtn = new Button("✅ Duyệt");
         approveBtn.setStyle(
                 "-fx-background-color:#14532d;-fx-text-fill:#4ade80;"
@@ -225,7 +220,6 @@ public class AdminController {
                 + "-fx-font-size:12px;-fx-padding:5 12 5 12;");
         approveBtn.setOnAction(e -> handleApprove(p, sellerName));
 
-        // Nút Từ chối
         Button rejectBtn = new Button("❌ Từ chối");
         rejectBtn.getStyleClass().add("btn-danger");
         rejectBtn.setOnAction(e -> handleReject(p, sellerName));
@@ -243,6 +237,7 @@ public class AdminController {
     // =========================================================
     @FXML public void showSessions() {
         currentTab = "sessions";
+        setActiveTab(tabBtnSessions); // ✅ highlight tab Phiên đấu giá
         contentBox.getChildren().clear();
 
         contentBox.getChildren().add(buildHeader(
@@ -251,7 +246,8 @@ public class AdminController {
 
         List<AuctionSession> sessions = AppContext.getGlobalSessions();
         if (sessions.isEmpty()) {
-            contentBox.getChildren().add(emptyLabel("Chưa có phiên đấu giá nào."));
+            contentBox.getChildren().add(
+                    emptyLabel("Chưa có phiên đấu giá nào."));
             return;
         }
 
@@ -262,7 +258,8 @@ public class AdminController {
             price.setStyle("-fx-text-fill:#38bdf8;-fx-font-weight:bold;");
 
             boolean running = s.getStatus() == AuctionStatus.RUNNING;
-            Label statusBadge = new Label(running ? "ĐANG DIỄN RA" : "ĐÃ KẾT THÚC");
+            Label statusBadge = new Label(
+                    running ? "ĐANG DIỄN RA" : "ĐÃ KẾT THÚC");
             statusBadge.getStyleClass().addAll("history-badge",
                     running ? "badge-success" : "badge-neutral");
             statusBadge.setMinWidth(130);
@@ -295,18 +292,12 @@ public class AdminController {
         refreshStats();
     }
 
-    /**
-     * Admin duyệt: CHỜ DUYỆT → ĐÃ DUYỆT.
-     * updateProduct() ghi thẳng vào productMap tĩnh.
-     * Seller sẽ thấy nút "Bắt đầu đấu giá" xuất hiện ngay
-     * khi màn hình của họ được refresh.
-     */
     private void handleApprove(AppContext.ProductRecord p, String sellerName) {
         String seller = resolveSeller(p.id(), sellerName);
         if ("—".equals(seller)) {
-            alert(Alert.AlertType.ERROR, "Lỗi", "Không tìm được người bán."); return;
+            alert(Alert.AlertType.ERROR, "Lỗi", "Không tìm được người bán.");
+            return;
         }
-
         AppContext.updateProduct(seller, new AppContext.ProductRecord(
                 p.id(), p.name(), p.category(),
                 p.startPrice(), p.currentPrice(), p.bidCount(),
@@ -317,20 +308,16 @@ public class AdminController {
                 + "Người bán: " + seller + "\n\n"
                 + "Seller có thể bắt đầu phiên đấu giá.");
 
-        renderProductsContent(); // reload danh sách chờ duyệt
+        renderProductsContent();
         refreshStats();
     }
 
-    /**
-     * Admin từ chối: CHỜ DUYỆT → TỪ CHỐI.
-     * Seller sẽ thấy badge "TỪ CHỐI" và nút Xóa.
-     */
     private void handleReject(AppContext.ProductRecord p, String sellerName) {
         String seller = resolveSeller(p.id(), sellerName);
         if ("—".equals(seller)) {
-            alert(Alert.AlertType.ERROR, "Lỗi", "Không tìm được người bán."); return;
+            alert(Alert.AlertType.ERROR, "Lỗi", "Không tìm được người bán.");
+            return;
         }
-
         TextInputDialog dlg = new TextInputDialog();
         dlg.setTitle("Từ chối sản phẩm");
         dlg.setHeaderText("Từ chối: \"" + p.name() + "\"");
@@ -342,7 +329,8 @@ public class AdminController {
                     "TỪ CHỐI", p.startTime(), p.endTime(), p.topBidder()));
 
             System.out.printf("Admin từ chối \"%s\" của %s. Lý do: %s%n",
-                    p.name(), seller, reason.isEmpty() ? "(không có)" : reason);
+                    p.name(), seller,
+                    reason.isEmpty() ? "(không có)" : reason);
 
             renderProductsContent();
             refreshStats();
@@ -363,8 +351,6 @@ public class AdminController {
     // =========================================================
     // HELPERS
     // =========================================================
-
-    /** Tra ngược lại seller nếu sellerName không hợp lệ */
     private String resolveSeller(String productId, String sellerName) {
         if (sellerName != null && !sellerName.isBlank()
                 && !"—".equals(sellerName) && !"?".equals(sellerName))
@@ -407,19 +393,25 @@ public class AdminController {
 
     private Label emptyLabel(String text) {
         Label l = new Label(text);
-        l.setStyle("-fx-text-fill:#64748b;-fx-font-size:14px;-fx-padding:40 0 40 0;");
+        l.setStyle(
+                "-fx-text-fill:#64748b;-fx-font-size:14px;"
+                + "-fx-padding:40 0 40 0;");
         return l;
     }
 
     private boolean confirm(String title, String header, String content) {
         Alert a = new Alert(Alert.AlertType.CONFIRMATION);
-        a.setTitle(title); a.setHeaderText(header); a.setContentText(content);
+        a.setTitle(title);
+        a.setHeaderText(header);
+        a.setContentText(content);
         return a.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK;
     }
 
     private void alert(Alert.AlertType type, String title, String content) {
         Alert a = new Alert(type);
-        a.setTitle(title); a.setHeaderText(null); a.setContentText(content);
+        a.setTitle(title);
+        a.setHeaderText(null);
+        a.setContentText(content);
         a.showAndWait();
     }
 
