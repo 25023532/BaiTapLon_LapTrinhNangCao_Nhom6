@@ -581,6 +581,19 @@ public class AppContext {
         }
     }
 
+    /**
+     * Sync toàn bộ danh sách đánh giá từ server.
+     * Dùng khi nhận SYNC_RATINGS message — overwrite local cache.
+     * Giữ lại các rating seed nếu server trả về list rỗng.
+     */
+    public static void syncRatings(List<RatingRecord> newRatings) {
+        if (newRatings == null || newRatings.isEmpty()) return;
+        ratingList.clear();
+        ratingList.addAll(newRatings);
+        System.out.println("AppContext: syncRatings() → "
+                + ratingList.size() + " đánh giá");
+    }
+
     // =========================================================
     // RECORDS — AUCTION SESSION HISTORY
     // =========================================================
