@@ -30,8 +30,6 @@
                     styleClass="nav-btn" onAction="#showSessions"/>
 
             <Region VBox.vgrow="ALWAYS"/>
-
-            <!-- Đăng xuất giữ lại ở sidebar để tiện -->
             <Button text="← Đăng xuất" maxWidth="Infinity"
                     styleClass="btn-danger" onAction="#handleLogout"/>
         </VBox>
@@ -41,13 +39,11 @@
     <center>
         <VBox spacing="0">
 
-            <!-- Header với profile dropdown -->
+            <!-- Header -->
             <HBox styleClass="header" alignment="CENTER_LEFT" spacing="12">
                 <padding><Insets top="0" right="24" bottom="0" left="24"/></padding>
                 <Label text="🛡 Bảng điều khiển Admin" styleClass="header-username"/>
                 <Region HBox.hgrow="ALWAYS"/>
-
-                <!-- Profile dropdown giống Seller -->
                 <MenuButton fx:id="adminMenuBtn" styleClass="profile-menu-btn">
                     <graphic>
                         <HBox spacing="8" alignment="CENTER">
@@ -64,31 +60,26 @@
                         <MenuItem text="🚪  Đăng xuất" onAction="#handleLogout"/>
                     </items>
                 </MenuButton>
-
             </HBox>
 
             <!-- Stat cards -->
             <HBox spacing="16">
                 <padding><Insets top="20" right="24" bottom="0" left="24"/></padding>
-
                 <VBox styleClass="stat-card" spacing="4" HBox.hgrow="ALWAYS">
                     <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
                     <Label text="👥 Tổng người dùng" styleClass="stat-big-label"/>
                     <Label fx:id="totalUsersLabel" text="0" styleClass="stat-big-num"/>
                 </VBox>
-
                 <VBox styleClass="stat-card" spacing="4" HBox.hgrow="ALWAYS">
                     <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
                     <Label text="📦 Tổng sản phẩm" styleClass="stat-big-label"/>
                     <Label fx:id="totalProductsLabel" text="0" styleClass="stat-big-num"/>
                 </VBox>
-
                 <VBox styleClass="stat-card" spacing="4" HBox.hgrow="ALWAYS">
                     <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
                     <Label text="⏳ Chờ duyệt" styleClass="stat-big-label"/>
                     <Label fx:id="pendingLabel" text="0" styleClass="stat-big-num"/>
                 </VBox>
-
                 <VBox styleClass="stat-card" spacing="4" HBox.hgrow="ALWAYS">
                     <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
                     <Label text="🔴 Đang đấu giá" styleClass="stat-big-label"/>
@@ -96,15 +87,15 @@
                 </VBox>
             </HBox>
 
-            <!-- Tab bar -->
+            <!-- Tab bar — KHÔNG hardcode tab-active ở đây nữa, controller tự set -->
             <HBox fx:id="tabBar" styleClass="tab-bar" spacing="4">
                 <padding><Insets top="20" right="24" bottom="0" left="24"/></padding>
-                <Button text="👥 Người dùng"    styleClass="tab-btn,tab-active"
-                        onAction="#showUsers"/>
-                <Button text="📦 Sản phẩm"      styleClass="tab-btn"
-                        onAction="#showProducts"/>
-                <Button text="🔴 Phiên đấu giá" styleClass="tab-btn"
-                        onAction="#showSessions"/>
+                <Button fx:id="tabBtnUsers"    text="👥 Người dùng"
+                        styleClass="tab-btn" onAction="#showUsers"/>
+                <Button fx:id="tabBtnProducts" text="📦 Sản phẩm"
+                        styleClass="tab-btn" onAction="#showProducts"/>
+                <Button fx:id="tabBtnSessions" text="🔴 Phiên đấu giá"
+                        styleClass="tab-btn" onAction="#showSessions"/>
             </HBox>
 
             <!-- Content area -->
