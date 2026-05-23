@@ -11,29 +11,58 @@ import org.example.user.User;
 
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.stream.Collectors;
 
 public class AppContext {
 
     // =========================================================
-    // GLOBAL STATE
+    // TRẠNG THÁI TOÀN CỤC
     // =========================================================
     private static User           currentUser;
-    private static AuctionSession activeSession;
+    private static AuctionSession activeSession = null;
     private static Image          avatarImage;
 
     private static final AuthService authService = new AuthService();
 
     // =========================================================
-    // AUCTION SESSION
+    // ONLINE USER TRACKING  (từ doc 5)
+    // =========================================================
+    private static final Set<String> onlineUsers =
+            Collections.synchronizedSet(new HashSet<>());
+
+    /** Số online nhận từ server WebSocket — 0 = chưa nhận */
+    private static int serverOnlineCount = 0;
+
+    public static void markUserOnline(String username) {
+        if (username != null && !username.isBlank())
+            onlineUsers.add(username);
+    }
+
+    public static void markUserOffline(String username) {
+        if (username != null) onlineUsers.remove(username);
+    }
+
+    /**
+     * Lấy số user online.
+     * Ưu tiên số từ server; nếu offline dùng local tracking (ít nhất 1).
+     */
+    public static int getOnlineUserCount() {
+        if (serverOnlineCount > 0) return serverOnlineCount;
+        return Math.max(1, onlineUsers.size());
+    }
+
+    /** Cập nhật số online từ server WebSocket (ONLINE_COUNT message). */
+    public static void setServerOnlineCount(int count) {
+        serverOnlineCount = Math.max(0, count);
+    }
+
+    // =========================================================
+    // PHIÊN ĐẤU GIÁ
     // =========================================================
     private static final List<AuctionSession> globalSessions =
             new CopyOnWriteArrayList<>();
-
     private static final Map<String, String> sessionSellerMap =
-            new ConcurrentHashMap<>();
+            new HashMap<>();
 
     public static void registerSession(AuctionSession session,
                                         String sellerUsername) {
@@ -51,9 +80,8 @@ public class AppContext {
         List<AuctionSession> result = new ArrayList<>();
         for (AuctionSession s : globalSessions) {
             if (s.getStatus() == AuctionStatus.RUNNING
-                    && LocalDateTime.now().isBefore(s.getEndTime())) {
+                    && LocalDateTime.now().isBefore(s.getEndTime()))
                 result.add(s);
-            }
         }
         return result;
     }
@@ -63,61 +91,27 @@ public class AppContext {
     }
 
     // =========================================================
-    // STORAGE MAPS
+    // MAP LƯU TRỮ
     // =========================================================
     private static final Map<String, Double>
-            walletMap = new ConcurrentHashMap<>();
-
+            walletMap = new HashMap<>();
     private static final Map<String, List<TransactionRecord>>
-            transactionMap = new ConcurrentHashMap<>();
-
+            transactionMap = new HashMap<>();
     private static final Map<String, List<HistoryRecord>>
-            historyMap = new ConcurrentHashMap<>();
-
+            historyMap = new HashMap<>();
     private static final Map<String, List<AuctionSessionRecord>>
-            sessionHistoryMap = new ConcurrentHashMap<>();
+            sessionHistoryMap = new HashMap<>();
 
+    /**
+     * KEY = sellerUsername → VALUE = list sản phẩm.
+     * Vì cùng 1 JVM / 1 Stage (HelloApplication.setRoot),
+     * static Map này được share trực tiếp giữa mọi controller.
+     */
     private static final Map<String, List<ProductRecord>>
-            productMap = new ConcurrentHashMap<>();
+            productMap = new HashMap<>();
 
     // =========================================================
-    // ONLINE USER TRACKING
-    // =========================================================
-    private static final Set<String> onlineUsers =
-            Collections.synchronizedSet(new HashSet<>());
-
-    /** Số online từ server WebSocket — 0 = chưa nhận được */
-    private static int serverOnlineCount = 0;
-
-    public static void markUserOnline(String username) {
-        if (username != null && !username.isBlank())
-            onlineUsers.add(username);
-    }
-
-    public static void markUserOffline(String username) {
-        if (username != null)
-            onlineUsers.remove(username);
-    }
-
-    /**
-     * Lấy số user online.
-     * Ưu tiên số từ server; nếu offline dùng local tracking.
-     */
-    public static int getOnlineUserCount() {
-        if (serverOnlineCount > 0) return serverOnlineCount;
-        return Math.max(1, onlineUsers.size());
-    }
-
-    /**
-     * Cập nhật số online từ server WebSocket.
-     * ✅ Fix MainController: cannot find symbol setServerOnlineCount()
-     */
-    public static void setServerOnlineCount(int count) {
-        serverOnlineCount = Math.max(0, count);
-    }
-
-    // =========================================================
-    // INITIALIZATION
+    // KHỞI TẠO
     // =========================================================
     static {
         seedData();
@@ -128,16 +122,22 @@ public class AppContext {
         try {
             ServerConnection conn = ServerConnection.getInstance();
             boolean ok = conn.connect();
-            System.out.println(ok
-                    ? "AppContext: Kết nối server OK."
-                    : "AppContext: Chạy offline.");
+            System.out.println(ok ? "AppContext: Kết nối server OK."
+                                  : "AppContext: Chạy offline.");
         } catch (Exception e) {
             System.out.println("AppContext: Lỗi kết nối server.");
         }
     }
 
+    /**
+     * Seed data khởi tạo:
+     * – Tài khoản + ví mẫu.
+     * – Sản phẩm mẫu (ĐÃ BÁN) dùng addProductInternal để bypass CHỜ DUYỆT.
+     * – Lịch sử phiên đấu giá mẫu.
+     */
     private static void seedData() {
         try {
+            // ── Tài khoản ────────────────────────────────────
             if (!authService.isRegistered("admin"))
                 authService.register(new Admin("A001", "admin", "admin123"));
             if (!authService.isRegistered("sellerlong"))
@@ -149,11 +149,13 @@ public class AppContext {
             if (!authService.isRegistered("bidder01"))
                 authService.register(new Bidder("B003", "bidder01", "bidder123"));
 
+            // ── Ví ───────────────────────────────────────────
             walletMap.put("bidder07",   5_000_000.0);
             walletMap.put("sellerlong", 12_000_000.0);
             walletMap.put("bidder03",   2_500_000.0);
             walletMap.put("bidder01",   0.0);
 
+            // ── Giao dịch mẫu ────────────────────────────────
             addTransaction("bidder07", new TransactionRecord(
                     "TX001", "NẠP TIỀN", 5_000_000,
                     "Nạp qua ngân hàng VCB", "THÀNH CÔNG",
@@ -163,6 +165,7 @@ public class AppContext {
                     "Nạp qua MoMo", "THÀNH CÔNG",
                     LocalDateTime.now().minusDays(5)));
 
+            // ── Sản phẩm mẫu (ĐÃ BÁN — bypass CHỜ DUYỆT) ───
             addProductInternal("sellerlong", new ProductRecord(
                     "PR001", "MacBook Pro M3", "Laptop",
                     22_000_000, 26_500_000, 12, "ĐÃ BÁN",
@@ -174,7 +177,9 @@ public class AppContext {
                     LocalDateTime.now().minusDays(2),
                     LocalDateTime.now().minusDays(1), "bidder03"));
 
+            // ── Lịch sử phiên ────────────────────────────────
             seedSessionHistory();
+
             System.out.println("AppContext: Seed data OK.");
         } catch (Exception e) {
             System.out.println("AppContext: Lỗi seed – " + e.getMessage());
@@ -183,23 +188,37 @@ public class AppContext {
 
     private static void seedSessionHistory() {
         LocalDateTime base = LocalDateTime.now();
-        addSessionHistoryInternal("sellerlong", new AuctionSessionRecord(
+
+        addSessionHistory("sellerlong", new AuctionSessionRecord(
                 "SES-001", "iPhone 15 Pro Max", "sellerlong",
                 20_000_000, 28_000_000, "bidder07", 5,
                 base.minusDays(2), base.minusDays(1),
                 "THÀNH CÔNG", "SELLER", 0, false));
-        addSessionHistoryInternal("bidder07", new AuctionSessionRecord(
+        addSessionHistory("bidder07", new AuctionSessionRecord(
                 "SES-001", "iPhone 15 Pro Max", "sellerlong",
                 20_000_000, 28_000_000, "bidder07", 5,
                 base.minusDays(2), base.minusDays(1),
                 "THẮNG GIÁ", "BIDDER", 28_000_000, true));
+        addSessionHistory("bidder03", new AuctionSessionRecord(
+                "SES-001", "iPhone 15 Pro Max", "sellerlong",
+                20_000_000, 28_000_000, "bidder07", 5,
+                base.minusDays(2), base.minusDays(1),
+                "THUA GIÁ", "BIDDER", 25_000_000, false));
+        addSessionHistory("sellerlong", new AuctionSessionRecord(
+                "SES-002", "MacBook Air M2", "sellerlong",
+                18_000_000, 18_000_000, null, 0,
+                base.minusDays(4), base.minusDays(3),
+                "KHÔNG CÓ NGƯỜI ĐẤU", "SELLER", 0, false));
     }
 
     // =========================================================
-    // AUTH / USER
+    // AUTH
     // =========================================================
     public static AuthService getAuthService() { return authService; }
 
+    // =========================================================
+    // USER — markUserOnline khi setCurrentUser
+    // =========================================================
     public static User getCurrentUser() { return currentUser; }
 
     public static void setCurrentUser(User user) {
@@ -208,16 +227,15 @@ public class AppContext {
     }
 
     // =========================================================
-    // SESSION / AVATAR
+    // SESSION ĐANG HOẠT ĐỘNG / AVATAR
     // =========================================================
     public static AuctionSession getActiveSession()                 { return activeSession; }
     public static void           setActiveSession(AuctionSession s) { activeSession = s; }
-
-    public static Image getAvatarImage()          { return avatarImage; }
-    public static void  setAvatarImage(Image img) { avatarImage = img; }
+    public static Image          getAvatarImage()                   { return avatarImage; }
+    public static void           setAvatarImage(Image img)          { avatarImage = img; }
 
     // =========================================================
-    // LOGOUT
+    // ĐĂNG XUẤT
     // =========================================================
     public static void logout() {
         if (currentUser != null) markUserOffline(currentUser.getUsername());
@@ -228,12 +246,13 @@ public class AppContext {
     }
 
     // =========================================================
-    // WALLET
+    // VÍ
     // =========================================================
     public static double getWalletBalance(String username) {
         return walletMap.getOrDefault(username, 0.0);
     }
 
+    /** Ghi thẳng balance — dùng cho WALLET_UPDATE sync từ server */
     public static void putWallet(String username, double balance) {
         walletMap.put(username, balance);
     }
@@ -245,55 +264,59 @@ public class AppContext {
                 "TX-" + System.currentTimeMillis(), "NẠP TIỀN",
                 amount, "Nạp tiền vào ví", "THÀNH CÔNG",
                 LocalDateTime.now()));
+        ServerConnection conn = ServerConnection.getInstance();
+        if (conn.isConnected()) conn.sendDeposit(username, amount);
         return true;
     }
 
     public static boolean payment(String username, double amount,
                                    String description) {
         if (amount <= 0) return false;
-        double current = walletMap.getOrDefault(username, 0.0);
-        if (current < amount) return false;
-        walletMap.put(username, current - amount);
+        double cur = walletMap.getOrDefault(username, 0.0);
+        if (cur < amount) return false;
+        walletMap.put(username, cur - amount);
         addTransaction(username, new TransactionRecord(
                 "TX-" + System.currentTimeMillis(), "THANH TOÁN",
                 -amount, description, "THÀNH CÔNG",
                 LocalDateTime.now()));
+        ServerConnection conn = ServerConnection.getInstance();
+        if (conn.isConnected()) conn.sendPayment(username, amount, description);
         return true;
     }
 
     // =========================================================
-    // RECORDS
+    // RECORDS — TRANSACTION
     // =========================================================
     public record TransactionRecord(
             String id, String type, double amount,
             String description, String status, LocalDateTime time) {}
 
-    public static List<TransactionRecord> getTransactions(String username) {
-        return transactionMap.computeIfAbsent(
-                username, k -> new CopyOnWriteArrayList<>());
+    public static List<TransactionRecord> getTransactions(String u) {
+        return transactionMap.computeIfAbsent(u, k -> new ArrayList<>());
     }
-    public static void addTransaction(String username, TransactionRecord record) {
-        getTransactions(username).add(record);
+    public static void addTransaction(String u, TransactionRecord r) {
+        getTransactions(u).add(r);
     }
 
     // =========================================================
-    // HISTORY
+    // RECORDS — HISTORY
     // =========================================================
     public record HistoryRecord(
             String id, String itemName, double amount,
             String counterparty, String status,
             boolean wonBid, LocalDateTime time) {}
 
-    public static List<HistoryRecord> getHistory(String username) {
-        return historyMap.computeIfAbsent(
-                username, k -> new CopyOnWriteArrayList<>());
+    public static List<HistoryRecord> getHistory(String u) {
+        return historyMap.computeIfAbsent(u, k -> new ArrayList<>());
     }
-    public static void addHistory(String username, HistoryRecord record) {
-        getHistory(username).add(record);
+    public static void addHistory(String u, HistoryRecord r) {
+        getHistory(u).add(r);
+        ServerConnection conn = ServerConnection.getInstance();
+        if (conn.isConnected()) conn.sendAddHistory(u, r);
     }
 
     // =========================================================
-    // PRODUCT RECORD
+    // RECORDS — PRODUCT
     // =========================================================
     public record ProductRecord(
             String id, String name, String category,
@@ -302,7 +325,8 @@ public class AppContext {
             LocalDateTime endTime, String topBidder) {
 
         public ProductRecord withUpdated(double newPrice, int newBidCount,
-                                          String newStatus, String newTopBidder) {
+                                          String newStatus,
+                                          String newTopBidder) {
             return new ProductRecord(id, name, category, startPrice,
                     newPrice, newBidCount, newStatus,
                     startTime, endTime, newTopBidder);
@@ -310,124 +334,194 @@ public class AppContext {
     }
 
     // =========================================================
-    // PRODUCT METHODS
+    // TÍNH STATUS HIỂN THỊ THEO THỜI GIAN THỰC  (từ doc 6)
     // =========================================================
-    public static List<ProductRecord> getProducts(String username) {
-        return productMap.computeIfAbsent(
-                username, k -> new CopyOnWriteArrayList<>());
+    /**
+     * Sau khi Admin duyệt → status = "ĐÃ DUYỆT".
+     * Hàm này tự tính trạng thái hiển thị theo giờ thực:
+     *
+     *   now < startTime           → "SẮP DIỄN RA"
+     *   startTime ≤ now < endTime → "ĐANG ĐẤU GIÁ"
+     *   now ≥ endTime             → "ĐÃ KẾT THÚC"
+     *
+     * Các status cố định (CHỜ DUYỆT / TỪ CHỐI / ĐÃ BÁN / ĐÃ HỦY)
+     * được trả về nguyên giá trị.
+     */
+    public static String computeDisplayStatus(ProductRecord p) {
+        switch (p.status()) {
+            case "CHỜ DUYỆT":
+            case "TỪ CHỐI":
+            case "ĐÃ BÁN":
+            case "ĐÃ HỦY":
+                return p.status();
+        }
+        // ĐÃ DUYỆT hoặc trạng thái vòng đời → tính theo giờ
+        LocalDateTime now = LocalDateTime.now();
+        if (now.isBefore(p.startTime()))    return "SẮP DIỄN RA";
+        else if (now.isBefore(p.endTime())) return "ĐANG ĐẤU GIÁ";
+        else                                return "ĐÃ KẾT THÚC";
     }
 
-    /** Thêm sản phẩm nội bộ (seed data) — không qua luồng duyệt */
-    private static void addProductInternal(String username,
-                                            ProductRecord product) {
-        getProducts(username).add(product);
+    // =========================================================
+    // KIỂM TRA TRÙNG THỜI GIAN  (từ doc 6)
+    // =========================================================
+    /**
+     * Kiểm tra [newStart, newEnd] có chồng thời gian với sản phẩm nào
+     * của seller đang ở CHỜ DUYỆT / ĐÃ DUYỆT / SẮP DIỄN RA / ĐANG ĐẤU GIÁ.
+     *
+     * Chặn cả CHỜ DUYỆT vì nếu admin duyệt sau sẽ trùng giờ.
+     * Bỏ qua: TỪ CHỐI / ĐÃ BÁN / ĐÃ KẾT THÚC / ĐÃ HỦY.
+     *
+     * @param sellerUsername seller đang đăng / sửa
+     * @param newStart       thời gian bắt đầu cần kiểm tra
+     * @param newEnd         thời gian kết thúc cần kiểm tra
+     * @param excludeId      id sản phẩm bỏ qua (null khi thêm mới)
+     * @return tên + [trạng thái] sản phẩm bị trùng, hoặc null
+     */
+    public static String findTimeConflictForSeller(String sellerUsername,
+                                                    LocalDateTime newStart,
+                                                    LocalDateTime newEnd,
+                                                    String excludeId) {
+        for (ProductRecord p : getProducts(sellerUsername)) {
+            if (excludeId != null && excludeId.equals(p.id())) continue;
+            String ds = computeDisplayStatus(p);
+            if ("TỪ CHỐI".equals(ds) || "ĐÃ BÁN".equals(ds)
+                    || "ĐÃ KẾT THÚC".equals(ds) || "ĐÃ HỦY".equals(ds))
+                continue;
+            boolean overlap = newStart.isBefore(p.endTime())
+                           && newEnd.isAfter(p.startTime());
+            if (overlap) return p.name() + " [" + ds + "]";
+        }
+        return null;
+    }
+
+    // =========================================================
+    // PRODUCT MAP — CRUD
+    // =========================================================
+    public static List<ProductRecord> getProducts(String username) {
+        return productMap.computeIfAbsent(username, k -> new ArrayList<>());
     }
 
     /**
-     * Thêm sản phẩm mới từ Seller — tự động gán trạng thái CHỜ DUYỆT.
+     * Dùng nội bộ: seed data, server sync.
+     * KHÔNG enforce status → cho phép truyền bất kỳ status nào.
+     */
+    static void addProductInternal(String username, ProductRecord product) {
+        productMap.computeIfAbsent(username, k -> new ArrayList<>())
+                  .add(product);
+    }
+
+    /**
+     * Seller đăng sản phẩm mới qua UI.
+     * Status luôn được enforce là CHỜ DUYỆT — không thể bypass từ UI.
+     * Sau khi thêm vào productMap, gửi lên server để đồng bộ.
      */
     public static void addProduct(String username, ProductRecord product) {
         ProductRecord enforced = new ProductRecord(
                 product.id(), product.name(), product.category(),
                 product.startPrice(), product.currentPrice(),
-                product.bidCount(), "CHỜ DUYỆT",
+                product.bidCount(),
+                "CHỜ DUYỆT",   // ← luôn enforce
                 product.startTime(), product.endTime(),
                 product.topBidder());
-        getProducts(username).add(enforced);
+        productMap.computeIfAbsent(username, k -> new ArrayList<>())
+                  .add(enforced);
+        System.out.printf(
+                "AppContext: [ADD] seller=%s product=\"%s\" → CHỜ DUYỆT%n",
+                username, product.name());
+        ServerConnection conn = ServerConnection.getInstance();
+        if (conn.isConnected()) conn.sendAddProduct(username, enforced);
     }
 
     public static void removeProduct(String username, String productId) {
-        getProducts(username).removeIf(p -> p.id().equals(productId));
+        productMap.computeIfAbsent(username, k -> new ArrayList<>())
+                  .removeIf(p -> p.id().equals(productId));
     }
 
     /**
-     * Cập nhật sản phẩm theo username seller.
-     * ✅ Fix AdminController: cannot find symbol updateProduct()
+     * Cập nhật sản phẩm — Admin duyệt/từ chối, Seller sửa thông tin.
+     * Không enforce status ở đây vì Admin cần đổi sang ĐÃ DUYỆT / TỪ CHỐI.
+     * Gửi lên server để đồng bộ các client khác.
      */
     public static void updateProduct(String username, ProductRecord updated) {
-        List<ProductRecord> list = getProducts(username);
+        List<ProductRecord> list =
+                productMap.computeIfAbsent(username, k -> new ArrayList<>());
         for (int i = 0; i < list.size(); i++) {
             if (list.get(i).id().equals(updated.id())) {
                 list.set(i, updated);
+                System.out.printf(
+                        "AppContext: [UPDATE] seller=%s product=\"%s\" → %s%n",
+                        username, updated.name(), updated.status());
+                ServerConnection conn = ServerConnection.getInstance();
+                if (conn.isConnected()) conn.sendUpdateProduct(username, updated);
+                return;
+            }
+        }
+        System.out.printf(
+                "AppContext: [UPDATE-WARN] id=%s không tìm thấy seller=%s%n",
+                updated.id(), username);
+    }
+
+    /**
+     * Cập nhật sản phẩm mà KHÔNG gửi lên server.
+     * Dùng khi nhận sync từ server để tránh vòng lặp gửi–nhận.
+     */
+    public static void updateProductSilent(String username,
+                                            ProductRecord updated) {
+        List<ProductRecord> list =
+                productMap.computeIfAbsent(username, k -> new ArrayList<>());
+        for (int i = 0; i < list.size(); i++) {
+            if (list.get(i).id().equals(updated.id())) {
+                list.set(i, updated);
+                System.out.printf(
+                        "AppContext: [UPDATE-SILENT] seller=%s product=\"%s\" → %s%n",
+                        username, updated.name(), updated.status());
                 return;
             }
         }
     }
 
-    /**
-     * Lấy tất cả sản phẩm của mọi seller.
-     * ✅ Fix AdminController: cannot find symbol getAllProducts()
-     */
+    /** Tất cả sản phẩm của mọi seller — Admin dùng để thống kê */
     public static List<ProductRecord> getAllProducts() {
         List<ProductRecord> all = new ArrayList<>();
         productMap.values().forEach(all::addAll);
-        return all;
+        return Collections.unmodifiableList(all);
     }
 
     /**
-     * Lấy tất cả sản phẩm đang CHỜ DUYỆT.
-     * ✅ Fix AdminController: cannot find symbol getAllPendingProducts()
+     * Tất cả sản phẩm CHỜ DUYỆT của mọi seller.
+     * AdminController gọi hàm này để render danh sách cần duyệt.
+     * Vì cùng JVM, kết quả luôn phản ánh đúng thời điểm thực.
      */
     public static List<ProductRecord> getAllPendingProducts() {
-        return getAllProducts().stream()
-                .filter(p -> "CHỜ DUYỆT".equals(p.status()))
-                .collect(Collectors.toList());
+        List<ProductRecord> pending = new ArrayList<>();
+        for (List<ProductRecord> sellerList : productMap.values())
+            for (ProductRecord p : sellerList)
+                if ("CHỜ DUYỆT".equals(p.status()))
+                    pending.add(p);
+        System.out.println("AppContext: getAllPendingProducts() → "
+                + pending.size() + " sản phẩm");
+        return Collections.unmodifiableList(pending);
     }
 
-    /**
-     * Tìm username seller sở hữu sản phẩm theo productId.
-     * ✅ Fix AdminController: cannot find symbol getSellerForProduct()
-     *
-     * @return username seller, hoặc "—" nếu không tìm thấy
-     */
+    /** Tra ngược productMap: productId → sellerUsername */
     public static String getSellerForProduct(String productId) {
-        for (Map.Entry<String, List<ProductRecord>> entry : productMap.entrySet()) {
-            for (ProductRecord p : entry.getValue()) {
-                if (p.id().equals(productId)) return entry.getKey();
-            }
-        }
+        for (Map.Entry<String, List<ProductRecord>> entry : productMap.entrySet())
+            for (ProductRecord p : entry.getValue())
+                if (p.id().equals(productId))
+                    return entry.getKey();
         return "—";
     }
 
     // =========================================================
-    // AUCTION SESSION HISTORY
+    // RECORDS — RATING / REVIEW  (từ doc 5)
     // =========================================================
-    public record AuctionSessionRecord(
-            String sessionId, String itemName, String sellerName,
-            double startPrice, double finalPrice, String winnerName,
-            int totalBids, LocalDateTime startTime, LocalDateTime endTime,
-            String result, String myRole, double myFinalBid, boolean iWon) {}
-
-    private static void addSessionHistoryInternal(String username,
-                                                   AuctionSessionRecord record) {
-        sessionHistoryMap
-                .computeIfAbsent(username, k -> new CopyOnWriteArrayList<>())
-                .add(record);
-    }
-
-    public static void addSessionHistory(String username,
-                                          AuctionSessionRecord record) {
-        addSessionHistoryInternal(username, record);
-    }
-
-    public static List<AuctionSessionRecord> getSessionHistory(String username) {
-        List<AuctionSessionRecord> list =
-                sessionHistoryMap.getOrDefault(username, Collections.emptyList());
-        List<AuctionSessionRecord> sorted = new ArrayList<>(list);
-        sorted.sort(Comparator.comparing(AuctionSessionRecord::endTime).reversed());
-        return Collections.unmodifiableList(sorted);
-    }
-
-    // =========================================================
-    // RATING / REVIEW
-    // =========================================================
-
     /**
-     * Bản ghi đánh giá của một người dùng.
+     * Bản ghi đánh giá hệ thống của người dùng.
      *
-     * @param id       ID duy nhất của đánh giá
-     * @param username Tên người đánh giá
-     * @param avatar   Chữ viết tắt avatar (2 ký tự đầu username)
+     * @param id       ID duy nhất
+     * @param username Người đánh giá
+     * @param avatar   Chữ viết tắt (2 ký tự đầu username)
      * @param stars    Số sao (1–5)
      * @param comment  Nội dung nhận xét
      * @param time     Thời điểm đánh giá
@@ -446,10 +540,10 @@ public class AppContext {
             new CopyOnWriteArrayList<>();
 
     static {
-        // Seed vài đánh giá mẫu
+        // Seed đánh giá mẫu
         ratingList.add(new RatingRecord(
                 "R001", "bidder07", "BI", 5,
-                "Hệ thống đấu giá rất mượt, giao dịch nhanh!",
+                "Hệ thống đấu giá rất mượt, giao dịch nhanh chóng!",
                 LocalDateTime.now().minusDays(2), 12));
         ratingList.add(new RatingRecord(
                 "R002", "sellerlong", "SE", 4,
@@ -461,26 +555,19 @@ public class AppContext {
                 LocalDateTime.now().minusHours(6), 5));
     }
 
-    /**
-     * Lấy danh sách tất cả đánh giá, mới nhất trước.
-     * ✅ Fix RatingController: cannot find symbol getRatings()
-     */
+    /** Lấy tất cả đánh giá, mới nhất trước. */
     public static List<RatingRecord> getRatings() {
         List<RatingRecord> sorted = new ArrayList<>(ratingList);
         sorted.sort(Comparator.comparing(RatingRecord::time).reversed());
         return Collections.unmodifiableList(sorted);
     }
 
-    /**
-     * Thêm đánh giá mới.
-     */
+    /** Thêm đánh giá mới từ user. */
     public static void addRating(RatingRecord record) {
         ratingList.add(record);
     }
 
-    /**
-     * Cập nhật số like của một đánh giá.
-     */
+    /** Cập nhật số like của một đánh giá. */
     public static void likeRating(String ratingId) {
         for (int i = 0; i < ratingList.size(); i++) {
             RatingRecord r = ratingList.get(i);
@@ -495,52 +582,128 @@ public class AppContext {
     }
 
     // =========================================================
+    // RECORDS — AUCTION SESSION HISTORY
+    // =========================================================
+    public record AuctionSessionRecord(
+            String sessionId, String itemName, String sellerName,
+            double startPrice, double finalPrice, String winnerName,
+            int totalBids, LocalDateTime startTime, LocalDateTime endTime,
+            String result, String myRole, double myFinalBid, boolean iWon) {}
+
+    public static void addSessionHistory(String u, AuctionSessionRecord r) {
+        sessionHistoryMap
+                .computeIfAbsent(u, k -> new CopyOnWriteArrayList<>())
+                .add(r);
+        ServerConnection conn = ServerConnection.getInstance();
+        if (conn.isConnected()) conn.sendAddSessionHistory(u, r);
+    }
+
+    public static List<AuctionSessionRecord> getSessionHistory(String username) {
+        List<AuctionSessionRecord> list =
+                sessionHistoryMap.getOrDefault(username, Collections.emptyList());
+        List<AuctionSessionRecord> sorted = new ArrayList<>(list);
+        sorted.sort(Comparator.comparing(AuctionSessionRecord::endTime).reversed());
+        return Collections.unmodifiableList(sorted);
+    }
+
+    // =========================================================
+    // SYNC METHODS — overwrite local cache với state từ server
+    // =========================================================
+    public static void syncWallets(Map<String, Double> newWallets) {
+        walletMap.clear();
+        walletMap.putAll(newWallets);
+    }
+
+    public static void syncTransactions(
+            Map<String, List<TransactionRecord>> newTx) {
+        transactionMap.clear();
+        newTx.forEach((k, v) -> transactionMap.put(k, new ArrayList<>(v)));
+    }
+
+    public static void syncProducts(
+            Map<String, List<ProductRecord>> newProducts) {
+        productMap.clear();
+        newProducts.forEach((k, v) -> productMap.put(k, new ArrayList<>(v)));
+    }
+
+    public static void syncHistory(
+            Map<String, List<HistoryRecord>> newHistory) {
+        historyMap.clear();
+        newHistory.forEach((k, v) -> historyMap.put(k, new ArrayList<>(v)));
+    }
+
+    public static void syncSessionHistory(
+            Map<String, List<AuctionSessionRecord>> newSH) {
+        sessionHistoryMap.clear();
+        newSH.forEach((k, v) ->
+                sessionHistoryMap.put(k, new CopyOnWriteArrayList<>(v)));
+    }
 
     /**
-     * Gọi khi phiên kết thúc — tự động tạo bản ghi lịch sử
-     * cho Seller và tất cả Bidder đã tham gia.
+     * Sync một phiên đấu giá đang chạy từ server.
+     * Nếu phiên chưa tồn tại trong globalSessions → tạo mới và start.
      */
-    public static void finalizeSession(AuctionSession session,
-                                        LocalDateTime  startTime) {
-        if (session == null) return;
+    public static void syncRunningSession(String sessionId, String itemName,
+                                           double startPrice, double minStep,
+                                           LocalDateTime endTime,
+                                           String sellerName) {
+        try {
+            boolean exists = globalSessions.stream()
+                    .anyMatch(s -> s.getSessionId().equals(sessionId));
+            if (!exists) {
+                AuctionSession s = new AuctionSession(
+                        sessionId, itemName, startPrice, minStep, endTime);
+                s.start();
+                registerSession(s, sellerName);
+                System.out.printf(
+                        "AppContext: syncRunningSession – tạo phiên \"%s\"%n",
+                        itemName);
+            }
+        } catch (Exception e) {
+            System.err.println("syncRunningSession error: " + e.getMessage());
+        }
+    }
 
+    // =========================================================
+    // FINALIZE SESSION
+    // =========================================================
+    public static void finalizeSession(AuctionSession session,
+                                        LocalDateTime startTime) {
+        if (session == null) return;
         var    bids       = session.getBidHistory();
         int    totalBids  = bids.size();
         double finalPrice = session.getCurrentPrice();
         String sellerId   = getSessionSeller(session.getSessionId());
         LocalDateTime endTime = LocalDateTime.now();
-
-        String winnerName   = bids.isEmpty()
+        String winnerName = bids.isEmpty()
                 ? null : bids.get(bids.size() - 1).getBidderId();
-        String sellerResult = totalBids == 0
-                ? "KHÔNG CÓ NGƯỜI ĐẤU" : "THÀNH CÔNG";
 
-        // Lưu cho Seller
-        addSessionHistoryInternal(sellerId, new AuctionSessionRecord(
+        addSessionHistory(sellerId, new AuctionSessionRecord(
                 session.getSessionId(), session.getItemName(), sellerId,
-                session.getStartingPrice(), finalPrice, winnerName,
-                totalBids, startTime, endTime,
-                sellerResult, "SELLER", 0, false));
+                session.getStartingPrice(), finalPrice, winnerName, totalBids,
+                startTime, endTime,
+                totalBids == 0 ? "KHÔNG CÓ NGƯỜI ĐẤU" : "THÀNH CÔNG",
+                "SELLER", 0, false));
 
-        // Lưu cho từng Bidder
         Set<String> seen = new LinkedHashSet<>();
-        for (var bid : bids) seen.add(bid.getBidderId());
+        bids.forEach(b -> seen.add(b.getBidderId()));
 
         for (String bidderId : seen) {
-            double myHighestBid = bids.stream()
+            double myMax = bids.stream()
                     .filter(b -> b.getBidderId().equals(bidderId))
                     .mapToDouble(b -> b.getAmount())
                     .max().orElse(0);
-            boolean iWon   = bidderId.equals(winnerName);
-            String  result = iWon ? "THẮNG GIÁ" : "THUA GIÁ";
-            addSessionHistoryInternal(bidderId, new AuctionSessionRecord(
+            boolean iWon = bidderId.equals(winnerName);
+            addSessionHistory(bidderId, new AuctionSessionRecord(
                     session.getSessionId(), session.getItemName(), sellerId,
                     session.getStartingPrice(), finalPrice, winnerName,
                     totalBids, startTime, endTime,
-                    result, "BIDDER", myHighestBid, iWon));
+                    iWon ? "THẮNG GIÁ" : "THUA GIÁ",
+                    "BIDDER", myMax, iWon));
         }
 
-        System.out.printf("AppContext: Phiên \"%s\" đã lưu lịch sử (%d bidder).%n",
+        System.out.printf(
+                "AppContext: Phiên \"%s\" đã kết thúc (%d bidder).%n",
                 session.getItemName(), seen.size());
     }
 }
