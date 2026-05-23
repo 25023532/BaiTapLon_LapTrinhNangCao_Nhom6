@@ -124,6 +124,29 @@ public class AuctionWebSocketServer extends WebSocketServer {
                         "username", username));
             }
 
+            // ── Thêm đánh giá ─────────────────────────────────
+            case "ADD_RATING" -> {
+                String id       = extract(raw, "id");
+                String username = extract(raw, "username");
+                String avatar   = extract(raw, "avatar");
+                int    stars    = Integer.parseInt(extract(raw, "stars"));
+                String comment  = extract(raw, "comment");
+                String timeStr  = extract(raw, "timestamp");
+                int    likes    = 0;
+                LocalDateTime time = LocalDateTime.parse(timeStr,
+                        DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                var rec = new AppContext.RatingRecord(id, username, avatar, stars, comment, time, likes);
+                db.addRating(rec);
+                broadcastAll(json("type", "NEW_RATING",
+                        "id",        id,
+                        "username",  username,
+                        "avatar",    avatar,
+                        "stars",     String.valueOf(stars),
+                        "comment",   comment,
+                        "timestamp", timeStr,
+                        "likes",     "0"));
+            }
+
             // ── Chat ──────────────────────────────────────────
             case "CHAT" -> {
                 String username = extract(raw, "username");
@@ -436,6 +459,9 @@ public class AuctionWebSocketServer extends WebSocketServer {
         // SYNC_SESSION_HISTORY
         conn.send(syncMsg("SYNC_SESSION_HISTORY", db.serializeSessionHistory()));
 
+        conn.send("{\"type\":\"SYNC_RATINGS\",\"data\":\""
+                + esc(db.serializeRatings()) + "\"}");
+
         // SYNC_RUNNING_SESSIONS
         conn.send(syncMsg("SYNC_RUNNING_SESSIONS", db.serializeRunningSessions()));
 
@@ -600,5 +626,14 @@ public class AuctionWebSocketServer extends WebSocketServer {
         System.out.println("  Port: " + port);
         System.out.println("  URL : ws://0.0.0.0:" + port);
         System.out.println("═══════════════════════════════════════");
+
+        System.out.println("  Nhấn ENTER để dừng server...");
+        try {
+            System.in.read();
+        } catch (Exception ignored) {}
+        try {
+            server.stop();
+            System.out.println("Server đã dừng.");
+        } catch (Exception ignored) {}
     }
 }

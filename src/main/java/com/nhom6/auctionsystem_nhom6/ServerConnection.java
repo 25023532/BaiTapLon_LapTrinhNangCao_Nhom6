@@ -21,7 +21,10 @@ import java.util.concurrent.TimeUnit;
 public class ServerConnection {
 
     private static final DateTimeFormatter DT =
-            DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+            new java.time.format.DateTimeFormatterBuilder()
+                    .appendPattern("yyyy-MM-dd'T'HH:mm:ss")
+                    .optionalStart().appendFraction(java.time.temporal.ChronoField.NANO_OF_SECOND, 0, 9, true).optionalEnd()
+                    .toFormatter();
 
     private static ServerConnection instance;
 
@@ -136,41 +139,58 @@ public class ServerConnection {
             switch (type) {
                 // ── Bulk sync from server ─────────────────────
                 case "SYNC_USERS" -> {
-                    String data = extractJson(raw, "data");
+                    String data = extractJsonData(raw, "data");
                     Map<String, org.example.user.User> users = parseUsersFromJson(data);
                     org.example.service.AuthService auth = AppContext.getAuthService();
                     if (auth != null) auth.syncUsers(users);
                     return true;
                 }
                 case "SYNC_WALLETS" -> {
-                    String data = extractJson(raw, "data");
+                    String data = unescapeData(extractJsonData(raw, "data"));
                     AppContext.syncWallets(parseWallets(data));
                     return true;
                 }
                 case "SYNC_TRANSACTIONS" -> {
-                    String data = extractJson(raw, "data");
+                    String data = unescapeData(extractJsonData(raw, "data"));
                     AppContext.syncTransactions(parseTransactions(data));
                     return true;
                 }
                 case "SYNC_PRODUCTS" -> {
-                    String data = extractJson(raw, "data");
+                    String data = unescapeData(extractJsonData(raw, "data"));
                     AppContext.syncProducts(parseProducts(data));
                     return true;
                 }
                 case "SYNC_HISTORY" -> {
-                    String data = extractJson(raw, "data");
+                    String data = unescapeData(extractJsonData(raw, "data"));
                     AppContext.syncHistory(parseHistory(data));
                     return true;
                 }
                 case "SYNC_SESSION_HISTORY" -> {
-                    String data = extractJson(raw, "data");
+                    String data = unescapeData(extractJsonData(raw, "data"));
                     AppContext.syncSessionHistory(parseSessionHistory(data));
                     return true;
                 }
                 case "SYNC_RUNNING_SESSIONS" -> {
-                    String data = extractJson(raw, "data");
+                    String data = unescapeData(extractJsonData(raw, "data"));
                     parseRunningSessions(data);
                     return true;
+                }
+                case "SYNC_RATINGS" -> {
+                    String data = unescapeData(extractJsonData(raw, "data"));
+                    AppContext.syncRatings(parseRatings(data));
+                    return true;
+                }
+                case "NEW_RATING" -> {
+                    String id       = extractJson(raw, "id");
+                    String username = extractJson(raw, "username");
+                    String avatar   = extractJson(raw, "avatar");
+                    int    stars    = Integer.parseInt(extractJson(raw, "stars"));
+                    String comment  = extractJson(raw, "comment");
+                    String timeStr  = extractJson(raw, "timestamp");
+                    LocalDateTime time = LocalDateTime.parse(timeStr, DT);
+                    AppContext.addRating(new AppContext.RatingRecord(
+                            id, username, avatar, stars, comment, time, 0));
+                    return false;
                 }
 
                 // ── Real-time broadcast mutations from other clients ──
@@ -224,6 +244,25 @@ public class ServerConnection {
                             id, name, category, startP, currentP, bidCount,
                             status, startTime, endTime, topBidder));
                     return false; // also forward to UI
+                }
+                case "PRODUCT_PENDING" -> {
+                    String productId   = extractJson(raw, "productId");
+                    String productName = extractJson(raw, "productName");
+                    String sellerName  = extractJson(raw, "sellerName");
+                    String category    = extractJson(raw, "category");
+                    double startPrice  = Double.parseDouble(extractJson(raw, "startPrice"));
+                    LocalDateTime startTime = LocalDateTime.parse(extractJson(raw, "startTime"), DT);
+                    LocalDateTime endTime   = LocalDateTime.parse(extractJson(raw, "endTime"), DT);
+
+                    boolean exists = AppContext.getAllProducts().stream()
+                            .anyMatch(p -> p.id().equals(productId));
+                    if (!exists) {
+                        AppContext.addProduct(sellerName, new AppContext.ProductRecord(
+                                productId, productName, category,
+                                startPrice, startPrice, 0,
+                                "CHỜ DUYỆT", startTime, endTime, "—"));
+                    }
+                    return false;
                 }
                 case "ADD_HISTORY" -> {
                     String username = extractJson(raw, "username");
@@ -316,11 +355,17 @@ public class ServerConnection {
     private Map<String, Double> parseWallets(String data) {
         Map<String, Double> map = new LinkedHashMap<>();
         if (data == null || data.isBlank()) return map;
-        for (String line : data.split("\n")) {
+        for (String line : data.split("\\n")) {
             line = line.trim();
             if (line.isEmpty()) continue;
             String[] p = line.split("\\|", 2);
-            if (p.length == 2) map.put(p[0].trim(), Double.parseDouble(p[1].trim()));
+            if (p.length == 2) {
+                try {
+                    map.put(p[0].trim(), Double.parseDouble(p[1].trim()));
+                } catch (NumberFormatException e) {
+                    System.err.println("[WS] parseWallets skip line: " + line);
+                }
+            }
         }
         return map;
     }
@@ -385,6 +430,28 @@ public class ServerConnection {
             map.computeIfAbsent(user, k -> new ArrayList<>()).add(rec);
         }
         return map;
+    }
+
+    private List<AppContext.RatingRecord> parseRatings(String data) {
+        List<AppContext.RatingRecord> list = new ArrayList<>();
+        if (data == null || data.isBlank()) return list;
+        for (String line : data.split("\n")) {
+            line = line.trim();
+            if (line.isEmpty()) continue;
+            String[] p = line.split("\\|", 7);
+            if (p.length < 7) continue;
+            try {
+                list.add(new AppContext.RatingRecord(
+                        p[0].trim(), p[1].trim(), p[2].trim(),
+                        Integer.parseInt(p[3].trim()),
+                        p[4].trim(),
+                        LocalDateTime.parse(p[5].trim(), DT),
+                        Integer.parseInt(p[6].trim())));
+            } catch (Exception e) {
+                System.err.println("[WS] parseRatings skip: " + line);
+            }
+        }
+        return list;
     }
 
     private Map<String, List<AppContext.AuctionSessionRecord>> parseSessionHistory(String data) {
@@ -481,6 +548,16 @@ public class ServerConnection {
                 + "\"status\":\"" + esc(product.status()) + "\","
                 + "\"startTime\":\"" + product.startTime().format(DT) + "\","
                 + "\"endTime\":\"" + product.endTime().format(DT) + "\"}");
+    }
+
+    public void sendAddRating(AppContext.RatingRecord r) {
+        sendJson("{\"action\":\"ADD_RATING\","
+                + "\"id\":\""        + esc(r.id())       + "\","
+                + "\"username\":\"" + esc(r.username())  + "\","
+                + "\"avatar\":\""   + esc(r.avatar())    + "\","
+                + "\"stars\":\""    + r.stars()           + "\","
+                + "\"comment\":\""  + esc(r.comment())   + "\","
+                + "\"timestamp\":\"" + r.time().format(DT) + "\"}");
     }
 
     public void sendUpdateProduct(String username, AppContext.ProductRecord product) {
@@ -675,7 +752,27 @@ public class ServerConnection {
         return end == -1 ? "" : json.substring(start, end);
     }
 
+    private String extractJsonData(String json, String key) {
+        String search = "\"" + key + "\":\"";
+        int start = json.indexOf(search);
+        if (start == -1) return "";
+        start += search.length();
+        int end = start;
+        while (end < json.length()) {
+            if (json.charAt(end) == '"' && json.charAt(end - 1) != '\\') break;
+            end++;
+        }
+        return end <= json.length() ? json.substring(start, end) : "";
+    }
+
     public interface MessageListener {
         void onMessage(String message);
+    }
+    private String unescapeData(String s) {
+        if (s == null) return "";
+        return s.replace("\\n", "\n")
+                .replace("\\t", "\t")
+                .replace("\\r", "")
+                .replace("\\|", "|");
     }
 }

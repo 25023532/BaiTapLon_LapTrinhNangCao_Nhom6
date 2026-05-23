@@ -452,6 +452,34 @@ public class AppContext {
     // =========================================================
     // LỊCH SỬ PHIÊN
     // =========================================================
+    public record RatingRecord(
+            String id,
+            String username,
+            String avatar,
+            int    stars,
+            String comment,
+            LocalDateTime time,
+            int    likes
+    ) {}
+
+    private static final List<RatingRecord> ratingList =
+            new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    public static List<RatingRecord> getRatings() {
+        return Collections.unmodifiableList(ratingList);
+    }
+
+    public static void addRating(RatingRecord r) {
+        boolean exists = ratingList.stream().anyMatch(x -> x.id().equals(r.id()));
+        if (!exists) ratingList.add(0, r);
+    }
+
+    public static void syncRatings(List<RatingRecord> list) {
+        if (list == null || list.isEmpty()) return;
+        ratingList.clear();
+        ratingList.addAll(list);
+    }
+
     public record AuctionSessionRecord(
             String sessionId, String itemName, String sellerName,
             double startPrice, double finalPrice, String winnerName,

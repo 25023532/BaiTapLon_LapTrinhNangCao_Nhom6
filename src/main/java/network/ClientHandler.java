@@ -186,25 +186,6 @@ public class ClientHandler implements Runnable, Observer {
                     )));
                 }
 
-                // ── Seller đăng sản phẩm → notify Admin ───────
-                case "PRODUCT_PENDING" -> {
-                    String notif = JsonUtil.toJson(Map.of(
-                            "type",        "NOTIFY_ADMIN_NEW_PRODUCT",
-                            "productId",   safe(data, "productId"),
-                            "productName", safe(data, "productName"),
-                            "sellerName",  safe(data, "sellerName"),
-                            "category",    safe(data, "category"),
-                            "startPrice",  safe(data, "startPrice"),
-                            "startTime",   safe(data, "startTime"),
-                            "endTime",     safe(data, "endTime")
-                    ));
-                    AuctionServer.addPendingProduct(notif);
-                    // ✅ Dùng ClientManager.broadcastToRole
-                    ClientManager.broadcastToRole("ADMIN", notif);
-                    sendJson(Map.of("status", "OK",
-                            "message", "Product pending sent to admins"));
-                }
-
                 // ── Admin duyệt → notify Seller ───────────────
                 case "PRODUCT_APPROVED" -> {
                     String productId   = safe(data, "productId");

@@ -15,7 +15,6 @@ import org.example.user.User;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 public class RatingController {
@@ -30,11 +29,10 @@ public class RatingController {
     // =========================================================
     // SUMMARY STATS
     // =========================================================
-    @FXML private Label avgRatingLabel;      // "8.4"
-    @FXML private Label avgStarsLabel;       // ★★★★★★★★☆☆
-    @FXML private Label totalReviewsLabel;   // "142 đánh giá"
+    @FXML private Label avgRatingLabel;
+    @FXML private Label avgStarsLabel;
+    @FXML private Label totalReviewsLabel;
 
-    // Stat bars
     @FXML private Label count10Label;
     @FXML private Label count9Label;
     @FXML private Label count8Label;
@@ -60,8 +58,8 @@ public class RatingController {
     // =========================================================
     // WRITE REVIEW
     // =========================================================
-    @FXML private HBox      starRow;         // hàng 10 nút sao
-    @FXML private Label     selectedStarLabel; // "Bạn chọn: 8 ★"
+    @FXML private HBox      starRow;
+    @FXML private Label     selectedStarLabel;
     @FXML private TextArea  commentArea;
     @FXML private Label     charCountLabel;
     @FXML private Label     writeResultLabel;
@@ -76,11 +74,11 @@ public class RatingController {
     // =========================================================
     // LIST
     // =========================================================
-    @FXML private VBox reviewListBox;
+    @FXML private VBox  reviewListBox;
     @FXML private Label reviewCountLabel;
 
     // =========================================================
-    // DATA
+    // DATA — dùng AppContext thay vì static list
     // =========================================================
     public record Review(
             String id,
@@ -92,27 +90,22 @@ public class RatingController {
             int    likes
     ) {}
 
-    // Shared list — tất cả user đều thấy
-    private static final List<Review> allReviews = new CopyOnWriteArrayList<>();
-
-
-    private static void seed(String user, int stars, String comment) {
-        allReviews.add(new Review(
-                UUID.randomUUID().toString(),
-                user,
-                user.substring(0, Math.min(2, user.length())).toUpperCase(),
-                stars, comment,
-                LocalDateTime.now().minusDays((long)(Math.random() * 10)),
-                (int)(Math.random() * 30)
-        ));
-    }
-
     private int    selectedStars = 0;
     private String username;
 
     private static final DateTimeFormatter DT_FMT =
             DateTimeFormatter.ofPattern("HH:mm  dd/MM/yyyy");
     private static final int MAX_CHARS = 500;
+
+    // =========================================================
+    // HELPER — chuyển RatingRecord → Review
+    // =========================================================
+    private List<Review> toReviewList(java.util.Collection<AppContext.RatingRecord> recs) {
+        return recs.stream()
+                .map(r -> new Review(r.id(), r.username(), r.avatar(),
+                        r.stars(), r.comment(), r.time(), r.likes()))
+                .collect(Collectors.toList());
+    }
 
     // =========================================================
     // INITIALIZE
@@ -127,7 +120,6 @@ public class RatingController {
         userRoleLabel.setText(user.getRole());
         userAvatarLabel.setText(username.substring(0, Math.min(2, username.length())).toUpperCase());
 
-        // Sort & Filter boxes
         sortBox.getItems().addAll("Mới nhất", "Cũ nhất", "Sao cao nhất", "Sao thấp nhất", "Nhiều like nhất");
         sortBox.getSelectionModel().selectFirst();
 
@@ -138,10 +130,8 @@ public class RatingController {
         );
         filterStarBox.getSelectionModel().selectFirst();
 
-        // Star buttons
         buildStarButtons();
 
-        // Char counter
         commentArea.textProperty().addListener((obs, o, n) -> {
             int len = n.length();
             if (len > MAX_CHARS) {
@@ -153,7 +143,7 @@ public class RatingController {
 
         writeResultLabel.setVisible(false);
         refreshStats();
-        renderReviews(allReviews);
+        renderReviews(toReviewList(AppContext.getRatings()));
     }
 
     // =========================================================
@@ -220,7 +210,7 @@ public class RatingController {
         }
         String comment = commentArea.getText().trim();
 
-        Review review = new Review(
+        AppContext.RatingRecord rec = new AppContext.RatingRecord(
                 UUID.randomUUID().toString(),
                 username,
                 username.substring(0, Math.min(2, username.length())).toUpperCase(),
@@ -229,7 +219,11 @@ public class RatingController {
                 LocalDateTime.now(),
                 0
         );
-        allReviews.add(0, review);
+
+        // Lưu vào AppContext và gửi lên server
+        AppContext.addRating(rec);
+        ServerConnection conn = ServerConnection.getInstance();
+        if (conn.isConnected()) conn.sendAddRating(rec);
 
         // Reset form
         selectedStars = 0;
@@ -243,11 +237,10 @@ public class RatingController {
         refreshStats();
         applyFilters();
 
-        // Notification
         NotificationService.getInstance().add(
                 NotificationService.Type.SYSTEM,
                 "⭐ Đánh giá của bạn đã được ghi nhận",
-                "Bạn đã đánh giá " + selectedStars + " sao"
+                "Bạn đã đánh giá " + rec.stars() + " sao"
         );
     }
 
@@ -255,6 +248,8 @@ public class RatingController {
     // STATS
     // =========================================================
     private void refreshStats() {
+        List<Review> allReviews = toReviewList(AppContext.getRatings());
+
         if (allReviews.isEmpty()) {
             avgRatingLabel.setText("—");
             avgStarsLabel.setText("Chưa có đánh giá");
@@ -268,7 +263,6 @@ public class RatingController {
         avgStarsLabel.setText(starString((int) Math.round(avg)));
         totalReviewsLabel.setText(allReviews.size() + " đánh giá");
 
-        // Count per star
         int total = allReviews.size();
         int[] counts = new int[11];
         for (Review r : allReviews) counts[r.stars()]++;
@@ -299,18 +293,16 @@ public class RatingController {
     @FXML private void handleSearch() { applyFilters(); }
 
     private void applyFilters() {
-        String keyword  = searchField.getText().trim().toLowerCase();
-        String sortVal  = sortBox.getValue();
-        String starVal  = filterStarBox.getValue();
+        String keyword = searchField.getText().trim().toLowerCase();
+        String sortVal = sortBox.getValue();
+        String starVal = filterStarBox.getValue();
 
-        List<Review> filtered = allReviews.stream()
+        List<Review> filtered = toReviewList(AppContext.getRatings()).stream()
                 .filter(r -> {
-                    // Filter keyword
                     if (!keyword.isEmpty()
                             && !r.comment().toLowerCase().contains(keyword)
                             && !r.username().toLowerCase().contains(keyword))
                         return false;
-                    // Filter star
                     if (starVal != null) {
                         return switch (starVal) {
                             case "10 ★"          -> r.stars() == 10;
@@ -328,7 +320,6 @@ public class RatingController {
                 })
                 .collect(Collectors.toList());
 
-        // Sort
         if (sortVal != null) {
             filtered.sort(switch (sortVal) {
                 case "Cũ nhất"         -> Comparator.comparing(Review::time);
@@ -371,11 +362,9 @@ public class RatingController {
                 -fx-border-width: 1;
                 """ + starBorderColor(r.stars()));
 
-        // ── Header: avatar + tên + sao + thời gian ───────────
         HBox header = new HBox(12);
         header.setAlignment(Pos.CENTER_LEFT);
 
-        // Avatar
         Label avatar = new Label(r.avatar());
         avatar.setStyle("""
                 -fx-background-color: #2563eb;
@@ -396,7 +385,6 @@ public class RatingController {
         Label name = new Label(r.username());
         name.setStyle("-fx-text-fill: #e2e8f0; -fx-font-weight: bold; -fx-font-size: 14px;");
 
-        // Badge nếu là mình
         if (r.username().equals(username)) {
             Label meBadge = new Label("Bạn");
             meBadge.setStyle("""
@@ -415,7 +403,6 @@ public class RatingController {
         time.setStyle("-fx-text-fill: #475569; -fx-font-size: 11px;");
         nameBox.getChildren().addAll(nameRow, time);
 
-        // Stars display
         VBox starBox = new VBox(2);
         starBox.setAlignment(Pos.CENTER_RIGHT);
         Label starDisplay = new Label(starString(r.stars()));
@@ -427,12 +414,10 @@ public class RatingController {
 
         header.getChildren().addAll(avatar, nameBox, starBox);
 
-        // ── Comment ───────────────────────────────────────────
         Label comment = new Label(r.comment());
         comment.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 13px; -fx-line-spacing: 2;");
         comment.setWrapText(true);
 
-        // ── Footer: like ──────────────────────────────────────
         HBox footer = new HBox(12);
         footer.setAlignment(Pos.CENTER_LEFT);
 
@@ -448,7 +433,6 @@ public class RatingController {
                 -fx-padding: 4 10 4 10;
                 """);
         likeBtn.setOnAction(e -> {
-            // Toggle like (đơn giản)
             likeBtn.setText("👍  " + (r.likes() + 1));
             likeBtn.setStyle("""
                     -fx-background-color: #1e3a5f;
@@ -463,7 +447,6 @@ public class RatingController {
             likeBtn.setDisable(true);
         });
 
-        // Tag sao
         Label starTag = new Label(starTagText(r.stars()));
         starTag.setStyle("-fx-background-color: " + starTagBg(r.stars()) + "; "
                 + "-fx-text-fill: " + starTagColor(r.stars()) + "; "
@@ -471,7 +454,6 @@ public class RatingController {
                 + "-fx-padding: 3 8 3 8; -fx-font-weight: bold;");
 
         footer.getChildren().addAll(likeBtn, starTag);
-
         card.getChildren().addAll(header, comment, footer);
         return card;
     }

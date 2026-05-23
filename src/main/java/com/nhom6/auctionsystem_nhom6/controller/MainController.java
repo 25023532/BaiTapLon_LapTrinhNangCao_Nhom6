@@ -299,6 +299,18 @@ public class MainController {
                             addChatMessage("System", message, false));
                 }
 
+                case "PRODUCT_PENDING" -> {
+                    String productName = extractJson(raw, "productName");
+                    String sellerName  = extractJson(raw, "sellerName");
+                    Platform.runLater(() ->
+                            pushNotification(
+                                    NotificationManager.NotifType.SYSTEM,
+                                    "📦 Sản phẩm mới cần duyệt",
+                                    sellerName + " vừa đăng \"" + productName + "\""
+                            )
+                    );
+                }
+
                 case "NOTIFY_BIDDER_SESSION_START" -> {
                     String sessionId  = extractJson(raw, "sessionId");
                     String itemName   = extractJson(raw, "itemName");

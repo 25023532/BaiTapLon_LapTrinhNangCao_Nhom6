@@ -15,7 +15,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ServerDatabase {
 
     private static final String DATA_DIR = "data";
-    private static final DateTimeFormatter DT = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+    private static final DateTimeFormatter DT =
+            new java.time.format.DateTimeFormatterBuilder()
+                    .appendPattern("yyyy-MM-dd'T'HH:mm:ss")
+                    .optionalStart().appendFraction(java.time.temporal.ChronoField.NANO_OF_SECOND, 0, 9, true).optionalEnd()
+                    .toFormatter();
     private static final String SEP = "|";
 
     // ── File paths ────────────────────────────────────────────
@@ -25,6 +29,8 @@ public class ServerDatabase {
     private final Path historyFile       = Path.of(DATA_DIR, "server_history.txt");
     private final Path sessionHistoryFile= Path.of(DATA_DIR, "server_session_history.txt");
     private final Path usersFile         = Path.of(DATA_DIR, "users.json");
+    private final Path ratingsFile = Path.of(DATA_DIR, "server_ratings.txt");
+    private final List<AppContext.RatingRecord> ratings = new java.util.concurrent.CopyOnWriteArrayList<>();
 
     // ── In-memory maps ────────────────────────────────────────
     private final Map<String, Double>                                    wallets       = new ConcurrentHashMap<>();
@@ -59,6 +65,7 @@ public class ServerDatabase {
         loadTransactions();
         loadProducts();
         loadHistory();
+        loadRatings();
         loadSessionHistory();
         System.out.println("[ServerDatabase] Loaded all data from " + DATA_DIR + "/");
     }
@@ -82,7 +89,7 @@ public class ServerDatabase {
 
     public synchronized void saveWallets() {
         try (PrintWriter pw = new PrintWriter(Files.newBufferedWriter(walletsFile))) {
-            for (var e : wallets.entrySet()) pw.println(e.getKey() + SEP + e.getValue());
+            for (var e : wallets.entrySet()) pw.println(e.getKey() + SEP + String.format("%.2f", e.getValue()));
         } catch (IOException e) { System.err.println("[ServerDB] saveWallets: " + e.getMessage()); }
     }
 
@@ -272,6 +279,62 @@ public class ServerDatabase {
         } catch (IOException e) { System.err.println("[ServerDB] loadSessionHistory: " + e.getMessage()); }
     }
 
+    // =========================================================
+// RATINGS  (id|username|avatar|stars|comment|likes|timestamp)
+// =========================================================
+    private void loadRatings() {
+        ratings.clear();
+        if (!Files.exists(ratingsFile)) return;
+        try (BufferedReader br = Files.newBufferedReader(ratingsFile)) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                line = line.trim();
+                if (line.isEmpty()) continue;
+                String[] p = line.split("\\|", 7);
+                if (p.length < 7) continue;
+                var rec = new AppContext.RatingRecord(
+                        p[0].trim(), p[1].trim(), p[2].trim(),
+                        Integer.parseInt(p[3].trim()),
+                        p[4].trim().replace("\\n", "\n"),
+                        LocalDateTime.parse(p[5].trim(), DT),
+                        Integer.parseInt(p[6].trim()));
+                ratings.add(rec);
+            }
+        } catch (IOException e) { System.err.println("[ServerDB] loadRatings: " + e.getMessage()); }
+    }
+
+    public synchronized void saveRatings() {
+        try (PrintWriter pw = new PrintWriter(Files.newBufferedWriter(ratingsFile))) {
+            for (var r : ratings) {
+                pw.println(r.id() + SEP + r.username() + SEP + r.avatar() + SEP
+                        + r.stars() + SEP + r.comment().replace("\n", "\\n") + SEP
+                        + r.time().format(DT) + SEP + r.likes());
+            }
+        } catch (IOException e) { System.err.println("[ServerDB] saveRatings: " + e.getMessage()); }
+    }
+
+    public List<AppContext.RatingRecord> getRatings() {
+        return Collections.unmodifiableList(ratings);
+    }
+
+    public void addRating(AppContext.RatingRecord rec) {
+        boolean exists = ratings.stream().anyMatch(r -> r.id().equals(rec.id()));
+        if (!exists) {
+            ratings.add(0, rec);
+            saveRatings();
+        }
+    }
+
+    public String serializeRatings() {
+        StringBuilder sb = new StringBuilder();
+        for (var r : ratings)
+            sb.append(r.id()).append(SEP).append(r.username()).append(SEP)
+                    .append(r.avatar()).append(SEP).append(r.stars()).append(SEP)
+                    .append(r.comment().replace("\n", "\\n")).append(SEP)
+                    .append(r.time().format(DT)).append(SEP).append(r.likes()).append('\n');
+        return sb.toString();
+    }
+
     public synchronized void saveSessionHistory() {
         try (PrintWriter pw = new PrintWriter(Files.newBufferedWriter(sessionHistoryFile))) {
             for (var entry : sessionHistory.entrySet()) {
@@ -292,8 +355,15 @@ public class ServerDatabase {
     }
 
     public void addSessionHistory(String username, AppContext.AuctionSessionRecord rec) {
-        sessionHistory.computeIfAbsent(username, k -> new ArrayList<>()).add(rec);
-        saveSessionHistory();
+        List<AppContext.AuctionSessionRecord> list =
+                sessionHistory.computeIfAbsent(username, k -> new ArrayList<>());
+        boolean exists = list.stream().anyMatch(r ->
+                r.sessionId().equals(rec.sessionId()) &&
+                        r.startTime().equals(rec.startTime()));
+        if (!exists) {
+            list.add(rec);
+            saveSessionHistory();
+        }
     }
 
     // =========================================================
@@ -330,7 +400,7 @@ public class ServerDatabase {
     /** Serialize all wallets: "username|balance\n..." */
     public String serializeWallets() {
         StringBuilder sb = new StringBuilder();
-        for (var e : wallets.entrySet()) sb.append(e.getKey()).append(SEP).append(e.getValue()).append('\n');
+        for (var e : wallets.entrySet()) sb.append(e.getKey()).append(SEP).append(String.format("%.2f", e.getValue())).append('\n');
         return sb.toString();
     }
 
