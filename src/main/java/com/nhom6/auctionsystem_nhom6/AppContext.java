@@ -418,6 +418,84 @@ public class AppContext {
         return Collections.unmodifiableList(sorted);
     }
 
+    // =========================================================
+    // RATING / REVIEW
+    // =========================================================
+
+    /**
+     * Bản ghi đánh giá của một người dùng.
+     *
+     * @param id       ID duy nhất của đánh giá
+     * @param username Tên người đánh giá
+     * @param avatar   Chữ viết tắt avatar (2 ký tự đầu username)
+     * @param stars    Số sao (1–5)
+     * @param comment  Nội dung nhận xét
+     * @param time     Thời điểm đánh giá
+     * @param likes    Số lượt thích
+     */
+    public record RatingRecord(
+            String        id,
+            String        username,
+            String        avatar,
+            int           stars,
+            String        comment,
+            LocalDateTime time,
+            int           likes) {}
+
+    private static final List<RatingRecord> ratingList =
+            new CopyOnWriteArrayList<>();
+
+    static {
+        // Seed vài đánh giá mẫu
+        ratingList.add(new RatingRecord(
+                "R001", "bidder07", "BI", 5,
+                "Hệ thống đấu giá rất mượt, giao dịch nhanh!",
+                LocalDateTime.now().minusDays(2), 12));
+        ratingList.add(new RatingRecord(
+                "R002", "sellerlong", "SE", 4,
+                "Dễ đăng bán sản phẩm, Admin duyệt nhanh.",
+                LocalDateTime.now().minusDays(1), 8));
+        ratingList.add(new RatingRecord(
+                "R003", "bidder03", "BI", 5,
+                "Chat trực tiếp trong phiên rất tiện lợi.",
+                LocalDateTime.now().minusHours(6), 5));
+    }
+
+    /**
+     * Lấy danh sách tất cả đánh giá, mới nhất trước.
+     * ✅ Fix RatingController: cannot find symbol getRatings()
+     */
+    public static List<RatingRecord> getRatings() {
+        List<RatingRecord> sorted = new ArrayList<>(ratingList);
+        sorted.sort(Comparator.comparing(RatingRecord::time).reversed());
+        return Collections.unmodifiableList(sorted);
+    }
+
+    /**
+     * Thêm đánh giá mới.
+     */
+    public static void addRating(RatingRecord record) {
+        ratingList.add(record);
+    }
+
+    /**
+     * Cập nhật số like của một đánh giá.
+     */
+    public static void likeRating(String ratingId) {
+        for (int i = 0; i < ratingList.size(); i++) {
+            RatingRecord r = ratingList.get(i);
+            if (r.id().equals(ratingId)) {
+                ratingList.set(i, new RatingRecord(
+                        r.id(), r.username(), r.avatar(),
+                        r.stars(), r.comment(), r.time(),
+                        r.likes() + 1));
+                return;
+            }
+        }
+    }
+
+    // =========================================================
+
     /**
      * Gọi khi phiên kết thúc — tự động tạo bản ghi lịch sử
      * cho Seller và tất cả Bidder đã tham gia.
