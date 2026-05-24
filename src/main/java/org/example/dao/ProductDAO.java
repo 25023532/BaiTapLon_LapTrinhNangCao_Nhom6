@@ -17,6 +17,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * này sẽ được thay thế bằng implementation kết nối database.</p>
  *
  * <p>Thread-safe nhờ sử dụng {@link ConcurrentHashMap}.</p>
+ *
+ * <p>Fix: getProductName() → getItemName()
+ * (AuctionSession không có getProductName()).</p>
  */
 public class ProductDAO {
 
@@ -82,7 +85,10 @@ public class ProductDAO {
     }
 
     /**
-     * Tìm các phiên theo tên sản phẩm (tìm kiếm không phân biệt hoa thường).
+     * Tìm các phiên theo tên sản phẩm (không phân biệt hoa thường).
+     *
+     * FIX: dùng getItemName() thay vì getProductName()
+     * (AuctionSession không có getProductName()).
      *
      * @param keyword từ khóa cần tìm trong tên sản phẩm
      * @return danh sách phiên có tên sản phẩm chứa keyword
@@ -94,7 +100,7 @@ public class ProductDAO {
         String lower = keyword.toLowerCase();
         List<AuctionSession> result = new ArrayList<>();
         for (AuctionSession s : store.values()) {
-            if (s.getProductName().toLowerCase().contains(lower)) {
+            if (s.getItemName().toLowerCase().contains(lower)) { // FIX: getItemName()
                 result.add(s);
             }
         }
