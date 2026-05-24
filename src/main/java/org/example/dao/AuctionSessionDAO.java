@@ -18,6 +18,11 @@ import java.util.stream.Collectors;
  * cập nhật trạng thái, truy vấn theo nhiều tiêu chí khác nhau.</p>
  *
  * <p>Thread-safe nhờ {@link ConcurrentHashMap}.</p>
+ *
+ * <p>Fix:
+ *   - getProductName()      → getItemName()         (đúng tên method trong AuctionSession)
+ *   - getLeadingBidderId()  → đọc từ getBidHistory() (AuctionSession không có getter này)
+ * </p>
  */
 public class AuctionSessionDAO {
 
@@ -108,6 +113,9 @@ public class AuctionSessionDAO {
     /**
      * Tìm phiên theo tên sản phẩm (không phân biệt hoa thường).
      *
+     * FIX: dùng getItemName() thay vì getProductName()
+     * (AuctionSession không có getProductName()).
+     *
      * @param keyword từ khóa tìm kiếm
      * @return danh sách phiên khớp
      */
@@ -117,12 +125,17 @@ public class AuctionSessionDAO {
         }
         String lower = keyword.toLowerCase();
         return store.values().stream()
-                .filter(s -> s.getProductName().toLowerCase().contains(lower))
+                .filter(s -> s.getItemName().toLowerCase().contains(lower)) // FIX: getItemName()
                 .collect(Collectors.toUnmodifiableList());
     }
 
     /**
-     * Tìm phiên có bidder là người dẫn đầu.
+     * Tìm phiên có bidder là người dẫn đầu (bid cao nhất hiện tại).
+     *
+     * FIX: AuctionSession không có getLeadingBidderId().
+     * Thay bằng đọc bid cuối cùng từ getBidHistory() —
+     * bid cuối = bid cao nhất = người đang dẫn đầu.
+     * Nếu chưa có bid nào → phiên không có người dẫn đầu, bỏ qua.
      *
      * @param bidderId ID bidder cần tìm
      * @return danh sách phiên mà bidder đang dẫn đầu
@@ -132,7 +145,13 @@ public class AuctionSessionDAO {
             throw new IllegalArgumentException("bidderId không được null/rỗng");
         }
         return store.values().stream()
-                .filter(s -> bidderId.equals(s.getLeadingBidderId()))
+                .filter(s -> {
+                    var history = s.getBidHistory();
+                    if (history == null || history.isEmpty()) return false;
+                    // Bid cuối cùng = người đang dẫn đầu
+                    String leaderId = history.get(history.size() - 1).getBidderId();
+                    return bidderId.equals(leaderId);
+                })
                 .collect(Collectors.toUnmodifiableList());
     }
 
