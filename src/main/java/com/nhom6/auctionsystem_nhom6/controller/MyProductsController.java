@@ -583,6 +583,11 @@ public class MyProductsController {
                 newSess.start();
                 AppContext.registerSession(newSess, username);
                 AppContext.setActiveSession(newSess);
+                ServerConnection conn = ServerConnection.getInstance();
+                if (conn.isConnected()) {
+                    conn.sendSessionStart(p.id(), p.name(), p.startPrice(),
+                        step, p.endTime(), username, p.category());
+                }
                 AppContext.updateProduct(username, new AppContext.ProductRecord(
                         p.id(), p.name(), p.category(),
                         p.startPrice(), p.startPrice(), 0,
@@ -759,6 +764,12 @@ public class MyProductsController {
             if (btn == ButtonType.OK) {
                 AppContext.removeProduct(username, p.id());
                 productImages.remove(p.id());
+                ServerConnection conn = ServerConnection.getInstance();
+                if (conn.isConnected()) {
+                    conn.sendJson("{\"action\":\"REMOVE_PRODUCT\","
+                        + "\"seller\":\"" + username + "\","
+                        + "\"productId\":\"" + p.id() + "\"}");
+                }
                 refreshStats();
                 renderList(AppContext.getProducts(username));
             }

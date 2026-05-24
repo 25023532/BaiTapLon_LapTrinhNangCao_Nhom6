@@ -175,6 +175,12 @@ public class ServerConnection {
                     parseRunningSessions(data);
                     return true;
                 }
+                case "PRODUCT_REMOVED" -> {
+                    String seller    = extractJson(raw, "seller");
+                    String productId = extractJson(raw, "productId");
+                    AppContext.removeProduct(seller, productId);
+                    return false;
+                }
                 case "SYNC_RATINGS" -> {
                     String data = unescapeData(extractJsonData(raw, "data"));
                     AppContext.syncRatings(parseRatings(data));
@@ -275,7 +281,7 @@ public class ServerConnection {
                     LocalDateTime time = LocalDateTime.parse(extractJson(raw, "timestamp"), DT);
                     AppContext.addHistory(username, new AppContext.HistoryRecord(
                             id, itemName, amount, counter, status, wonBid, time));
-                    return false; // also forward to UI
+                    return true;
                 }
                 case "ADD_SESSION_HISTORY" -> {
                     String username  = extractJson(raw, "username");
@@ -296,10 +302,10 @@ public class ServerConnection {
                             sessionId, itemName, sellerName, startP, finalP,
                             "null".equals(winner) ? null : winner,
                             totalBids, startT, endT, result, myRole, myFinalBid, iWon));
-                    return false; // also forward to UI
+                    return false;
                 }
                 default -> {
-                    return false; // not a sync message, forward to UI
+                    return true;
                 }
             }
         } catch (Exception e) {

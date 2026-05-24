@@ -30,6 +30,11 @@ public class AuctionWebSocketServer extends WebSocketServer {
 
     private static final DateTimeFormatter LOG_FMT =
             DateTimeFormatter.ofPattern("HH:mm:ss");
+    private static final DateTimeFormatter DT =
+        new java.time.format.DateTimeFormatterBuilder()
+            .appendPattern("yyyy-MM-dd'T'HH:mm:ss")
+            .optionalStart().appendFraction(java.time.temporal.ChronoField.NANO_OF_SECOND, 0, 9, true).optionalEnd()
+            .toFormatter();
 
     // =========================================================
     // SERVER DATABASE — source of truth
@@ -134,7 +139,7 @@ public class AuctionWebSocketServer extends WebSocketServer {
                 String timeStr  = extract(raw, "timestamp");
                 int    likes    = 0;
                 LocalDateTime time = LocalDateTime.parse(timeStr,
-                        DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                        DT);
                 var rec = new AppContext.RatingRecord(id, username, avatar, stars, comment, time, likes);
                 db.addRating(rec);
                 broadcastAll(json("type", "NEW_RATING",
@@ -198,8 +203,8 @@ public class AuctionWebSocketServer extends WebSocketServer {
                 String category = extract(raw, "category");
                 double startP   = Double.parseDouble(extract(raw, "startPrice"));
                 String status   = extract(raw, "status");
-                LocalDateTime startTime = LocalDateTime.parse(extract(raw, "startTime"), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-                LocalDateTime endTime   = LocalDateTime.parse(extract(raw, "endTime"), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                LocalDateTime startTime = LocalDateTime.parse(extract(raw, "startTime"), DT);
+                LocalDateTime endTime   = LocalDateTime.parse(extract(raw, "endTime"), DT);
                 db.putProduct(seller, new AppContext.ProductRecord(
                         id, name, category, startP, startP, 0,
                         status, startTime, endTime, "—"));
@@ -221,7 +226,7 @@ public class AuctionWebSocketServer extends WebSocketServer {
                     double currentP = Double.parseDouble(extract(raw, "currentPrice"));
                     int bidCount    = Integer.parseInt(extract(raw, "bidCount"));
                     String topB     = extract(raw, "topBidder");
-                    LocalDateTime endTime = LocalDateTime.parse(extract(raw, "endTime"), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                    LocalDateTime endTime = LocalDateTime.parse(extract(raw, "endTime"), DT);
                     db.putProduct(seller, new AppContext.ProductRecord(
                             id, name.isEmpty() ? existing.name() : name,
                             category.isEmpty() ? existing.category() : category,
@@ -244,7 +249,7 @@ public class AuctionWebSocketServer extends WebSocketServer {
                 String counter  = extract(raw, "counterparty");
                 String status   = extract(raw, "status");
                 boolean wonBid  = Boolean.parseBoolean(extract(raw, "wonBid"));
-                LocalDateTime time = LocalDateTime.parse(extract(raw, "timestamp"), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                LocalDateTime time = LocalDateTime.parse(extract(raw, "timestamp"), DT);
                 db.addHistory(username, new AppContext.HistoryRecord(
                         id, itemName, amount, counter, status, wonBid, time));
                 log("📜 ADD_HISTORY: " + username + " → " + itemName);
@@ -262,8 +267,8 @@ public class AuctionWebSocketServer extends WebSocketServer {
                 double finalP    = Double.parseDouble(extract(raw, "finalPrice"));
                 String winner    = extract(raw, "winnerName");
                 int totalBids    = Integer.parseInt(extract(raw, "totalBids"));
-                LocalDateTime startT = LocalDateTime.parse(extract(raw, "startTime"), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-                LocalDateTime endT   = LocalDateTime.parse(extract(raw, "endTime"), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                LocalDateTime startT = LocalDateTime.parse(extract(raw, "startTime"), DT);
+                LocalDateTime endT   = LocalDateTime.parse(extract(raw, "endTime"), DT);
                 String result    = extract(raw, "result");
                 String myRole    = extract(raw, "myRole");
                 double myFinalBid= Double.parseDouble(extract(raw, "myFinalBid"));
@@ -291,7 +296,7 @@ public class AuctionWebSocketServer extends WebSocketServer {
                 if (rs != null) {
                     List<ServerDatabase.BidEntry> bids = new ArrayList<>(rs.bidHistory());
                     bids.add(new ServerDatabase.BidEntry(username, amount,
-                            LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)));
+                            LocalDateTime.now().format(DT)));
                     ServerDatabase.RunningSessionInfo updated = new ServerDatabase.RunningSessionInfo(
                             rs.sessionId(), rs.itemName(), rs.sellerName(),
                             rs.startPrice(), rs.minStep(), rs.startTime(),
@@ -318,7 +323,7 @@ public class AuctionWebSocketServer extends WebSocketServer {
                 String sellerName = extract(raw, "sellerName");
                 double startPrice = Double.parseDouble(extract(raw, "startPrice"));
                 double minStep    = Double.parseDouble(extract(raw, "minStep"));
-                LocalDateTime endTime = LocalDateTime.parse(extract(raw, "endTime"), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+                LocalDateTime endTime = LocalDateTime.parse(extract(raw, "endTime"), DT);
                 String category   = extract(raw, "category");
 
                 // Track running session on server
@@ -339,8 +344,19 @@ public class AuctionWebSocketServer extends WebSocketServer {
                         + "\"sellerName\":\"" + esc(sellerName) + "\","
                         + "\"startPrice\":\"" + startPrice + "\","
                         + "\"minStep\":\""    + minStep + "\","
-                        + "\"endTime\":\""    + esc(endTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)) + "\","
+                        + "\"endTime\":\""    + esc(endTime.format(DT)) + "\","
                         + "\"category\":\""   + esc(category)   + "\"}");
+            }
+
+            // Xóa product =======
+            case "REMOVE_PRODUCT" -> {
+                String seller    = extract(raw, "seller");
+                String productId = extract(raw, "productId");
+                db.removeProduct(seller, productId);
+                log("🗑 REMOVE_PRODUCT: " + seller + " → " + productId);
+                broadcastAll("{\"type\":\"PRODUCT_REMOVED\","
+                    + "\"seller\":\"" + esc(seller) + "\","
+                    + "\"productId\":\"" + esc(productId) + "\"}");
             }
 
             // ── Kết thúc phiên ────────────────────────────────
@@ -524,8 +540,8 @@ public class AuctionWebSocketServer extends WebSocketServer {
                 + "\"currentPrice\":\"" + p.currentPrice() + "\","
                 + "\"bidCount\":\"" + p.bidCount() + "\","
                 + "\"status\":\"" + esc(p.status()) + "\","
-                + "\"startTime\":\"" + p.startTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "\","
-                + "\"endTime\":\"" + p.endTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "\","
+                + "\"startTime\":\"" + p.startTime().format(DT) + "\","
+                + "\"endTime\":\"" + p.endTime().format(DT) + "\","
                 + "\"topBidder\":\"" + esc(p.topBidder()) + "\"}";
 
         for (WebSocket c : clients.keySet()) {
@@ -544,7 +560,7 @@ public class AuctionWebSocketServer extends WebSocketServer {
                 + "\"counterparty\":\"" + esc(r.counterparty()) + "\","
                 + "\"status\":\"" + esc(r.status()) + "\","
                 + "\"wonBid\":\"" + r.wonBid() + "\","
-                + "\"timestamp\":\"" + r.time().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "\"}");
+                + "\"timestamp\":\"" + r.time().format(DT) + "\"}");
     }
 
     private void broadcastAddSessionHistory(String username, AppContext.AuctionSessionRecord r) {
@@ -557,8 +573,8 @@ public class AuctionWebSocketServer extends WebSocketServer {
                 + "\"finalPrice\":\"" + r.finalPrice() + "\","
                 + "\"winnerName\":\"" + (r.winnerName() == null ? "null" : esc(r.winnerName())) + "\","
                 + "\"totalBids\":\"" + r.totalBids() + "\","
-                + "\"startTime\":\"" + r.startTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "\","
-                + "\"endTime\":\"" + r.endTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME) + "\","
+                + "\"startTime\":\"" + r.startTime().format(DT) + "\","
+                + "\"endTime\":\"" + r.endTime().format(DT) + "\","
                 + "\"result\":\"" + esc(r.result()) + "\","
                 + "\"myRole\":\"" + esc(r.myRole()) + "\","
                 + "\"myFinalBid\":\"" + r.myFinalBid() + "\","

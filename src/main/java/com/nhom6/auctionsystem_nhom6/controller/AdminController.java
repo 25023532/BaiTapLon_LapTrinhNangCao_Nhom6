@@ -180,7 +180,10 @@ public class AdminController {
                 "Tên sản phẩm", "Danh mục", "Người bán",
                 "Trạng thái", "Hành động"));
 
-        List<AppContext.ProductRecord> pending = AppContext.getAllPendingProducts();
+        List<AppContext.ProductRecord> pending = AppContext.getAllPendingProducts()
+            .stream()
+            .sorted((a, b) -> b.startTime().compareTo(a.startTime()))
+            .collect(java.util.stream.Collectors.toList());
 
         if (pending.isEmpty()) {
             contentBox.getChildren().add(

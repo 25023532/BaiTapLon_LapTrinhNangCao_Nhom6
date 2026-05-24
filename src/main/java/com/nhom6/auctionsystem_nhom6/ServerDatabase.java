@@ -68,6 +68,7 @@ public class ServerDatabase {
         loadRatings();
         loadSessionHistory();
         fixExpiredProducts();
+        rebuildRunningSessions();
         System.out.println("[ServerDatabase] Loaded all data from " + DATA_DIR + "/");
     }
 
@@ -77,7 +78,7 @@ public class ServerDatabase {
     private void loadWallets() {
         wallets.clear();
         if (!Files.exists(walletsFile)) return;
-        try (BufferedReader br = Files.newBufferedReader(walletsFile)) {
+        try (BufferedReader br = Files.newBufferedReader(walletsFile, java.nio.charset.StandardCharsets.UTF_8)) {
             String line;
             while ((line = br.readLine()) != null) {
                 line = line.trim();
@@ -89,7 +90,7 @@ public class ServerDatabase {
     }
 
     public synchronized void saveWallets() {
-        try (PrintWriter pw = new PrintWriter(Files.newBufferedWriter(walletsFile))) {
+        try (PrintWriter pw = new PrintWriter(Files.newBufferedWriter(walletsFile, java.nio.charset.StandardCharsets.UTF_8))) {
             for (var e : wallets.entrySet()) pw.println(e.getKey() + SEP + String.format("%.2f", e.getValue()));
         } catch (IOException e) { System.err.println("[ServerDB] saveWallets: " + e.getMessage()); }
     }
@@ -107,7 +108,7 @@ public class ServerDatabase {
     private void loadTransactions() {
         transactions.clear();
         if (!Files.exists(transactionsFile)) return;
-        try (BufferedReader br = Files.newBufferedReader(transactionsFile)) {
+        try (BufferedReader br = Files.newBufferedReader(transactionsFile, java.nio.charset.StandardCharsets.UTF_8)) {
             String line;
             while ((line = br.readLine()) != null) {
                 line = line.trim();
@@ -126,7 +127,7 @@ public class ServerDatabase {
     }
 
     public synchronized void saveTransactions() {
-        try (PrintWriter pw = new PrintWriter(Files.newBufferedWriter(transactionsFile))) {
+        try (PrintWriter pw = new PrintWriter(Files.newBufferedWriter(transactionsFile, java.nio.charset.StandardCharsets.UTF_8))) {
             for (var entry : transactions.entrySet()) {
                 for (var r : entry.getValue()) {
                     pw.println(entry.getKey() + SEP + r.id() + SEP + r.type() + SEP
@@ -152,7 +153,7 @@ public class ServerDatabase {
     private void loadProducts() {
         products.clear();
         if (!Files.exists(productsFile)) return;
-        try (BufferedReader br = Files.newBufferedReader(productsFile)) {
+        try (BufferedReader br = Files.newBufferedReader(productsFile, java.nio.charset.StandardCharsets.UTF_8)) {
             String line;
             while ((line = br.readLine()) != null) {
                 line = line.trim();
@@ -175,11 +176,11 @@ public class ServerDatabase {
     }
 
     public synchronized void saveProducts() {
-        try (PrintWriter pw = new PrintWriter(Files.newBufferedWriter(productsFile))) {
+        try (PrintWriter pw = new PrintWriter(Files.newBufferedWriter(productsFile, java.nio.charset.StandardCharsets.UTF_8))) {
             for (var entry : products.entrySet()) {
                 for (var r : entry.getValue()) {
                     pw.println(entry.getKey() + SEP + r.id() + SEP + r.name() + SEP
-                            + r.category() + SEP + r.startPrice() + SEP + r.currentPrice() + SEP
+                            + r.category() + SEP + String.format("%.2f", r.startPrice()) + SEP + String.format("%.2f", r.currentPrice()) + SEP
                             + r.bidCount() + SEP + r.status() + SEP
                             + r.startTime().format(DT) + SEP + r.endTime().format(DT) + SEP
                             + r.topBidder());
@@ -210,7 +211,7 @@ public class ServerDatabase {
     private void loadHistory() {
         history.clear();
         if (!Files.exists(historyFile)) return;
-        try (BufferedReader br = Files.newBufferedReader(historyFile)) {
+        try (BufferedReader br = Files.newBufferedReader(historyFile, java.nio.charset.StandardCharsets.UTF_8)) {
             String line;
             while ((line = br.readLine()) != null) {
                 line = line.trim();
@@ -230,7 +231,7 @@ public class ServerDatabase {
     }
 
     public synchronized void saveHistory() {
-        try (PrintWriter pw = new PrintWriter(Files.newBufferedWriter(historyFile))) {
+        try (PrintWriter pw = new PrintWriter(Files.newBufferedWriter(historyFile, java.nio.charset.StandardCharsets.UTF_8))) {
             for (var entry : history.entrySet()) {
                 for (var r : entry.getValue()) {
                     pw.println(entry.getKey() + SEP + r.id() + SEP + r.itemName() + SEP
@@ -246,8 +247,13 @@ public class ServerDatabase {
     }
 
     public void addHistory(String username, AppContext.HistoryRecord rec) {
-        history.computeIfAbsent(username, k -> new ArrayList<>()).add(rec);
-        saveHistory();
+        List<AppContext.HistoryRecord> list =
+            history.computeIfAbsent(username, k -> new ArrayList<>());
+        boolean exists = list.stream().anyMatch(r -> r.id().equals(rec.id()));
+        if (!exists) {
+            list.add(rec);
+            saveHistory();
+        }
     }
 
     // =========================================================
@@ -256,7 +262,7 @@ public class ServerDatabase {
     private void loadSessionHistory() {
         sessionHistory.clear();
         if (!Files.exists(sessionHistoryFile)) return;
-        try (BufferedReader br = Files.newBufferedReader(sessionHistoryFile)) {
+        try (BufferedReader br = Files.newBufferedReader(sessionHistoryFile, java.nio.charset.StandardCharsets.UTF_8)) {
             String line;
             while ((line = br.readLine()) != null) {
                 line = line.trim();
@@ -286,7 +292,7 @@ public class ServerDatabase {
     private void loadRatings() {
         ratings.clear();
         if (!Files.exists(ratingsFile)) return;
-        try (BufferedReader br = Files.newBufferedReader(ratingsFile)) {
+        try (BufferedReader br = Files.newBufferedReader(ratingsFile, java.nio.charset.StandardCharsets.UTF_8)) {
             String line;
             while ((line = br.readLine()) != null) {
                 line = line.trim();
@@ -305,7 +311,7 @@ public class ServerDatabase {
     }
 
     public synchronized void saveRatings() {
-        try (PrintWriter pw = new PrintWriter(Files.newBufferedWriter(ratingsFile))) {
+        try (PrintWriter pw = new PrintWriter(Files.newBufferedWriter(ratingsFile, java.nio.charset.StandardCharsets.UTF_8))) {
             for (var r : ratings) {
                 pw.println(r.id() + SEP + r.username() + SEP + r.avatar() + SEP
                         + r.stars() + SEP + r.comment().replace("\n", "\\n") + SEP
@@ -337,7 +343,7 @@ public class ServerDatabase {
     }
 
     public synchronized void saveSessionHistory() {
-        try (PrintWriter pw = new PrintWriter(Files.newBufferedWriter(sessionHistoryFile))) {
+        try (PrintWriter pw = new PrintWriter(Files.newBufferedWriter(sessionHistoryFile, java.nio.charset.StandardCharsets.UTF_8))) {
             for (var entry : sessionHistory.entrySet()) {
                 for (var r : entry.getValue()) {
                     pw.println(entry.getKey() + SEP + r.sessionId() + SEP + r.itemName() + SEP
@@ -504,5 +510,25 @@ public class ServerDatabase {
             }
         }
         if (changed) saveProducts();
+    }
+    private void rebuildRunningSessions() {
+        runningSessions.clear();
+        LocalDateTime now = LocalDateTime.now();
+        for (var entry : products.entrySet()) {
+            String seller = entry.getKey();
+            for (var p : entry.getValue()) {
+                if ("ĐANG ĐẤU GIÁ".equals(p.status()) && now.isBefore(p.endTime())) {
+                    double minStep = Math.max(p.startPrice() * 0.05, 500_000);
+                    runningSessions.put(p.id(), new RunningSessionInfo(
+                        p.id(), p.name(), seller,
+                        p.startPrice(), minStep,
+                        p.startTime(), p.endTime(),
+                        p.category(), p.currentPrice(),
+                        p.bidCount(), p.topBidder(),
+                        new ArrayList<>()));
+                    System.out.println("[ServerDB] Rebuilt running session: " + p.name());
+                }
+            }
+        }
     }
 }
