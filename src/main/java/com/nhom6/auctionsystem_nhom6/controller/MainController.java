@@ -561,18 +561,18 @@ public class MainController {
     @FXML
     private void handlePlaceBid() {
         if (session == null) {
-            showAlert("Chua co phien", "Hien chua co san pham nao dang dau gia.");
+            showAlert("Chưa có phiên", "Hiện chưa có phiên nào đang diễn ra.");
             return;
         }
         User user = AppContext.getCurrentUser();
-        if (user == null) { showAlert("Loi", "Ban chua dang nhap."); return; }
+        if (user == null) { showAlert("Lỗi", "Bạn chưa đăng nhập."); return; }
 
         double newPrice = session.getCurrentPrice() + session.getMinBidStep();
         double balance  = AppContext.getWalletBalance(user.getUsername());
         if (balance < newPrice) {
-            showAlert("So du khong du",
-                    "Can: " + formatVND(newPrice)
-                    + "\nSo du: " + formatVND(balance));
+            showAlert("Số dư không đủ!",
+                    "Cần: " + formatVND(newPrice)
+                    + "\nSố dư: " + formatVND(balance));
             return;
         }
 
@@ -875,6 +875,30 @@ public class MainController {
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
+
+        DialogPane dialogPane = alert.getDialogPane();
+        dialogPane.setStyle("""
+        -fx-background-color: #1e293b;
+        -fx-border-color: #334155;
+        -fx-border-width: 1;
+        -fx-border-radius: 8;
+        -fx-background-radius: 8;
+    """);
+        dialogPane.lookup(".content.label").setStyle("""
+        -fx-text-fill: #e2e8f0;
+        -fx-font-size: 14px;
+    """);
+        dialogPane.lookupButton(ButtonType.OK).setStyle("""
+        -fx-background-color: #2563eb;
+        -fx-text-fill: white;
+        -fx-font-weight: bold;
+        -fx-background-radius: 6;
+        -fx-padding: 6 20 6 20;
+        -fx-cursor: hand;
+    """);
+
+        alert.setGraphic(null);
+
         alert.showAndWait();
     }
 }

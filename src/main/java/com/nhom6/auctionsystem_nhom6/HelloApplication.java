@@ -25,12 +25,11 @@ public class HelloApplication extends Application {
 
         Image icon = new Image(
                 getClass().getResourceAsStream(
-                        "/com/nhom6/auctionsystem_nhom6/images/logo.png"));
+                    "/com/nhom6/auctionsystem_nhom6/images/logo.png"));
         stage.getIcons().add(icon);
 
         FXMLLoader loader = new FXMLLoader(
-                getClass().getResource(
-                        "/com/nhom6/auctionsystem_nhom6/login-view.fxml"));
+            getClass().getResource("/com/nhom6/auctionsystem_nhom6/view/login-view.fxml"));
         Parent root = loader.load();
 
         Scene scene = new Scene(root, 1280, 800);
@@ -141,7 +140,7 @@ public class HelloApplication extends Application {
     private static void load(String fxml, String title) throws Exception {
         FXMLLoader loader = new FXMLLoader(
                 HelloApplication.class.getResource(
-                        "/com/nhom6/auctionsystem_nhom6/" + fxml));
+                        "/com/nhom6/auctionsystem_nhom6/view/" + fxml));
         Parent root = loader.load();
         primaryStage.getScene().setRoot(root);
         primaryStage.setTitle(title);

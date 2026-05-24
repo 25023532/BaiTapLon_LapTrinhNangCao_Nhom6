@@ -9,6 +9,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.ArrayList;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -197,7 +198,7 @@ public class AuthServiceTest {
     void testGetAllUsers() {
         authService.register(new Bidder(uid + "a", uid + "a", "pass123"));
         authService.register(new Bidder(uid + "b", uid + "b", "pass456"));
-        List<User> users = authService.getAllUsers();
+        List<User> users = new ArrayList<>(authService.getAllUsers().values());
         assertTrue(users.size() >= 2);
         System.out.println("✔ Test getAllUsers: " + users.size() + " users");
     }

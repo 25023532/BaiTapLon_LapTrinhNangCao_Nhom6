@@ -165,14 +165,20 @@ public class AuctionListController {
                 LocalDateTime now2 = LocalDateTime.now();
                 String status;
 
+                if ("CHỜ DUYỆT".equals(p.status())) continue;
                 if (now2.isBefore(p.startTime())) {
                     if (p.startTime().isBefore(now2.plusHours(24))) {
                         status = "UPCOMING";
                     } else {
                         continue;
                     }
-                } else if (now2.isAfter(p.endTime())) {
+                } else if (now2.isAfter(p.endTime())
+                    || "ĐÃ KẾT THÚC".equals(p.status())
+                    || "ĐÃ BÁN".equals(p.status())
+                    || "CANCELED".equals(p.status())) {
                     status = "ENDED";
+                } else if ("ĐANG ĐẤU GIÁ".equals(p.status())) {
+                    status = "RUNNING";
                 } else {
                     status = "RUNNING";
                 }

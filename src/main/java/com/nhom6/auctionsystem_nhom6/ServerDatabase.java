@@ -67,6 +67,7 @@ public class ServerDatabase {
         loadHistory();
         loadRatings();
         loadSessionHistory();
+        fixExpiredProducts();
         System.out.println("[ServerDatabase] Loaded all data from " + DATA_DIR + "/");
     }
 
@@ -477,5 +478,31 @@ public class ServerDatabase {
             sb.append('\n');
         }
         return sb.toString();
+    }
+    // =========================================================
+    // TỰ ĐỘNG CẬP NHẬT STATUS SẢN PHẨM HẾT HẠN
+    // =========================================================
+    public void fixExpiredProducts() {
+        LocalDateTime now = LocalDateTime.now();
+        boolean changed = false;
+        for (var entry : products.entrySet()) {
+            String seller = entry.getKey();
+            List<AppContext.ProductRecord> list = entry.getValue();
+            for (int i = 0; i < list.size(); i++) {
+                AppContext.ProductRecord p = list.get(i);
+                if (p.status().equals("ĐANG ĐẤU GIÁ") && now.isAfter(p.endTime())) {
+                    // Phiên đã hết giờ nhưng status vẫn là ĐANG ĐẤU GIÁ → sửa lại
+                    String newStatus = p.topBidder().equals("—") ? "ĐÃ KẾT THÚC" : "ĐÃ BÁN";
+                    list.set(i, new AppContext.ProductRecord(
+                        p.id(), p.name(), p.category(),
+                        p.startPrice(), p.currentPrice(), p.bidCount(),
+                        newStatus, p.startTime(), p.endTime(), p.topBidder()));
+                    changed = true;
+                    System.out.println("[ServerDB] fixExpiredProducts: " + p.name()
+                        + " → " + newStatus);
+                }
+            }
+        }
+        if (changed) saveProducts();
     }
 }

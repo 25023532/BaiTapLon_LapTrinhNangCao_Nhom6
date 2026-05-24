@@ -201,4 +201,7 @@ public class AuctionSession {
     public LocalDateTime getEndTime()                    { return endTime; }
     public int           getExtensionCount()             { return extensionCount; }
     public boolean       isLastBidTriggeredExtension()   { return lastBidTriggeredExtension; }
+    public String getLeadingBidderId() { return highestBid != null ? highestBid.getBidderId() : null; }
+    public String getWinnerBidderId() { return highestBid != null ? highestBid.getBidderId() : null; }
+    public String getProductName() { return itemName; }
 }
