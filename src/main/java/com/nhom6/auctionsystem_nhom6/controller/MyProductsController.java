@@ -8,16 +8,19 @@ import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
+import javafx.stage.FileChooser;
 import org.example.user.User;
 
+import java.io.File;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class MyProductsController {
@@ -31,6 +34,9 @@ public class MyProductsController {
     @FXML private TextField        searchField;
 
     private String username;
+
+    /** Lưu đường dẫn ảnh: productId → imagePath */
+    private static final Map<String, String> productImages = new HashMap<>();
 
     private static final DateTimeFormatter DT_FMT =
             DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
@@ -62,16 +68,13 @@ public class MyProductsController {
         List<AppContext.ProductRecord> list = AppContext.getProducts(username);
 
         totalProductsLabel.setText(String.valueOf(list.size()));
-
         activeProductsLabel.setText(String.valueOf(
                 list.stream()
                     .filter(p -> "ĐANG ĐẤU GIÁ".equals(
                             AppContext.computeDisplayStatus(p)))
                     .count()));
-
         soldProductsLabel.setText(String.valueOf(
                 list.stream().filter(p -> "ĐÃ BÁN".equals(p.status())).count()));
-
         double rev = list.stream()
                 .filter(p -> "ĐÃ BÁN".equals(p.status()))
                 .mapToDouble(AppContext.ProductRecord::currentPrice)
@@ -116,14 +119,10 @@ public class MyProductsController {
         row.getStyleClass().add("history-row");
         row.setPadding(new Insets(14, 20, 14, 20));
 
-        // Thumbnail
-        Label thumb = new Label("⬡");
-        thumb.setStyle(
-                "-fx-font-size: 28px; -fx-text-fill: #3b82f6;"
-                + "-fx-background-color: #1e3a5f; -fx-padding: 8 12 8 12;"
-                + "-fx-background-radius: 8; -fx-min-width: 56; -fx-alignment: center;");
+        // ── Thumbnail (ảnh thật hoặc icon mặc định) ──────────
+        StackPane thumb = buildThumbnail(p.id(), 64);
 
-        // Info
+        // ── Info ──────────────────────────────────────────────
         VBox info = new VBox(5);
         HBox.setHgrow(info, Priority.ALWAYS);
 
@@ -148,7 +147,6 @@ public class MyProductsController {
             metaRow.getChildren().add(winner);
         }
 
-        // Ghi chú trạng thái
         String noteText = switch (displayStatus) {
             case "CHỜ DUYỆT"   -> "⏳ Đang chờ Admin xét duyệt...";
             case "TỪ CHỐI"     -> "⚠ Sản phẩm bị từ chối. Vui lòng xóa và đăng lại.";
@@ -167,10 +165,9 @@ public class MyProductsController {
             });
             metaRow.getChildren().add(note);
         }
-
         info.getChildren().addAll(name, metaRow);
 
-        // Giá + badge
+        // ── Giá + badge ──────────────────────────────────────
         VBox priceBox = new VBox(4);
         priceBox.setAlignment(Pos.CENTER_RIGHT);
         Label startP = new Label("Khởi điểm: " + formatVND(p.startPrice()));
@@ -181,13 +178,47 @@ public class MyProductsController {
         badge.getStyleClass().addAll("history-badge", badgeStyle(displayStatus));
         priceBox.getChildren().addAll(startP, curP, badge);
 
-        // Buttons
+        // ── Actions ──────────────────────────────────────────
         VBox actions = new VBox(6);
         actions.setAlignment(Pos.CENTER);
         buildActionButtons(p, displayStatus, actions);
 
         row.getChildren().addAll(thumb, info, priceBox, actions);
         return row;
+    }
+
+    /**
+     * Tạo thumbnail: nếu có ảnh thật thì hiển thị, không thì dùng icon mặc định.
+     */
+    private StackPane buildThumbnail(String productId, double size) {
+        StackPane pane = new StackPane();
+        pane.setMinSize(size, size);
+        pane.setMaxSize(size, size);
+        pane.setStyle(
+                "-fx-background-color: #1e3a5f;"
+                + "-fx-background-radius: 8;");
+
+        String imagePath = productImages.get(productId);
+        if (imagePath != null) {
+            try {
+                File file = new File(imagePath);
+                if (file.exists()) {
+                    ImageView iv = new ImageView(
+                            new Image(file.toURI().toString(),
+                                    size, size, true, true));
+                    iv.setFitWidth(size);
+                    iv.setFitHeight(size);
+                    iv.setPreserveRatio(true);
+                    pane.getChildren().add(iv);
+                    return pane;
+                }
+            } catch (Exception ignored) {}
+        }
+        // Fallback icon
+        Label icon = new Label("⬡");
+        icon.setStyle("-fx-font-size: 28px; -fx-text-fill: #3b82f6;");
+        pane.getChildren().add(icon);
+        return pane;
     }
 
     // =========================================================
@@ -197,7 +228,6 @@ public class MyProductsController {
                                      String displayStatus,
                                      VBox actions) {
         switch (displayStatus) {
-
             case "CHỜ DUYỆT" -> {
                 Button waitBtn = new Button("⏳ Chờ duyệt");
                 waitBtn.setDisable(true);
@@ -210,7 +240,6 @@ public class MyProductsController {
                 delBtn.setOnAction(e -> handleDelete(p));
                 actions.getChildren().addAll(waitBtn, delBtn);
             }
-
             case "TỪ CHỐI" -> {
                 Button rejBtn = new Button("❌ Bị từ chối");
                 rejBtn.setDisable(true);
@@ -223,7 +252,6 @@ public class MyProductsController {
                 delBtn.setOnAction(e -> handleDelete(p));
                 actions.getChildren().addAll(rejBtn, delBtn);
             }
-
             case "SẮP DIỄN RA" -> {
                 Button editBtn = new Button("✏️ Sửa");
                 editBtn.getStyleClass().add("btn-secondary");
@@ -233,7 +261,6 @@ public class MyProductsController {
                 delBtn.setOnAction(e -> handleDelete(p));
                 actions.getChildren().addAll(editBtn, delBtn);
             }
-
             case "ĐANG ĐẤU GIÁ" -> {
                 Button liveBtn = new Button("🔴 Vào phiên");
                 liveBtn.getStyleClass().add("btn-primary");
@@ -243,13 +270,8 @@ public class MyProductsController {
                 liveBtn.setOnAction(e -> handleGoLive(p));
                 actions.getChildren().add(liveBtn);
             }
-
-            case "ĐÃ KẾT THÚC" -> {
-                // Không có nút thao tác
-            }
-
+            case "ĐÃ KẾT THÚC" -> { /* Không có nút */ }
             default -> {
-                // ĐÃ BÁN / ĐÃ HỦY
                 Button delBtn = new Button("🗑 Xóa");
                 delBtn.getStyleClass().add("btn-danger");
                 delBtn.setOnAction(e -> handleDelete(p));
@@ -259,14 +281,14 @@ public class MyProductsController {
     }
 
     // =========================================================
-    // ADD PRODUCT — status luôn CHỜ DUYỆT, không hiện Alert
+    // ADD PRODUCT — bỏ infoLabel, thêm chọn ảnh
     // =========================================================
     @FXML
     private void handleAddProduct() {
         Dialog<AppContext.ProductRecord> dialog = new Dialog<>();
         dialog.setTitle("Đăng bán sản phẩm mới");
         dialog.setHeaderText("Nhập thông tin sản phẩm");
-        dialog.getDialogPane().setPrefWidth(520);
+        dialog.getDialogPane().setPrefWidth(540);
 
         ButtonType saveBtn =
                 new ButtonType("Đăng bán", ButtonBar.ButtonData.OK_DONE);
@@ -278,22 +300,15 @@ public class MyProductsController {
         grid.setVgap(14);
         grid.setPadding(new Insets(20));
 
-        Label infoLabel = new Label(
-                "ℹ️  Sản phẩm sẽ được gửi lên Admin để xét duyệt trước khi đấu giá.");
-        infoLabel.setStyle(
-                "-fx-text-fill: #38bdf8; -fx-font-size: 12px;"
-                + "-fx-background-color: #0c1a2e; -fx-padding: 8 12 8 12;"
-                + "-fx-background-radius: 6;");
-        infoLabel.setWrapText(true);
-
+        // ── Fields ──────────────────────────────────────────
         TextField nameField = new TextField();
         nameField.setPromptText("Tên sản phẩm...");
         nameField.setPrefWidth(320);
 
         ComboBox<String> catBox = new ComboBox<>();
         catBox.getItems().addAll(
-                "Điện tử","Máy ảnh","Laptop","Điện thoại",
-                "Đồng hồ","Xe cộ","Khác");
+                "Điện tử", "Máy ảnh", "Laptop", "Điện thoại",
+                "Đồng hồ", "Xe cộ", "Khác");
         catBox.setPromptText("Chọn danh mục");
         catBox.setPrefWidth(320);
 
@@ -312,6 +327,96 @@ public class MyProductsController {
         TextField endTime = new TextField("23:59");
         endTime.setPrefWidth(90);
 
+        // ── Chọn ảnh sản phẩm ────────────────────────────────
+        final String[] selectedImagePath = {null};
+
+        StackPane previewPane = new StackPane();
+        previewPane.setMinSize(80, 80);
+        previewPane.setMaxSize(80, 80);
+        previewPane.setStyle(
+                "-fx-background-color: #1e293b;"
+                + "-fx-background-radius: 8;"
+                + "-fx-border-color: #334155;"
+                + "-fx-border-radius: 8;"
+                + "-fx-border-width: 2;");
+        Label previewIcon = new Label("📷");
+        previewIcon.setStyle("-fx-font-size: 28px;");
+        previewPane.getChildren().add(previewIcon);
+
+        Label imgNameLabel = new Label("Chưa chọn ảnh");
+        imgNameLabel.setStyle("-fx-text-fill: #64748b; -fx-font-size: 12px;");
+
+        Button chooseImgBtn = new Button("📂  Chọn ảnh");
+        chooseImgBtn.setStyle(
+                "-fx-background-color: #1e293b; -fx-text-fill: #e2e8f0;"
+                + "-fx-border-color: #334155; -fx-border-radius: 6;"
+                + "-fx-background-radius: 6; -fx-cursor: hand;"
+                + "-fx-font-size: 12px; -fx-padding: 6 14 6 14;");
+
+        Button removeImgBtn = new Button("✕ Xóa ảnh");
+        removeImgBtn.setStyle(
+                "-fx-background-color: transparent; -fx-text-fill: #f87171;"
+                + "-fx-font-size: 11px; -fx-cursor: hand; -fx-padding: 4 8 4 8;");
+        removeImgBtn.setVisible(false);
+        removeImgBtn.setManaged(false);
+
+        chooseImgBtn.setOnAction(e -> {
+            FileChooser fc = new FileChooser();
+            fc.setTitle("Chọn ảnh sản phẩm");
+            fc.getExtensionFilters().add(
+                    new FileChooser.ExtensionFilter(
+                            "Ảnh (PNG, JPG, JPEG, GIF, WEBP)",
+                            "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp"));
+            File file = fc.showOpenDialog(
+                    dialog.getDialogPane().getScene().getWindow());
+            if (file != null) {
+                selectedImagePath[0] = file.getAbsolutePath();
+                imgNameLabel.setText("✅ " + file.getName());
+                imgNameLabel.setStyle(
+                        "-fx-text-fill: #22c55e; -fx-font-size: 12px;");
+                // Hiển thị preview ảnh
+                try {
+                    ImageView iv = new ImageView(
+                            new Image(file.toURI().toString(), 80, 80, true, true));
+                    iv.setFitWidth(80);
+                    iv.setFitHeight(80);
+                    iv.setPreserveRatio(true);
+                    previewPane.getChildren().setAll(iv);
+                    previewPane.setStyle(
+                            "-fx-background-color: #0f172a;"
+                            + "-fx-background-radius: 8;"
+                            + "-fx-border-color: #22c55e;"
+                            + "-fx-border-radius: 8;"
+                            + "-fx-border-width: 2;");
+                } catch (Exception ex) {
+                    previewPane.getChildren().setAll(previewIcon);
+                }
+                removeImgBtn.setVisible(true);
+                removeImgBtn.setManaged(true);
+            }
+        });
+
+        removeImgBtn.setOnAction(e -> {
+            selectedImagePath[0] = null;
+            previewPane.getChildren().setAll(previewIcon);
+            previewPane.setStyle(
+                    "-fx-background-color: #1e293b;"
+                    + "-fx-background-radius: 8;"
+                    + "-fx-border-color: #334155;"
+                    + "-fx-border-radius: 8;"
+                    + "-fx-border-width: 2;");
+            imgNameLabel.setText("Chưa chọn ảnh");
+            imgNameLabel.setStyle("-fx-text-fill: #64748b; -fx-font-size: 12px;");
+            removeImgBtn.setVisible(false);
+            removeImgBtn.setManaged(false);
+        });
+
+        VBox imgBtnCol = new VBox(6, chooseImgBtn, imgNameLabel, removeImgBtn);
+        imgBtnCol.setAlignment(Pos.CENTER_LEFT);
+        HBox imgRow = new HBox(14, previewPane, imgBtnCol);
+        imgRow.setAlignment(Pos.CENTER_LEFT);
+
+        // ── Error label ──────────────────────────────────────
         Label errLabel = new Label();
         errLabel.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 12px;");
         errLabel.setWrapText(true);
@@ -323,19 +428,21 @@ public class MyProductsController {
 
         String ls =
                 "-fx-font-size:13px;-fx-font-weight:bold;-fx-text-fill:#1e293b;";
-        Label lN = new Label("Tên sản phẩm *");      lN.setStyle(ls);
-        Label lC = new Label("Danh mục *");           lC.setStyle(ls);
-        Label lP = new Label("Giá khởi điểm *");      lP.setStyle(ls);
-        Label lS = new Label("Thời gian bắt đầu *");  lS.setStyle(ls);
-        Label lE = new Label("Thời gian kết thúc *"); lE.setStyle(ls);
+        Label lImg = new Label("Ảnh sản phẩm");  lImg.setStyle(ls);
+        Label lN   = new Label("Tên sản phẩm *"); lN.setStyle(ls);
+        Label lC   = new Label("Danh mục *");      lC.setStyle(ls);
+        Label lP   = new Label("Giá khởi điểm *"); lP.setStyle(ls);
+        Label lS   = new Label("Thời gian bắt đầu *"); lS.setStyle(ls);
+        Label lE   = new Label("Thời gian kết thúc *"); lE.setStyle(ls);
 
-        grid.add(infoLabel,  0, 0, 2, 1);
-        grid.add(lN, 0, 1); grid.add(nameField,  1, 1);
-        grid.add(lC, 0, 2); grid.add(catBox,     1, 2);
-        grid.add(lP, 0, 3); grid.add(priceField, 1, 3);
-        grid.add(lS, 0, 4); grid.add(startRow,   1, 4);
-        grid.add(lE, 0, 5); grid.add(endRow,     1, 5);
-        grid.add(errLabel,   0, 6, 2, 1);
+        // ── Lưới form — ảnh đặt đầu tiên, bỏ infoLabel ──────
+        grid.add(lImg,     0, 0); grid.add(imgRow,    1, 0);
+        grid.add(lN,       0, 1); grid.add(nameField, 1, 1);
+        grid.add(lC,       0, 2); grid.add(catBox,    1, 2);
+        grid.add(lP,       0, 3); grid.add(priceField,1, 3);
+        grid.add(lS,       0, 4); grid.add(startRow,  1, 4);
+        grid.add(lE,       0, 5); grid.add(endRow,    1, 5);
+        grid.add(errLabel, 0, 6, 2, 1);
 
         dialog.getDialogPane().setContent(grid);
 
@@ -361,8 +468,7 @@ public class MyProductsController {
                         priceField.getText().trim().replaceAll("[^0-9.]", ""));
                 if (price <= 0) throw new NumberFormatException();
             } catch (NumberFormatException ex) {
-                errLabel.setText("⚠ Giá khởi điểm không hợp lệ.");
-                return null;
+                errLabel.setText("⚠ Giá khởi điểm không hợp lệ."); return null;
             }
 
             LocalDateTime startDT, endDT;
@@ -387,8 +493,6 @@ public class MyProductsController {
                 return null;
             }
 
-            // ✅ Check trùng với TẤT CẢ sản phẩm còn active của seller
-            // (CHỜ DUYỆT, SẮP DIỄN RA, ĐANG ĐẤU GIÁ — bỏ qua TỪ CHỐI/ĐÃ BÁN/ĐÃ HỦY)
             String conflict = findTimeConflict(startDT, endDT, null);
             if (conflict != null) {
                 errLabel.setText(
@@ -402,18 +506,20 @@ public class MyProductsController {
                               .substring(0, 6).toUpperCase(),
                     nameVal,
                     catBox.getValue() == null ? "Khác" : catBox.getValue(),
-                    price, price, 0,
-                    "CHỜ DUYỆT",   // ← luôn CHỜ DUYỆT, không tạo session
-                    startDT, endDT, "—"
-            );
+                    price, price, 0, "CHỜ DUYỆT",
+                    startDT, endDT, "—");
         });
 
-        // ✅ Không hiện Alert sau khi đăng — lưu và reload list luôn
         dialog.showAndWait().ifPresent(product -> {
             if (product == null) return;
+
+            // Lưu ảnh nếu có
+            if (selectedImagePath[0] != null)
+                productImages.put(product.id(), selectedImagePath[0]);
+
             AppContext.addProduct(username, product);
 
-            // Thông báo WebSocket cho Admin
+            // Notify Admin qua WebSocket
             ServerConnection conn = ServerConnection.getInstance();
             if (conn.isConnected()) {
                 conn.sendJson(String.format(
@@ -425,14 +531,10 @@ public class MyProductsController {
                         + "\"startPrice\":%.0f,"
                         + "\"startTime\":\"%s\","
                         + "\"endTime\":\"%s\"}",
-                        product.id(),
-                        product.name(),
-                        username,
-                        product.category(),
-                        product.startPrice(),
+                        product.id(), product.name(), username,
+                        product.category(), product.startPrice(),
                         product.startTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
-                        product.endTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-                ));
+                        product.endTime().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)));
             }
 
             refreshStats();
@@ -442,22 +544,15 @@ public class MyProductsController {
 
     // =========================================================
     // KIỂM TRA TRÙNG THỜI GIAN
-    // Block: CHỜ DUYỆT, SẮP DIỄN RA, ĐANG ĐẤU GIÁ
-    // Bỏ qua: TỪ CHỐI, ĐÃ BÁN, ĐÃ KẾT THÚC, ĐÃ HỦY
     // =========================================================
     private String findTimeConflict(LocalDateTime newStart,
                                      LocalDateTime newEnd,
                                      String excludeId) {
         for (AppContext.ProductRecord p : AppContext.getProducts(username)) {
             if (excludeId != null && excludeId.equals(p.id())) continue;
-
-            // Tính display status để check đúng trạng thái thực tế
             String ds = AppContext.computeDisplayStatus(p);
-            if ("TỪ CHỐI".equals(ds)
-                    || "ĐÃ BÁN".equals(ds)
-                    || "ĐÃ KẾT THÚC".equals(ds)
-                    || "ĐÃ HỦY".equals(ds)) continue;
-
+            if ("TỪ CHỐI".equals(ds) || "ĐÃ BÁN".equals(ds)
+                    || "ĐÃ KẾT THÚC".equals(ds) || "ĐÃ HỦY".equals(ds)) continue;
             boolean overlap = newStart.isBefore(p.endTime())
                            && newEnd.isAfter(p.startTime());
             if (overlap) return p.name() + " [" + ds + "]";
@@ -466,7 +561,7 @@ public class MyProductsController {
     }
 
     // =========================================================
-    // VÀO PHIÊN (khi ĐANG ĐẤU GIÁ)
+    // VÀO PHIÊN
     // =========================================================
     private void handleGoLive(AppContext.ProductRecord p) {
         org.example.auction.AuctionSession existing =
@@ -478,29 +573,23 @@ public class MyProductsController {
             AppContext.setActiveSession(existing);
         } else {
             if (p.endTime().isBefore(LocalDateTime.now())) {
-                showAlert("Hết hạn", "Phiên đấu giá đã hết thời gian.");
-                return;
+                showAlert("Hết hạn", "Phiên đấu giá đã hết thời gian."); return;
             }
             try {
                 double step = Math.max(p.startPrice() * 0.05, 500_000);
                 org.example.auction.AuctionSession newSess =
                         new org.example.auction.AuctionSession(
-                                p.id(), p.name(),
-                                p.startPrice(), step, p.endTime());
+                                p.id(), p.name(), p.startPrice(), step, p.endTime());
                 newSess.start();
                 AppContext.registerSession(newSess, username);
                 AppContext.setActiveSession(newSess);
-
                 AppContext.updateProduct(username, new AppContext.ProductRecord(
                         p.id(), p.name(), p.category(),
                         p.startPrice(), p.startPrice(), 0,
-                        "ĐANG ĐẤU GIÁ",
-                        p.startTime(), p.endTime(), "—"
-                ));
+                        "ĐANG ĐẤU GIÁ", p.startTime(), p.endTime(), "—"));
             } catch (Exception e) {
                 e.printStackTrace();
-                showAlert("Lỗi", "Không thể vào phiên: " + e.getMessage());
-                return;
+                showAlert("Lỗi", "Không thể vào phiên: " + e.getMessage()); return;
             }
         }
         try { HelloApplication.showLiveAuctionView(); }
@@ -514,7 +603,7 @@ public class MyProductsController {
         Dialog<AppContext.ProductRecord> dialog = new Dialog<>();
         dialog.setTitle("Chỉnh sửa sản phẩm");
         dialog.setHeaderText(p.name());
-        dialog.getDialogPane().setPrefWidth(500);
+        dialog.getDialogPane().setPrefWidth(540);
 
         ButtonType saveBtn =
                 new ButtonType("Lưu", ButtonBar.ButtonData.OK_DONE);
@@ -540,6 +629,61 @@ public class MyProductsController {
         TextField endTime = new TextField(p.endTime().format(TIME_ONLY));
         endTime.setPrefWidth(90);
 
+        // ── Chọn ảnh (edit) ──────────────────────────────────
+        final String[] editImagePath = {productImages.get(p.id())};
+
+        StackPane previewPane = buildThumbnailPreview(
+                editImagePath[0], 80);
+
+        Label imgNameLabel = new Label(
+                editImagePath[0] != null
+                        ? "✅ " + new File(editImagePath[0]).getName()
+                        : "Chưa có ảnh");
+        imgNameLabel.setStyle(editImagePath[0] != null
+                ? "-fx-text-fill: #22c55e; -fx-font-size: 12px;"
+                : "-fx-text-fill: #64748b; -fx-font-size: 12px;");
+
+        Button chooseImgBtn = new Button("📂  Đổi ảnh");
+        chooseImgBtn.setStyle(
+                "-fx-background-color: #1e293b; -fx-text-fill: #e2e8f0;"
+                + "-fx-border-color: #334155; -fx-border-radius: 6;"
+                + "-fx-background-radius: 6; -fx-cursor: hand;"
+                + "-fx-font-size: 12px; -fx-padding: 6 14 6 14;");
+
+        chooseImgBtn.setOnAction(e -> {
+            FileChooser fc = new FileChooser();
+            fc.setTitle("Chọn ảnh sản phẩm");
+            fc.getExtensionFilters().add(
+                    new FileChooser.ExtensionFilter(
+                            "Ảnh", "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp"));
+            File file = fc.showOpenDialog(
+                    dialog.getDialogPane().getScene().getWindow());
+            if (file != null) {
+                editImagePath[0] = file.getAbsolutePath();
+                imgNameLabel.setText("✅ " + file.getName());
+                imgNameLabel.setStyle(
+                        "-fx-text-fill: #22c55e; -fx-font-size: 12px;");
+                try {
+                    ImageView iv = new ImageView(
+                            new Image(file.toURI().toString(), 80, 80, true, true));
+                    iv.setFitWidth(80);
+                    iv.setFitHeight(80);
+                    previewPane.getChildren().setAll(iv);
+                    previewPane.setStyle(
+                            "-fx-background-color: #0f172a;"
+                            + "-fx-background-radius: 8;"
+                            + "-fx-border-color: #22c55e;"
+                            + "-fx-border-radius: 8;"
+                            + "-fx-border-width: 2;");
+                } catch (Exception ex) {}
+            }
+        });
+
+        VBox imgBtnCol = new VBox(6, chooseImgBtn, imgNameLabel);
+        imgBtnCol.setAlignment(Pos.CENTER_LEFT);
+        HBox imgRow = new HBox(14, previewPane, imgBtnCol);
+        imgRow.setAlignment(Pos.CENTER_LEFT);
+
         Label errLabel = new Label();
         errLabel.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 12px;");
         errLabel.setWrapText(true);
@@ -549,21 +693,21 @@ public class MyProductsController {
 
         String ls =
                 "-fx-font-size:13px;-fx-font-weight:bold;-fx-text-fill:#1e293b;";
-        Label lN = new Label("Tên sản phẩm");      lN.setStyle(ls);
-        Label lC = new Label("Danh mục");           lC.setStyle(ls);
-        Label lE = new Label("Thời gian kết thúc"); lE.setStyle(ls);
-
-        grid.add(lN, 0, 0); grid.add(nameField, 1, 0);
-        grid.add(lC, 0, 1); grid.add(catBox,    1, 1);
-        grid.add(lE, 0, 2); grid.add(endRow,    1, 2);
-        grid.add(errLabel, 0, 3, 2, 1);
+        grid.add(styledLabel("Ảnh sản phẩm", ls), 0, 0);
+        grid.add(imgRow,                            1, 0);
+        grid.add(styledLabel("Tên sản phẩm", ls),  0, 1);
+        grid.add(nameField,                         1, 1);
+        grid.add(styledLabel("Danh mục", ls),       0, 2);
+        grid.add(catBox,                            1, 2);
+        grid.add(styledLabel("Thời gian kết thúc", ls), 0, 3);
+        grid.add(endRow,                            1, 3);
+        grid.add(errLabel,                          0, 4, 2, 1);
 
         dialog.getDialogPane().setContent(grid);
 
         dialog.setResultConverter(btn -> {
             if (btn != saveBtn) return null;
             errLabel.setText("");
-
             LocalDateTime newEnd;
             try {
                 newEnd = LocalDateTime.of(endDate.getValue(),
@@ -571,36 +715,32 @@ public class MyProductsController {
             } catch (Exception ex) {
                 errLabel.setText("⚠ Thời gian không hợp lệ."); return null;
             }
-
             if (!newEnd.isAfter(p.startTime())) {
                 errLabel.setText(
                         "⚠ Thời gian kết thúc phải sau thời gian bắt đầu.");
                 return null;
             }
-
-            // Kiểm tra trùng, bỏ qua chính sản phẩm đang sửa
             String conflict = findTimeConflict(p.startTime(), newEnd, p.id());
             if (conflict != null) {
                 errLabel.setText(
                         "⚠ Trùng thời gian với sản phẩm: \"" + conflict + "\"");
                 return null;
             }
-
             String nameVal = nameField.getText().trim().isEmpty()
                     ? p.name() : nameField.getText().trim();
             String catVal  = catBox.getValue() == null
                     ? p.category() : catBox.getValue();
-
             return new AppContext.ProductRecord(
                     p.id(), nameVal, catVal,
                     p.startPrice(), p.currentPrice(),
                     p.bidCount(), p.status(),
-                    p.startTime(), newEnd, p.topBidder()
-            );
+                    p.startTime(), newEnd, p.topBidder());
         });
 
         dialog.showAndWait().ifPresent(updated -> {
             if (updated == null) return;
+            if (editImagePath[0] != null)
+                productImages.put(updated.id(), editImagePath[0]);
             AppContext.updateProduct(username, updated);
             refreshStats();
             renderList(AppContext.getProducts(username));
@@ -618,6 +758,7 @@ public class MyProductsController {
         confirm.showAndWait().ifPresent(btn -> {
             if (btn == ButtonType.OK) {
                 AppContext.removeProduct(username, p.id());
+                productImages.remove(p.id());
                 refreshStats();
                 renderList(AppContext.getProducts(username));
             }
@@ -625,7 +766,7 @@ public class MyProductsController {
     }
 
     // =========================================================
-    // FILTER
+    // FILTER / SEARCH
     // =========================================================
     @FXML private void handleFilter() { applyFilters(); }
     @FXML private void handleSearch() { applyFilters(); }
@@ -660,6 +801,50 @@ public class MyProductsController {
     // =========================================================
     // HELPERS
     // =========================================================
+
+    /** Tạo preview pane cho edit dialog */
+    private StackPane buildThumbnailPreview(String imagePath, double size) {
+        StackPane pane = new StackPane();
+        pane.setMinSize(size, size);
+        pane.setMaxSize(size, size);
+
+        if (imagePath != null) {
+            try {
+                File f = new File(imagePath);
+                if (f.exists()) {
+                    ImageView iv = new ImageView(
+                            new Image(f.toURI().toString(), size, size, true, true));
+                    iv.setFitWidth(size);
+                    iv.setFitHeight(size);
+                    pane.setStyle(
+                            "-fx-background-color: #0f172a;"
+                            + "-fx-background-radius: 8;"
+                            + "-fx-border-color: #22c55e;"
+                            + "-fx-border-radius: 8;"
+                            + "-fx-border-width: 2;");
+                    pane.getChildren().add(iv);
+                    return pane;
+                }
+            } catch (Exception ignored) {}
+        }
+        Label icon = new Label("📷");
+        icon.setStyle("-fx-font-size: 28px;");
+        pane.setStyle(
+                "-fx-background-color: #1e293b;"
+                + "-fx-background-radius: 8;"
+                + "-fx-border-color: #334155;"
+                + "-fx-border-radius: 8;"
+                + "-fx-border-width: 2;");
+        pane.getChildren().add(icon);
+        return pane;
+    }
+
+    private Label styledLabel(String text, String style) {
+        Label l = new Label(text);
+        l.setStyle(style);
+        return l;
+    }
+
     private String badgeStyle(String displayStatus) {
         return switch (displayStatus) {
             case "CHỜ DUYỆT"    -> "badge-warn";
