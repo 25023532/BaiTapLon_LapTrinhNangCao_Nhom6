@@ -54,8 +54,10 @@ public class AutoBidEngine {
             throw new IllegalArgumentException("maxAmount không được âm");
         }
         if (maxAmount <= session.getCurrentPrice()) {
-            throw new InvalidBidException(maxAmount,
-                    session.getCurrentPrice() + minimumIncrement);
+            // Dùng String message vì InvalidBidException của dự án nhận String
+            throw new InvalidBidException(
+                    "maxAmount " + maxAmount
+                    + " phải lớn hơn giá hiện tại " + session.getCurrentPrice());
         }
         registrations.put(bidderId, maxAmount);
     }
