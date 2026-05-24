@@ -5,10 +5,14 @@ import org.example.user.Admin;
 import org.example.user.Bidder;
 import org.example.user.User;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@DisplayName("AuthService Tests")
 public class AuthServiceTest {
 
     private AuthService authService;
@@ -20,15 +24,20 @@ public class AuthServiceTest {
         uid = "t" + System.nanoTime(); // username ngẫu nhiên, không bao giờ trùng
     }
 
+    // ===== Login =====
+
     @Test
+    @DisplayName("Đăng nhập thành công — trả về User không null")
     void testLogin_Success() {
         authService.register(new Admin(uid, uid, "admin123"));
         User result = authService.login(uid, "admin123");
         assertNotNull(result);
+        assertEquals(uid, result.getUsername());
         System.out.println("✔ Test đăng nhập thành công: " + result.getUsername());
     }
 
     @Test
+    @DisplayName("Sai mật khẩu — trả về null")
     void testLogin_WrongPassword() {
         authService.register(new Admin(uid, uid, "admin123"));
         User result = authService.login(uid, "wrongpass");
@@ -37,6 +46,7 @@ public class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("Tài khoản không tồn tại — trả về null")
     void testLogin_UserNotFound() {
         User result = authService.login("nobody_" + uid, "pass123");
         assertNull(result);
@@ -44,6 +54,7 @@ public class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("Username rỗng — throw IllegalArgumentException")
     void testLogin_EmptyUsername() {
         assertThrows(IllegalArgumentException.class,
                 () -> authService.login("", "pass123"));
@@ -51,6 +62,7 @@ public class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("Password rỗng — throw IllegalArgumentException")
     void testLogin_EmptyPassword() {
         assertThrows(IllegalArgumentException.class,
                 () -> authService.login(uid, ""));
@@ -58,6 +70,45 @@ public class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("Username null — throw IllegalArgumentException")
+    void testLogin_NullUsername() {
+        assertThrows(IllegalArgumentException.class,
+                () -> authService.login(null, "pass123"));
+        System.out.println("✔ Test username null: ném IllegalArgumentException");
+    }
+
+    @Test
+    @DisplayName("Password null — throw IllegalArgumentException")
+    void testLogin_NullPassword() {
+        assertThrows(IllegalArgumentException.class,
+                () -> authService.login(uid, null));
+        System.out.println("✔ Test password null: ném IllegalArgumentException");
+    }
+
+    @Test
+    @DisplayName("Đăng nhập với tài khoản Bidder — trả về Bidder instance")
+    void testLogin_BidderAccount_ReturnsBidder() {
+        authService.register(new Bidder(uid, uid, "bidpass"));
+        User result = authService.login(uid, "bidpass");
+        assertNotNull(result);
+        assertInstanceOf(Bidder.class, result);
+        System.out.println("✔ Test login Bidder: " + result.getClass().getSimpleName());
+    }
+
+    @Test
+    @DisplayName("Đăng nhập với tài khoản Admin — trả về Admin instance")
+    void testLogin_AdminAccount_ReturnsAdmin() {
+        authService.register(new Admin(uid, uid, "adminpass"));
+        User result = authService.login(uid, "adminpass");
+        assertNotNull(result);
+        assertInstanceOf(Admin.class, result);
+        System.out.println("✔ Test login Admin: " + result.getClass().getSimpleName());
+    }
+
+    // ===== Register =====
+
+    @Test
+    @DisplayName("Đăng ký thành công")
     void testRegister_Success() {
         authService.register(new Bidder(uid, uid, "pass123"));
         assertTrue(authService.isRegistered(uid));
@@ -65,6 +116,7 @@ public class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("Đăng ký tài khoản đã tồn tại — throw IllegalStateException")
     void testRegister_UserAlreadyExists() {
         authService.register(new Bidder(uid, uid, "pass123"));
         assertThrows(IllegalStateException.class,
@@ -73,6 +125,7 @@ public class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("Đăng ký null — throw IllegalArgumentException")
     void testRegister_NullUser() {
         assertThrows(IllegalArgumentException.class,
                 () -> authService.register(null));
@@ -80,6 +133,21 @@ public class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("Đăng ký nhiều loại user khác nhau — đều thành công")
+    void testRegister_MultipleUserTypes() {
+        String adminUid = uid + "_admin";
+        String bidderUid = uid + "_bidder";
+        authService.register(new Admin(adminUid, adminUid, "adminpass"));
+        authService.register(new Bidder(bidderUid, bidderUid, "bidpass"));
+        assertTrue(authService.isRegistered(adminUid));
+        assertTrue(authService.isRegistered(bidderUid));
+        System.out.println("✔ Test đăng ký nhiều loại user");
+    }
+
+    // ===== IsRegistered =====
+
+    @Test
+    @DisplayName("isRegistered = true khi đã đăng ký")
     void testIsRegistered_True() {
         authService.register(new Admin(uid, uid, "admin123"));
         assertTrue(authService.isRegistered(uid));
@@ -87,12 +155,16 @@ public class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("isRegistered = false khi chưa đăng ký")
     void testIsRegistered_False() {
         assertFalse(authService.isRegistered("nobody_" + uid));
         System.out.println("✔ Test isRegistered = false");
     }
 
+    // ===== Unregister =====
+
     @Test
+    @DisplayName("Xóa tài khoản thành công")
     void testUnregister_Success() {
         authService.register(new Bidder(uid, uid, "pass123"));
         authService.unregister(uid);
@@ -101,6 +173,7 @@ public class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("Xóa tài khoản không tồn tại — throw IllegalArgumentException")
     void testUnregister_NotFound() {
         assertThrows(IllegalArgumentException.class,
                 () -> authService.unregister("nobody_" + uid));
@@ -108,10 +181,42 @@ public class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("Sau khi xóa, đăng nhập lại phải thất bại")
+    void testUnregister_ThenLogin_ShouldFail() {
+        authService.register(new Bidder(uid, uid, "pass123"));
+        authService.unregister(uid);
+        User result = authService.login(uid, "pass123");
+        assertNull(result);
+        System.out.println("✔ Test login sau khi unregister: trả về null");
+    }
+
+    // ===== GetAllUsers =====
+
+    @Test
+    @DisplayName("getAllUsers trả về danh sách >= số user đã đăng ký")
     void testGetAllUsers() {
         authService.register(new Bidder(uid + "a", uid + "a", "pass123"));
         authService.register(new Bidder(uid + "b", uid + "b", "pass456"));
-        assertTrue(authService.getAllUsers().size() >= 2);
-        System.out.println("✔ Test getAllUsers: " + authService.getAllUsers().size() + " users");
+        List<User> users = authService.getAllUsers();
+        assertTrue(users.size() >= 2);
+        System.out.println("✔ Test getAllUsers: " + users.size() + " users");
+    }
+
+    @Test
+    @DisplayName("getAllUsers không trả về null")
+    void testGetAllUsers_NotNull() {
+        assertNotNull(authService.getAllUsers());
+        System.out.println("✔ Test getAllUsers: không null khi chưa có user");
+    }
+
+    @Test
+    @DisplayName("getAllUsers — sau unregister, danh sách giảm đi 1")
+    void testGetAllUsers_AfterUnregister_SizeDecreases() {
+        authService.register(new Bidder(uid, uid, "pass123"));
+        int sizeBefore = authService.getAllUsers().size();
+        authService.unregister(uid);
+        int sizeAfter = authService.getAllUsers().size();
+        assertEquals(sizeBefore - 1, sizeAfter);
+        System.out.println("✔ Test getAllUsers sau unregister: giảm đúng 1 phần tử");
     }
 }
