@@ -1,13 +1,9 @@
 package org.example.auction;
-
 import org.example.exception.DataException;  // ✅ Fix import 1
 // Bid đã cùng package org.example.auction nên không cần import
 import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.*;
-
 public class BidTest {
-
     // ── Test tạo Bid hợp lệ ──────────────────────────────
     @Test
     void testCreateBid_Success() {
@@ -19,7 +15,6 @@ public class BidTest {
         assertNotNull(bid.getTimestamp());          // ✅ Fix: getBidTime() → getTimestamp()
         System.out.println("✔ Test tạo Bid thành công: " + bid);
     }
-
     // ── Test tạo Bid với bidId rỗng ──────────────────────
     @Test
     void testCreateBid_EmptyBidId() {
@@ -27,7 +22,6 @@ public class BidTest {
             new Bid("", "bidder1", 6000000));      // ✅ Fix: dùng IllegalArgumentException
         System.out.println("✔ Test bidId rỗng OK");
     }
-
     // ── Test tạo Bid với bidderId rỗng ───────────────────
     @Test
     void testCreateBid_EmptyBidderId() {
@@ -35,7 +29,6 @@ public class BidTest {
             new Bid("BID-001", "", 6000000));
         System.out.println("✔ Test bidderId rỗng OK");
     }
-
     // ── Test tạo Bid với amount = 0 ──────────────────────
     @Test
     void testCreateBid_ZeroAmount() {
@@ -43,7 +36,6 @@ public class BidTest {
             new Bid("BID-001", "bidder1", 0));
         System.out.println("✔ Test amount = 0 OK");
     }
-
     // ── Test tạo Bid với amount âm ───────────────────────
     @Test
     void testCreateBid_NegativeAmount() {
@@ -51,7 +43,6 @@ public class BidTest {
             new Bid("BID-001", "bidder1", -5000));
         System.out.println("✔ Test amount âm OK");
     }
-
     // ── Test bidId null ───────────────────────────────────
     @Test
     void testCreateBid_NullBidId() {
@@ -59,7 +50,6 @@ public class BidTest {
             new Bid(null, "bidder1", 6000000));
         System.out.println("✔ Test bidId null OK");
     }
-
     // ── Test bidderId null ────────────────────────────────
     @Test
     void testCreateBid_NullBidderId() {
@@ -68,4 +58,3 @@ public class BidTest {
         System.out.println("✔ Test bidderId null OK");
     }
 }
-
