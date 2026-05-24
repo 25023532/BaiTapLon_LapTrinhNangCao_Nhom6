@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE module PUBLIC
+    "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+    "https://checkstyle.org/dtds/configuration_1_3.dtd">
+
+<!--
+    Checkstyle configuration cho AuctionSystem_Nhom6
+    Dựa trên Google Java Style Guide với một số điều chỉnh phù hợp dự án.
+    Chạy: mvn checkstyle:check
+-->
+<module name="Checker">
+
+    <property name="charset" value="UTF-8"/>
+    <property name="severity" value="warning"/>
+    <property name="fileExtensions" value="java"/>
+
+    <!-- ── File-level checks ─────────────────────────────────────────── -->
+
+    <!-- Không có tab — chỉ dùng spaces -->
+    <module name="FileTabCharacter">
+        <property name="eachLine" value="true"/>
+    </module>
+
+    <!-- Dòng không dài hơn 120 ký tự -->
+    <module name="LineLength">
+        <property name="fileExtensions" value="java"/>
+        <property name="max" value="120"/>
+        <property name="ignorePattern"
+                  value="^package.*|^import.*|a href|href|http://|https://|ftp://"/>
+    </module>
+
+    <!-- ── Tree Walker (per-class checks) ───────────────────────────── -->
+    <module name="TreeWalker">
+
+        <!-- Import -->
+        <module name="AvoidStarImport"/>
+        <module name="UnusedImports"/>
+        <module name="RedundantImport"/>
+        <module name="IllegalImport"/>
+
+        <!-- Naming conventions -->
+        <module name="TypeName"/>                        <!-- ClassName -->
+        <module name="MethodName"/>                     <!-- methodName -->
+        <module name="ParameterName"/>                  <!-- paramName -->
+        <module name="LocalVariableName"/>              <!-- localVar -->
+        <module name="ConstantName"/>                   <!-- CONSTANT_NAME -->
+        <module name="MemberName"/>                     <!-- memberName -->
+        <module name="StaticVariableName"/>
+
+        <!-- Javadoc -->
+        <module name="MissingJavadocMethod">
+            <property name="scope" value="public"/>
+            <property name="allowMissingPropertyJavadoc" value="true"/>
+        </module>
+        <module name="JavadocMethod">
+            <property name="accessModifiers" value="public"/>
+        </module>
+
+        <!-- Braces & Whitespace -->
+        <module name="NeedBraces"/>
+        <module name="LeftCurly"/>
+        <module name="RightCurly"/>
+        <module name="WhitespaceAround">
+            <property name="allowEmptyConstructors" value="true"/>
+            <property name="allowEmptyLambdas" value="true"/>
+            <property name="allowEmptyMethods" value="true"/>
+            <property name="allowEmptyTypes" value="true"/>
+            <property name="allowEmptyLoops" value="true"/>
+        </module>
+        <module name="NoWhitespaceBefore"/>
+        <module name="EmptyLineSeparator">
+            <property name="allowNoEmptyLineBetweenFields" value="true"/>
+        </module>
+
+        <!-- Modifiers -->
+        <module name="ModifierOrder"/>
+        <module name="RedundantModifier"/>
+
+        <!-- Coding -->
+        <module name="EmptyStatement"/>
+        <module name="EqualsHashCode"/>
+        <module name="SimplifyBooleanExpression"/>
+        <module name="SimplifyBooleanReturn"/>
+        <module name="StringLiteralEquality"/>
+        <module name="NestedIfDepth">
+            <property name="max" value="3"/>
+        </module>
+        <module name="MethodLength">
+            <property name="max" value="80"/>
+        </module>
+        <module name="ParameterNumber">
+            <property name="max" value="7"/>
+        </module>
+
+        <!-- Misc -->
+        <module name="UpperEll"/>
+        <module name="ArrayTypeStyle"/>
+        <module name="TodoComment">
+            <property name="format" value="(TODO|FIXME|HACK):"/>
+        </module>
+
+    </module>
+
+</module>
