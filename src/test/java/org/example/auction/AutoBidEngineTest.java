@@ -30,7 +30,7 @@ class AutoBidEngineTest {
                 LocalDateTime.now().plusHours(1)
         );
         session.start();
-        engine = new AutoBidEngine(session);
+        engine = new AutoBidEngine(session, 50.0);
     }
 
     // ===== Register AutoBid =====
