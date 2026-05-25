@@ -97,17 +97,19 @@ class AuctionSessionTest {
     }
 
     @Test
-    @DisplayName("Đặt giá âm — nên throw InvalidBidException")
+    @DisplayName("Bid âm — nên throw IllegalArgumentException")
     void placeBid_NegativeAmount_ShouldThrow() {
-        Bid bid = new Bid("B016", "bidder1", -500.0);
-        assertThrows(InvalidBidException.class, () -> session.placeBid(bid));
+        // Bid validates amount before the session receives it.
+        assertThrows(IllegalArgumentException.class,
+                () -> new Bid("B016", "bidder1", -500.0));
     }
 
     @Test
-    @DisplayName("Đặt giá bằng 0 — nên throw InvalidBidException")
+    @DisplayName("Bid bằng 0 — nên throw IllegalArgumentException")
     void placeBid_ZeroAmount_ShouldThrow() {
-        Bid bid = new Bid("B017", "bidder1", 0.0);
-        assertThrows(InvalidBidException.class, () -> session.placeBid(bid));
+        // Bid validates amount before the session receives it.
+        assertThrows(IllegalArgumentException.class,
+                () -> new Bid("B017", "bidder1", 0.0));
     }
 
     @Test
@@ -242,8 +244,8 @@ class AuctionSessionTest {
         session.placeBid(new Bid("B022", "alice", 1100.0));
         session.placeBid(new Bid("B023", "bob", 1200.0));
         session.placeBid(new Bid("B024", "alice", 1400.0));
-        session.placeBid(new Bid("B025", "charlie", 1350.0)); // thấp hơn alice → throw
-        // charlie's bid should throw, so we skip it in assertion
+        assertThrows(InvalidBidException.class,
+                () -> session.placeBid(new Bid("B025", "charlie", 1350.0)));
         session.finish();
         assertEquals("alice", session.getWinnerBidderId());
         assertEquals(1400.0, session.getCurrentPrice());

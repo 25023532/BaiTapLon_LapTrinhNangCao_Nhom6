@@ -290,18 +290,19 @@ public class AuctionWebSocketServer extends WebSocketServer {
                 String amountStr = extract(raw, "amount");
                 String sessionId = extract(raw, "sessionId");
                 double amount    = Double.parseDouble(amountStr);
+                String timestamp = LocalDateTime.now().format(DT);
 
                 // Update running session on server
                 ServerDatabase.RunningSessionInfo rs = db.getRunningSession(sessionId);
                 if (rs != null) {
                     List<ServerDatabase.BidEntry> bids = new ArrayList<>(rs.bidHistory());
-                    bids.add(new ServerDatabase.BidEntry(username, amount,
-                            LocalDateTime.now().format(DT)));
+                    bids.add(new ServerDatabase.BidEntry(username, amount, timestamp));
                     ServerDatabase.RunningSessionInfo updated = new ServerDatabase.RunningSessionInfo(
                             rs.sessionId(), rs.itemName(), rs.sellerName(),
                             rs.startPrice(), rs.minStep(), rs.startTime(),
                             rs.endTime(), rs.category(), amount, bids.size(), username, bids);
                     db.addRunningSession(sessionId, updated);
+                    db.saveRunningSessions();
 
                     // Update product current price in database
                     db.putProduct(rs.sellerName(), new AppContext.ProductRecord(
@@ -313,6 +314,7 @@ public class AuctionWebSocketServer extends WebSocketServer {
                 broadcastAll("{\"type\":\"NEW_BID\","
                         + "\"username\":\""  + esc(username)  + "\","
                         + "\"amount\":\""    + esc(amountStr)+ "\","
+                        + "\"timestamp\":\"" + esc(timestamp) + "\","
                         + "\"sessionId\":\"" + esc(sessionId) + "\"}");
             }
 
@@ -331,6 +333,7 @@ public class AuctionWebSocketServer extends WebSocketServer {
                         sessionId, itemName, sellerName, startPrice, minStep,
                         LocalDateTime.now(), endTime, category, startPrice, 0, "—",
                         new ArrayList<>()));
+                db.saveRunningSessions();
 
                 // Update product status
                 db.putProduct(sellerName, new AppContext.ProductRecord(
@@ -377,6 +380,7 @@ public class AuctionWebSocketServer extends WebSocketServer {
                             winner != null && !winner.isBlank() ? winner : "—"));
                 }
                 db.removeRunningSession(sessionId);
+                db.saveRunningSessions();
 
                 broadcastAll("{\"type\":\"SESSION_END\","
                         + "\"sessionId\":\"" + esc(sessionId) + "\","

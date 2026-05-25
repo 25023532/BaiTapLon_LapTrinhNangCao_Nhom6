@@ -90,6 +90,32 @@ public class AppContext {
         return Collections.unmodifiableList(globalSessions);
     }
 
+    public static boolean applyBidToSession(String sessionId,
+                                            org.example.auction.Bid bid) {
+        if (sessionId == null || bid == null) return false;
+        for (AuctionSession session : globalSessions) {
+            if (!session.getSessionId().equals(sessionId)) continue;
+            if (hasBid(session, bid)) return false;
+            try {
+                session.placeBid(bid);
+                return true;
+            } catch (Exception e) {
+                System.err.println("AppContext: applyBidToSession error: "
+                        + e.getMessage());
+                return false;
+            }
+        }
+        return false;
+    }
+
+    private static boolean hasBid(AuctionSession session,
+                                  org.example.auction.Bid bid) {
+        return session.getBidHistory().stream().anyMatch(existing ->
+                existing.getBidderId().equals(bid.getBidderId())
+                        && Double.compare(existing.getAmount(),
+                                bid.getAmount()) == 0);
+    }
+
     // =========================================================
     // MAP LƯU TRỮ
     // =========================================================
@@ -657,20 +683,30 @@ public class AppContext {
      * Nếu phiên chưa tồn tại trong globalSessions → tạo mới và start.
      */
     public static void syncRunningSession(String sessionId, String itemName,
-                                           double startPrice, double minStep,
-                                           LocalDateTime endTime,
-                                           String sellerName) {
+                                          double startPrice, double minStep,
+                                          LocalDateTime endTime, String sellerName,
+                                          List<org.example.auction.Bid> bids) {
         try {
-            boolean exists = globalSessions.stream()
-                    .anyMatch(s -> s.getSessionId().equals(sessionId));
-            if (!exists) {
-                AuctionSession s = new AuctionSession(
+            org.example.auction.AuctionSession existing =
+                globalSessions.stream()
+                    .filter(s -> s.getSessionId().equals(sessionId))
+                    .findFirst().orElse(null);
+            if (existing == null) {
+                org.example.auction.AuctionSession s =
+                    new org.example.auction.AuctionSession(
                         sessionId, itemName, startPrice, minStep, endTime);
                 s.start();
+                for (org.example.auction.Bid b : bids) {
+                    try {
+                        if (!hasBid(s, b)) s.placeBid(b);
+                    } catch (Exception ignored) {}
+                }
                 registerSession(s, sellerName);
-                System.out.printf(
-                        "AppContext: syncRunningSession – tạo phiên \"%s\"%n",
-                        itemName);
+            } else {
+                sessionSellerMap.put(sessionId, sellerName);
+                for (org.example.auction.Bid b : bids) {
+                    applyBidToSession(sessionId, b);
+                }
             }
         } catch (Exception e) {
             System.err.println("syncRunningSession error: " + e.getMessage());

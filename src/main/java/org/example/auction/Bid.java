@@ -19,6 +19,17 @@ public class Bid {
         this.timestamp = LocalDateTime.now();
     }
 
+    public Bid(String bidId, String bidderId, double amount, LocalDateTime timestamp) {
+        if (bidId == null || bidId.isBlank()) throw new IllegalArgumentException("BidId không được rỗng");
+        if (bidderId == null || bidderId.isBlank()) throw new IllegalArgumentException("BidderId không được rỗng");
+        if (amount <= 0) throw new IllegalArgumentException("Số tiền phải lớn hơn 0");
+
+        this.bidId     = bidId;
+        this.bidderId  = bidderId;
+        this.amount    = amount;
+        this.timestamp = timestamp;
+    }
+
     public String getBidId()     { return bidId; }
     public String getBidderId()  { return bidderId; }
     public double getAmount()    { return amount; }

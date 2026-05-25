@@ -175,6 +175,20 @@ public class ServerConnection {
                     parseRunningSessions(data);
                     return true;
                 }
+                case "NEW_BID" -> {
+                    String sessionId = extractJson(raw, "sessionId");
+                    String username  = extractJson(raw, "username");
+                    double amount    = Double.parseDouble(extractJson(raw, "amount"));
+                    String timeStr   = extractJson(raw, "timestamp");
+                    LocalDateTime time = timeStr == null || timeStr.isBlank()
+                            ? LocalDateTime.now()
+                            : LocalDateTime.parse(timeStr, DT);
+                    AppContext.applyBidToSession(sessionId,
+                            new org.example.auction.Bid(
+                                    UUID.randomUUID().toString(),
+                                    username, amount, time));
+                    return false;
+                }
                 case "PRODUCT_REMOVED" -> {
                     String seller    = extractJson(raw, "seller");
                     String productId = extractJson(raw, "productId");
@@ -305,7 +319,7 @@ public class ServerConnection {
                     return false;
                 }
                 default -> {
-                    return true;
+                    return false;
                 }
             }
         } catch (Exception e) {
@@ -491,7 +505,7 @@ public class ServerConnection {
             line = line.trim();
             if (line.isEmpty()) continue;
             String[] p = line.split("\\|");
-            if (p.length < 11) continue;
+            if (p.length < 12) continue;
             String sessionId  = p[0].trim();
             String itemName   = p[1].trim();
             String sellerName = p[2].trim();
@@ -504,10 +518,19 @@ public class ServerConnection {
             int bidCount      = Integer.parseInt(p[9].trim());
             String topBidder  = p[10].trim();
             int bidEntryCount = Integer.parseInt(p[11].trim());
-            // Reconstruct running session locally
+            List<org.example.auction.Bid> bids = new ArrayList<>();
+            int idx = 12;
+            for (int i = 0; i < bidEntryCount && idx + 2 < p.length; i++, idx += 3) {
+                String bidderId  = p[idx].trim();
+                double amount    = Double.parseDouble(p[idx + 1].trim());
+                LocalDateTime ts = LocalDateTime.parse(p[idx + 2].trim(), DT);
+                // Server sync has no bidId, so rebuild a local id.
+                bids.add(new org.example.auction.Bid(
+                        UUID.randomUUID().toString(), bidderId, amount, ts));
+            }
             try {
                 AppContext.syncRunningSession(sessionId, itemName, startPrice,
-                        minStep, endTime, sellerName);
+                    minStep, endTime, sellerName, bids);
             } catch (Exception e) {
                 System.err.println("parseRunningSessions error: " + e.getMessage());
             }

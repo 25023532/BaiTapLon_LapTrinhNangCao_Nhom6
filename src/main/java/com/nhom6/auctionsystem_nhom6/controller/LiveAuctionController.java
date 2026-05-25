@@ -154,10 +154,13 @@ public class LiveAuctionController {
                             if (currentSession != null
                                     && currentSession.getSessionId().equals(sessionId)) {
 
-                                liveCurrentPrice.setText(formatVND(amt));
+                                liveCurrentPrice.setText(
+                                        formatVND(currentSession.getCurrentPrice()));
                                 liveLeaderLabel.setText("👑 " + bidder
                                         + " (" + formatVND(amt) + ")");
                                 updateQuickBidLabels();
+                                refreshBidHistory();
+                                lastBidCount = currentSession.getBidHistory().size();
                                 bidCountLabel.setText(
                                         currentSession.getBidHistory().size() + " lượt");
 
@@ -538,17 +541,25 @@ public class LiveAuctionController {
             conn.setListener(this::handleServerMessage);
         }
 
-        conn.sendBid(user.getUsername(), currentSession.getSessionId(), amount);
+        String sessionId = AppContext.getAllProducts().stream()
+            .filter(p -> p.name().equals(currentSession.getItemName()))
+            .map(AppContext.ProductRecord::id)
+            .findFirst()
+            .orElse(currentSession.getSessionId());
+        conn.sendBid(user.getUsername(), sessionId, amount);
 
         addChatMsg("System",
                 "⏳ Đang xử lý giá " + formatVND(amount) + "...", false);
 
-        AppContext.addHistory(user.getUsername(), new AppContext.HistoryRecord(
-                "BID-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase(),
-                currentSession.getItemName(), amount,
-                AppContext.getSessionSeller(currentSession.getSessionId()),
-                "CHỜ XỬ LÝ", true, LocalDateTime.now()
-        ));
+        AppContext.HistoryRecord histRec = new AppContext.HistoryRecord(
+            "BID-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase(),
+            currentSession.getItemName(), amount,
+            AppContext.getSessionSeller(currentSession.getSessionId()),
+            "CHỜ XỬ LÝ", true, LocalDateTime.now()
+        );
+        AppContext.addHistory(user.getUsername(), histRec);
+
+        if (conn.isConnected()) conn.sendAddHistory(user.getUsername(), histRec);
 
         customBidField.clear();
     }

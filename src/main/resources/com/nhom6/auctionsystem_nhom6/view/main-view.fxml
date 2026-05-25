@@ -3,6 +3,8 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.SeparatorMenuItem?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.StackPane?>
 
 <BorderPane xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.nhom6.auctionsystem_nhom6.controller.MainController"
@@ -170,7 +172,11 @@
                     <padding><Insets top="24" right="24" bottom="24" left="24"/></padding>
 
                     <VBox styleClass="product-image-box" alignment="CENTER" minWidth="220">
-                        <Label text="⬡" styleClass="product-image-icon"/>
+                        <StackPane fx:id="productImagePane" prefWidth="180" prefHeight="160">
+                            <Label fx:id="productImageIcon" text="⬡" styleClass="product-image-icon"/>
+                            <ImageView fx:id="productImageView" fitWidth="180" fitHeight="160"
+                                       preserveRatio="true" visible="false"/>
+                        </StackPane>
                         <Label fx:id="statusLabel" styleClass="status-badge"/>
                     </VBox>
 

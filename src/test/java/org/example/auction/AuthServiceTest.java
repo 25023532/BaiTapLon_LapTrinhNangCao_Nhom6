@@ -4,10 +4,13 @@ import org.example.service.AuthService;
 import org.example.user.Admin;
 import org.example.user.Bidder;
 import org.example.user.User;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -19,10 +22,21 @@ public class AuthServiceTest {
     private AuthService authService;
     private String uid;
 
+    @TempDir
+    private Path tempDir;
+
     @BeforeEach
     void setUp() {
+        // Keep tests away from real data/users.json.
+        System.setProperty("auction.users.file",
+                tempDir.resolve("users.json").toString());
         authService = new AuthService();
         uid = "t" + System.nanoTime(); // username ngẫu nhiên, không bao giờ trùng
+    }
+
+    @AfterEach
+    void tearDown() {
+        System.clearProperty("auction.users.file");
     }
 
     // ===== Login =====

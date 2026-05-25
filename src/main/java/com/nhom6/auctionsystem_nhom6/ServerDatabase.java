@@ -29,6 +29,7 @@ public class ServerDatabase {
     private final Path historyFile       = Path.of(DATA_DIR, "server_history.txt");
     private final Path sessionHistoryFile= Path.of(DATA_DIR, "server_session_history.txt");
     private final Path usersFile         = Path.of(DATA_DIR, "users.json");
+    private final Path runningSessionsFile = Path.of(DATA_DIR, "server_running_sessions.txt");
     private final Path ratingsFile = Path.of(DATA_DIR, "server_ratings.txt");
     private final List<AppContext.RatingRecord> ratings = new java.util.concurrent.CopyOnWriteArrayList<>();
 
@@ -68,6 +69,7 @@ public class ServerDatabase {
         loadRatings();
         loadSessionHistory();
         fixExpiredProducts();
+        loadRunningSessions();
         rebuildRunningSessions();
         System.out.println("[ServerDatabase] Loaded all data from " + DATA_DIR + "/");
     }
@@ -136,6 +138,13 @@ public class ServerDatabase {
                 }
             }
         } catch (IOException e) { System.err.println("[ServerDB] saveTransactions: " + e.getMessage()); }
+    }
+
+    public synchronized void saveRunningSessions() {
+        try (PrintWriter pw = new PrintWriter(Files.newBufferedWriter(
+                runningSessionsFile, java.nio.charset.StandardCharsets.UTF_8))) {
+            pw.print(serializeRunningSessions());
+        } catch (IOException e) { System.err.println("[ServerDB] saveRunningSessions: " + e.getMessage()); }
     }
 
     public Map<String, List<AppContext.TransactionRecord>> getTransactions() {
@@ -374,7 +383,7 @@ public class ServerDatabase {
     }
 
     // =========================================================
-    // RUNNING SESSIONS (in-memory only, rebuilt from products on restart)
+    // RUNNING SESSIONS
     // =========================================================
     public Map<String, RunningSessionInfo> getRunningSessions() {
         return Collections.unmodifiableMap(runningSessions);
@@ -512,12 +521,36 @@ public class ServerDatabase {
         if (changed) saveProducts();
     }
     private void rebuildRunningSessions() {
-        runningSessions.clear();
         LocalDateTime now = LocalDateTime.now();
+        Set<String> activeProductIds = new HashSet<>();
+        boolean changed = false;
         for (var entry : products.entrySet()) {
             String seller = entry.getKey();
             for (var p : entry.getValue()) {
                 if ("ĐANG ĐẤU GIÁ".equals(p.status()) && now.isBefore(p.endTime())) {
+                    activeProductIds.add(p.id());
+                    RunningSessionInfo existing = runningSessions.get(p.id());
+                    if (existing != null) {
+                        List<BidEntry> bids = new ArrayList<>(existing.bidHistory());
+                        BidEntry lastBid = bids.isEmpty() ? null : bids.get(bids.size() - 1);
+                        double minStep = existing.minStep() > 0
+                                ? existing.minStep()
+                                : Math.max(p.startPrice() * 0.05, 500_000);
+                        RunningSessionInfo refreshed = new RunningSessionInfo(
+                                p.id(), p.name(), seller,
+                                p.startPrice(), minStep,
+                                p.startTime(), p.endTime(),
+                                p.category(),
+                                lastBid == null ? p.currentPrice() : lastBid.amount(),
+                                bids.isEmpty() ? p.bidCount() : bids.size(),
+                                lastBid == null ? p.topBidder() : lastBid.bidderId(),
+                                bids);
+                        if (!refreshed.equals(existing)) {
+                            runningSessions.put(p.id(), refreshed);
+                            changed = true;
+                        }
+                        continue;
+                    }
                     double minStep = Math.max(p.startPrice() * 0.05, 500_000);
                     runningSessions.put(p.id(), new RunningSessionInfo(
                         p.id(), p.name(), seller,
@@ -526,9 +559,55 @@ public class ServerDatabase {
                         p.category(), p.currentPrice(),
                         p.bidCount(), p.topBidder(),
                         new ArrayList<>()));
+                    changed = true;
                     System.out.println("[ServerDB] Rebuilt running session: " + p.name());
                 }
             }
         }
+        for (String sessionId : new ArrayList<>(runningSessions.keySet())) {
+            if (!activeProductIds.contains(sessionId)) {
+                runningSessions.remove(sessionId);
+                changed = true;
+                System.out.println("[ServerDB] Removed stale running session: " + sessionId);
+            }
+        }
+        if (changed) saveRunningSessions();
+    }
+    private void loadRunningSessions() {
+        runningSessions.clear();
+        if (!Files.exists(runningSessionsFile)) return;
+        try (BufferedReader br = Files.newBufferedReader(
+                runningSessionsFile, java.nio.charset.StandardCharsets.UTF_8)) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                line = line.trim();
+                if (line.isEmpty()) continue;
+                String[] p = line.split("\\|");
+                // Format: sessionId|itemName|sellerName|startPrice|minStep|startTime|endTime|category|currentPrice|bidCount|topBidder|numBids|[bidderId|amount|timestamp]*
+                if (p.length < 12) continue;
+                String sessionId   = p[0];
+                String itemName    = p[1];
+                String sellerName  = p[2];
+                double startPrice  = Double.parseDouble(p[3]);
+                double minStep     = Double.parseDouble(p[4]);
+                LocalDateTime startTime = LocalDateTime.parse(p[5], DT);
+                LocalDateTime endTime   = LocalDateTime.parse(p[6], DT);
+                String category    = p[7];
+                double currentPrice= Double.parseDouble(p[8]);
+                int bidCount       = Integer.parseInt(p[9]);
+                String topBidder   = p[10];
+                int numBids        = Integer.parseInt(p[11]);
+
+                List<BidEntry> bids = new ArrayList<>();
+                int idx = 12;
+                for (int i = 0; i < numBids && idx + 2 < p.length; i++, idx += 3) {
+                    bids.add(new BidEntry(p[idx], Double.parseDouble(p[idx+1]), p[idx+2]));
+                }
+
+                runningSessions.put(sessionId, new RunningSessionInfo(
+                    sessionId, itemName, sellerName, startPrice, minStep,
+                    startTime, endTime, category, currentPrice, bidCount, topBidder, bids));
+            }
+        } catch (IOException e) { System.err.println("[ServerDB] loadRunningSessions: " + e.getMessage()); }
     }
 }

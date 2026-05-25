@@ -13,8 +13,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <junit.version>5.12.1</junit.version>
         <checkstyle.version>3.3.1</checkstyle.version>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
+        <maven.compiler.release>21</maven.compiler.release>
     </properties>
 
     <dependencies>
@@ -76,8 +75,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
                 <configuration>
-                    <source>${maven.compiler.source}</source>
-                    <target>${maven.compiler.target}</target>
+                    <!-- Compile against the Java 21 API. -->
+                    <release>${maven.compiler.release}</release>
                 </configuration>
             </plugin>
 
@@ -103,6 +102,8 @@
                     <consoleOutput>true</consoleOutput>
                     <failsOnError>false</failsOnError>
                     <includeTestSourceDirectory>true</includeTestSourceDirectory>
+                    <!-- Checkstyle 9.3 cannot parse module-info.java reliably here. -->
+                    <excludes>**/module-info.java</excludes>
                 </configuration>
                 <executions>
                     <execution>

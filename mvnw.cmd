@@ -185,4 +185,6 @@ if "%MAVEN_BATCH_PAUSE%"=="on" pause
 
 if "%MAVEN_TERMINATE_CMD%"=="on" exit %ERROR_CODE%
 
-cmd /C exit /B %ERROR_CODE%
+@REM Use ComSpec because cmd.exe may not be on PATH.
+if not "%ComSpec%"=="" "%ComSpec%" /C exit /B %ERROR_CODE%
+exit /B %ERROR_CODE%

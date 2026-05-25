@@ -23,8 +23,8 @@ public class AuctionSession {
     private final ReentrantLock lock = new ReentrantLock();
 
     // ── Anti-sniping config ───────────────────────────────────
-    private static final long TRIGGER_SECONDS   = 30; // X: bid trong 30s cuối → gia hạn
-    private static final long EXTENSION_SECONDS = 70; // Y: kéo dài thêm 70s (ví dụ: 19:59:50 → 20:01:00)
+    private static final long TRIGGER_SECONDS   = 180; // Bid in last 3 minutes extends.
+    private static final long EXTENSION_SECONDS = 120; // Extend by 2 minutes.
     private static final int  MAX_EXTENSIONS    = 5;  // tối đa 5 lần
     private int     extensionCount              = 0;
     private boolean lastBidTriggeredExtension   = false;
@@ -97,8 +97,8 @@ public class AuctionSession {
     public void cancel() {
         lock.lock();
         try {
-            if (status == AuctionStatus.PAID)
-                throw new IllegalStateException("Không thể hủy phiên đã thanh toán");
+            if (status != AuctionStatus.OPEN && status != AuctionStatus.RUNNING)
+                throw new IllegalStateException("Không thể hủy phiên ở trạng thái " + status);
             status = AuctionStatus.CANCELED;
             System.out.println("Phiên [" + sessionId + "] đã bị hủy thủ công.");
         } finally { lock.unlock(); }
@@ -109,6 +109,11 @@ public class AuctionSession {
         lock.lock();
         try {
             lastBidTriggeredExtension = false; // reset mỗi lần bid
+
+            // Fail fast before reading bid fields.
+            if (bid == null) {
+                throw new IllegalArgumentException("Bid không được null");
+            }
 
             // Kiểm tra trạng thái
             if (status != AuctionStatus.RUNNING) {

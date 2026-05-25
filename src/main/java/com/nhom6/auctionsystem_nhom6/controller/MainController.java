@@ -12,6 +12,9 @@ import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.StackPane;
 import javafx.stage.Popup;
 import javafx.util.Duration;
 
@@ -52,6 +55,9 @@ public class MainController {
     @FXML private Label      minsLabel;
     @FXML private Label      secsLabel;
     @FXML private VBox       bidHistoryBox;
+    @FXML private StackPane productImagePane;
+    @FXML private ImageView productImageView;
+    @FXML private Label     productImageIcon;
     @FXML private VBox       chatPanel;
     @FXML private VBox       chatMessagesBox;
     @FXML private TextField  chatInput;
@@ -499,13 +505,30 @@ public class MainController {
         if (session == null) return;
         productTitleLabel.setText(session.getItemName());
         productDescLabel.setText(
-                "San pham moi 100%, con nguyen seal, bao hanh 12 thang.");
+            "San pham moi 100%, con nguyen seal, bao hanh 12 thang.");
         startPriceLabel.setText(formatVND(session.getStartingPrice()));
         currentPriceLabel.setText(formatVND(session.getCurrentPrice()));
         minStepLabel.setText(formatVND(session.getMinBidStep()));
         endTimeLabel.setText(session.getEndTime().format(DT_FMT));
         statusLabel.setText("  " + session.getStatus().name());
         statusLabel.getStyleClass().setAll("status-badge", "status-running");
+
+        // ── Load ảnh sản phẩm ─────────────────────────────────
+        String imgPath = ProductManagementController.imageMap.get(session.getSessionId());
+        if (imgPath != null) {
+            try {
+                Image img = new Image(new java.io.File(imgPath).toURI().toString());
+                productImageView.setImage(img);
+                productImageView.setVisible(true);
+                productImageIcon.setVisible(false);
+            } catch (Exception ignored) {
+                productImageView.setVisible(false);
+                productImageIcon.setVisible(true);
+            }
+        } else {
+            productImageView.setVisible(false);
+            productImageIcon.setVisible(true);
+        }
     }
 
     // =========================================================
@@ -594,7 +617,7 @@ public class MainController {
             ServerConnection conn = ServerConnection.getInstance();
             if (conn.isConnected())
                 conn.sendBid(user.getUsername(),
-                        session.getItemName(), newPrice);
+                        session.getSessionId(), newPrice);
 
         } catch (InvalidBidException e) {
             showAlert("Bid khong hop le", e.getMessage());

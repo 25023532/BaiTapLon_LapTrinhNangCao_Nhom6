@@ -49,7 +49,26 @@ public class ProductManagementController {
 
     private static final List<ManagedProduct> managedList = new ArrayList<>();
     private static final Map<String, Double>  stepMap     = new HashMap<>();
-    private static final Map<String, String>  imageMap    = new HashMap<>();
+    public static final Map<String, String> imageMap = new HashMap<>();
+
+    static {
+        try {
+            java.io.File dir = new java.io.File(IMAGE_DIR);
+            if (dir.exists() && dir.isDirectory()) {
+                for (java.io.File f : dir.listFiles()) {
+                    String fileName = f.getName(); // e.g. "P-ABC123.png"
+                    int dot = fileName.lastIndexOf('.');
+                    if (dot > 0) {
+                        String productId = fileName.substring(0, dot); // "P-ABC123"
+                        imageMap.put(productId, f.getAbsolutePath());
+                    }
+                }
+                System.out.println("[ImageMap] Loaded " + imageMap.size() + " images from disk.");
+            }
+        } catch (Exception e) {
+            System.err.println("[ImageMap] Failed to load images: " + e.getMessage());
+        }
+    }
 
     public record ManagedProduct(
             String        id,

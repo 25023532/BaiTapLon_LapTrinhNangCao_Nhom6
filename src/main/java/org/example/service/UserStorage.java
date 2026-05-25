@@ -13,13 +13,27 @@ import java.util.*;
 public class UserStorage {
 
     private static final String DATA_DIR  = "data";
-    private static final String FILE_PATH = DATA_DIR + "/users.json";
+    private static final String USER_FILE_PROPERTY = "auction.users.file";
+
+    private static Path usersFile() {
+        String override = System.getProperty(USER_FILE_PROPERTY);
+        if (override != null && !override.isBlank()) {
+            return Paths.get(override);
+        }
+        return Paths.get(DATA_DIR, "users.json");
+    }
+
+    private static Path usersDirectory() {
+        Path parent = usersFile().getParent();
+        return parent == null ? Paths.get(DATA_DIR) : parent;
+    }
 
     // ── Lưu toàn bộ danh sách user xuống file ────────────────
     public static void saveAll(Map<String, User> users) {
         try {
             // Tạo thư mục data nếu chưa có
-            Files.createDirectories(Paths.get(DATA_DIR));
+            // Tests can redirect storage to a temp file.
+            Files.createDirectories(usersDirectory());
 
             StringBuilder sb = new StringBuilder();
             sb.append("[\n");
@@ -39,7 +53,7 @@ public class UserStorage {
             }
             sb.append("]");
 
-            Files.writeString(Paths.get(FILE_PATH), sb.toString());
+            Files.writeString(usersFile(), sb.toString());
             System.out.println("[Storage] Đã lưu " + users.size() + " tài khoản.");
         } catch (IOException e) {
             System.err.println("[Storage] Lỗi lưu file: " + e.getMessage());
@@ -49,7 +63,8 @@ public class UserStorage {
     // ── Đọc tài khoản từ file lên Map ────────────────────────
     public static Map<String, User> loadAll() {
         Map<String, User> users = new LinkedHashMap<>();
-        File file = new File(FILE_PATH);
+        Path filePath = usersFile();
+        File file = filePath.toFile();
         System.out.println("[Storage] Đọc từ: " + file.getAbsolutePath());
 
         if (!file.exists()) {
@@ -58,7 +73,7 @@ public class UserStorage {
         }
 
         try {
-            String content = Files.readString(Paths.get(FILE_PATH)).trim();
+            String content = Files.readString(filePath).trim();
             if (content.equals("[]") || content.isEmpty()) return users;
 
             // Parse JSON thủ công (không cần thư viện)

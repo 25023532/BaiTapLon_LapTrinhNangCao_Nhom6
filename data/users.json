@@ -1,58 +1,58 @@
-[
-  {
-    "id": "A001",
-    "username": "admin",
-    "hashedPassword": "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9",
-    "role": "ADMIN",
-    "email": "",
-    "fullName": ""
-  },
-  {
-    "id": "S001",
-    "username": "sellerlong",
-    "hashedPassword": "2a76110d06bcc4fd437337b984131cfa82db9f792e3e2340acef9f3066b264e0",
-    "role": "SELLER",
-    "email": "",
-    "fullName": ""
-  },
-  {
-    "id": "B001",
-    "username": "bidder07",
-    "hashedPassword": "82999bdb3f4b56da65302fd98520194d65003a942c19a6fe30ecdc61bbdd42dd",
-    "role": "BIDDER",
-    "email": "",
-    "fullName": ""
-  },
-  {
-    "id": "B002",
-    "username": "bidder03",
-    "hashedPassword": "82999bdb3f4b56da65302fd98520194d65003a942c19a6fe30ecdc61bbdd42dd",
-    "role": "BIDDER",
-    "email": "",
-    "fullName": ""
-  },
-  {
-    "id": "B003",
-    "username": "bidder01",
-    "hashedPassword": "82999bdb3f4b56da65302fd98520194d65003a942c19a6fe30ecdc61bbdd42dd",
-    "role": "BIDDER",
-    "email": "",
-    "fullName": ""
-  },
-  {
-    "id": "9D59B6B7",
-    "username": "1111",
-    "hashedPassword": "bcb15f821479b4d5772bd0ca866c00ad5f926e3580720659cc80d39c9d09802a",
-    "role": "BIDDER",
-    "email": "1111@",
-    "fullName": "1111"
-  },
-  {
-    "id": "F589A33F",
-    "username": "2222",
-    "hashedPassword": "4cc8f4d609b717356701c57a03e737e5ac8fe885da8c7163d3de47e01849c635",
-    "role": "SELLER",
-    "email": "2222@",
-    "fullName": "2222"
-  }
+﻿[
+    {
+        "id":  "A001",
+        "username":  "admin",
+        "hashedPassword":  "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9",
+        "role":  "ADMIN",
+        "email":  "",
+        "fullName":  ""
+    },
+    {
+        "id":  "S001",
+        "username":  "sellerlong",
+        "hashedPassword":  "2a76110d06bcc4fd437337b984131cfa82db9f792e3e2340acef9f3066b264e0",
+        "role":  "SELLER",
+        "email":  "",
+        "fullName":  ""
+    },
+    {
+        "id":  "B001",
+        "username":  "bidder07",
+        "hashedPassword":  "82999bdb3f4b56da65302fd98520194d65003a942c19a6fe30ecdc61bbdd42dd",
+        "role":  "BIDDER",
+        "email":  "",
+        "fullName":  ""
+    },
+    {
+        "id":  "B002",
+        "username":  "bidder03",
+        "hashedPassword":  "82999bdb3f4b56da65302fd98520194d65003a942c19a6fe30ecdc61bbdd42dd",
+        "role":  "BIDDER",
+        "email":  "",
+        "fullName":  ""
+    },
+    {
+        "id":  "B003",
+        "username":  "bidder01",
+        "hashedPassword":  "82999bdb3f4b56da65302fd98520194d65003a942c19a6fe30ecdc61bbdd42dd",
+        "role":  "BIDDER",
+        "email":  "",
+        "fullName":  ""
+    },
+    {
+        "id":  "9D59B6B7",
+        "username":  "1111",
+        "hashedPassword":  "bcb15f821479b4d5772bd0ca866c00ad5f926e3580720659cc80d39c9d09802a",
+        "role":  "BIDDER",
+        "email":  "1111@",
+        "fullName":  "1111"
+    },
+    {
+        "id":  "F589A33F",
+        "username":  "2222",
+        "hashedPassword":  "4cc8f4d609b717356701c57a03e737e5ac8fe885da8c7163d3de47e01849c635",
+        "role":  "SELLER",
+        "email":  "2222@",
+        "fullName":  "2222"
+    }
 ]

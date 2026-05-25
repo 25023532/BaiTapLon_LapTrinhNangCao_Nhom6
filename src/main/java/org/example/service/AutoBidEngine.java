@@ -87,8 +87,10 @@ public class AutoBidEngine {
             throw new IllegalStateException("bidderId chưa đăng ký: " + bidderId);
         }
 
-        // Đang dẫn đầu — không cần bid thêm
-        if (bidderId.equals(leadingBidderId)) {
+        // Use session state because manual bids can change the leader.
+        String currentLeaderId = session.getLeadingBidderId();
+        if (bidderId.equals(currentLeaderId)) {
+            leadingBidderId = bidderId;
             return;
         }
 
