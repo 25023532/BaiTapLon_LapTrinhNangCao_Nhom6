@@ -515,6 +515,8 @@ public class MainController {
 
         // ── Load ảnh sản phẩm ─────────────────────────────────
         String imgPath = ProductManagementController.imageMap.get(session.getSessionId());
+        System.out.println("[DEBUG] sessionId=" + session.getSessionId()
+            + " | imageMap=" + ProductManagementController.imageMap);
         if (imgPath != null) {
             try {
                 Image img = new Image(new java.io.File(imgPath).toURI().toString());

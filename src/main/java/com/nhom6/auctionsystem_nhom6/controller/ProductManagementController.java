@@ -45,7 +45,7 @@ public class ProductManagementController {
     private static final DateTimeFormatter TIME_ONLY =
             DateTimeFormatter.ofPattern("HH:mm");
 
-    private static final String IMAGE_DIR = "product_images/";
+    private static final String IMAGE_DIR = "D:/123/product_images/";
 
     private static final List<ManagedProduct> managedList = new ArrayList<>();
     private static final Map<String, Double>  stepMap     = new HashMap<>();
@@ -535,6 +535,8 @@ public class ProductManagementController {
                     + "-fx-padding: 8 20 8 20; -fx-cursor: hand;");
 
             saveNode.setDisable(nameField.getText().trim().isEmpty());
+            System.out.println("[DEBUG] saveNode disabled=" + saveNode.isDisabled()
+                + " | nameField='" + nameField.getText() + "'");
             nameField.textProperty().addListener((obs, o, n) ->
                     saveNode.setDisable(n.trim().isEmpty()));
 
@@ -577,11 +579,6 @@ public class ProductManagementController {
                         errLabel.setText("⚠ Thời gian kết thúc phải sau bắt đầu.");
                         event.consume(); return;
                     }
-                    String conflict = findTimeConflict(sDT, eDT, null);
-                    if (conflict != null) {
-                        errLabel.setText("⚠ Trùng thời gian với: \"" + conflict + "\"");
-                        event.consume();
-                    }
                 } catch (DateTimeParseException ex) {
                     errLabel.setText("⚠ Thời gian không hợp lệ (HH:mm).");
                     event.consume();
@@ -590,7 +587,9 @@ public class ProductManagementController {
         });
 
         dialog.setResultConverter(btn -> {
+            System.out.println("[DEBUG] btn=" + btn + " | saveBtn=" + saveBtn + " | equal=" + btn.equals(saveBtn));
             if (btn != saveBtn) return null;
+            System.out.println("[DEBUG] Bắt đầu lưu sản phẩm...");
             String nameVal = nameField.getText().trim();
             double price   = Double.parseDouble(priceField.getText()
                     .trim().replaceAll("[^0-9.]", ""));
