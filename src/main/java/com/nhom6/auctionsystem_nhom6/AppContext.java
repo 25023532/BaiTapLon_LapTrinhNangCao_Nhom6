@@ -685,7 +685,7 @@ public class AppContext {
     public static void syncRunningSession(String sessionId, String itemName,
                                           double startPrice, double minStep,
                                           LocalDateTime endTime, String sellerName,
-                                          List<org.example.auction.Bid> bids) {
+                                          java.util.List<org.example.auction.Bid> bids) {
         try {
             org.example.auction.AuctionSession existing =
                 globalSessions.stream()
@@ -697,16 +697,16 @@ public class AppContext {
                         sessionId, itemName, startPrice, minStep, endTime);
                 s.start();
                 for (org.example.auction.Bid b : bids) {
-                    try {
-                        if (!hasBid(s, b)) s.placeBid(b);
-                    } catch (Exception ignored) {}
+                    try { s.placeBid(b); } catch (Exception ignored) {}
                 }
                 registerSession(s, sellerName);
-            } else {
-                sessionSellerMap.put(sessionId, sellerName);
-                for (org.example.auction.Bid b : bids) {
-                    applyBidToSession(sessionId, b);
-                }
+// Notify MainController để re-resolve session
+                javafx.application.Platform.runLater(() -> {
+                    if (AppContext.getActiveSession() == null) {
+                        List<AuctionSession> running = getRunningSessions();
+                        if (!running.isEmpty()) setActiveSession(running.get(0));
+                    }
+                });
             }
         } catch (Exception e) {
             System.err.println("syncRunningSession error: " + e.getMessage());

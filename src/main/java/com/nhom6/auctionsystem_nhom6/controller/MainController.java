@@ -189,6 +189,19 @@ public class MainController {
         if (!conn.isConnected()) {
             Thread t = new Thread(() -> {
                 boolean ok = conn.connect(user.getUsername());
+                conn.setOnSessionSynced(() -> {
+                    if (session == null) {
+                        session = resolveSession(user);
+                        if (session != null) {
+                            AppContext.setActiveSession(session);
+                            sessionStartTime = LocalDateTime.now();
+                            showAuctionCard(true);
+                            loadAuctionInfo();
+                            refreshBidHistory();
+                            startCountdown();
+                        }
+                    }
+                });
                 Platform.runLater(() -> {
                     if (ok) {
                         // Server online: yeu cau so chinh xac
@@ -293,18 +306,6 @@ public class MainController {
 
                     try {
                         double amt = Double.parseDouble(amountStr);
-                        AppContext.getGlobalSessions().stream()
-                                .filter(s -> s.getSessionId().equals(sessionId)
-                                        || s.getItemName().equals(sessionId))
-                                .findFirst()
-                                .ifPresent(s -> {
-                                    try {
-                                        s.placeBid(new Bid(
-                                                UUID.randomUUID().toString(),
-                                                bidder, amt));
-                                    } catch (Exception ignored) {}
-                                });
-
                         Platform.runLater(() -> {
                             if (session != null) {
                                 currentPriceLabel.setText(
@@ -316,17 +317,19 @@ public class MainController {
                                     bidder + " dat gia " + formatVND(amt), false);
 
                             if (session != null) {
-                                boolean participating =
-                                        session.getBidHistory().stream()
-                                        .anyMatch(b -> b.getBidderId()
-                                                .equals(me.getUsername()));
-                                if (participating)
+                                java.util.List<Bid> hist = session.getBidHistory();
+                                System.out.println("[OUTBID DEBUG] hist.size=" + hist.size()
+                                    + " | me=" + me.getUsername() + " | bidder=" + bidder);
+                                boolean iWasTopBidder = hist.size() >= 2 &&
+                                    hist.get(hist.size() - 2).getBidderId().equals(me.getUsername());
+                                System.out.println("[OUTBID DEBUG] iWasTopBidder=" + iWasTopBidder);
+                                if (iWasTopBidder && !bidder.equals(me.getUsername()))
                                     pushNotification(
-                                            NotificationManager.NotifType.OUTBID,
-                                            "Ban bi vuot gia!",
-                                            String.format("%s vua dat %s cho \"%s\"",
-                                                    bidder, formatVND(amt),
-                                                    session.getItemName()));
+                                        NotificationManager.NotifType.OUTBID,
+                                        "⚠️ Bạn bị vượt giá!",
+                                        String.format("%s vừa đặt %s cho \"%s\"",
+                                            bidder, formatVND(amt),
+                                            session.getItemName()));
                             }
                         });
                     } catch (NumberFormatException ignored) {}
@@ -824,8 +827,8 @@ public class MainController {
             HBox row = new HBox(12);
             row.getStyleClass().add("bid-row");
             if (i == history.size() - 1) row.getStyleClass().add("bid-row-top");
-            Label name   = new Label(
-                    (i == history.size() - 1 ? "Crown " : "") + b.getBidderId());
+            Label name = new Label(
+                (i == history.size() - 1 ? "👑 " : "") + b.getBidderId());
             Label amount = new Label(formatVND(b.getAmount()));
             Label time   = new Label(b.getTimestamp().format(TIME_FMT));
             amount.getStyleClass().add("bid-amount");

@@ -21,16 +21,18 @@ import java.util.concurrent.TimeUnit;
 public class ServerConnection {
 
     private static final DateTimeFormatter DT =
-            new java.time.format.DateTimeFormatterBuilder()
-                    .appendPattern("yyyy-MM-dd'T'HH:mm:ss")
-                    .optionalStart().appendFraction(java.time.temporal.ChronoField.NANO_OF_SECOND, 0, 9, true).optionalEnd()
-                    .toFormatter();
+        new java.time.format.DateTimeFormatterBuilder()
+            .appendPattern("yyyy-MM-dd'T'HH:mm:ss")
+            .optionalStart().appendFraction(java.time.temporal.ChronoField.NANO_OF_SECOND, 0, 9, true).optionalEnd()
+            .toFormatter();
 
     private static ServerConnection instance;
 
     private WebSocketClient wsClient;
-    private MessageListener listener;
+    private final java.util.List<MessageListener> listeners =
+        new java.util.concurrent.CopyOnWriteArrayList<>();
     private String          lastUsername;
+    private Runnable onSessionSynced;
 
     private ServerConnection() {}
 
@@ -64,8 +66,8 @@ public class ServerConnection {
                     if (AppContext.getCurrentUser() != null)
                         role = AppContext.getCurrentUser().getRole().toUpperCase();
                     sendJson("{\"action\":\"LOGIN\","
-                            + "\"username\":\"" + esc(username) + "\","
-                            + "\"role\":\""     + esc(role)     + "\"}");
+                        + "\"username\":\"" + esc(username) + "\","
+                        + "\"role\":\""     + esc(role)     + "\"}");
                     // Yêu cầu số online
                     sendJson("{\"action\":\"GET_ONLINE_COUNT\"}");
                 }
@@ -75,16 +77,17 @@ public class ServerConnection {
                     System.out.println("[WS nhận] " + message);
                     // ✅ Intercept SYNC_* and broadcast messages before forwarding to UI
                     if (!handleSyncMessage(message)) {
-                        if (listener != null)
+                        for (MessageListener l : listeners) {
                             javafx.application.Platform.runLater(
-                                    () -> listener.onMessage(message));
+                                () -> l.onMessage(message));
+                        }
                     }
                 }
 
                 @Override
                 public void onClose(int code, String reason, boolean remote) {
                     System.out.println("[WS] Đóng kết nối: " + reason
-                            + " (code=" + code + ")");
+                        + " (code=" + code + ")");
                 }
 
                 @Override
@@ -117,7 +120,7 @@ public class ServerConnection {
 
         } catch (Exception e) {
             System.err.println("[WS] Không kết nối được " + url
-                    + " — " + e.getMessage());
+                + " — " + e.getMessage());
             return false;
         }
     }
@@ -173,6 +176,13 @@ public class ServerConnection {
                 case "SYNC_RUNNING_SESSIONS" -> {
                     String data = unescapeData(extractJsonData(raw, "data"));
                     parseRunningSessions(data);
+                    javafx.application.Platform.runLater(() -> {
+                        var running = AppContext.getRunningSessions();
+                        if (!running.isEmpty() && AppContext.getActiveSession() == null) {
+                            AppContext.setActiveSession(running.get(0));
+                        }
+                        if (onSessionSynced != null) onSessionSynced.run();
+                    });
                     return true;
                 }
                 case "NEW_BID" -> {
@@ -181,12 +191,12 @@ public class ServerConnection {
                     double amount    = Double.parseDouble(extractJson(raw, "amount"));
                     String timeStr   = extractJson(raw, "timestamp");
                     LocalDateTime time = timeStr == null || timeStr.isBlank()
-                            ? LocalDateTime.now()
-                            : LocalDateTime.parse(timeStr, DT);
+                        ? LocalDateTime.now()
+                        : LocalDateTime.parse(timeStr, DT);
                     AppContext.applyBidToSession(sessionId,
-                            new org.example.auction.Bid(
-                                    UUID.randomUUID().toString(),
-                                    username, amount, time));
+                        new org.example.auction.Bid(
+                            UUID.randomUUID().toString(),
+                            username, amount, time));
                     return false;
                 }
                 case "PRODUCT_REMOVED" -> {
@@ -209,7 +219,7 @@ public class ServerConnection {
                     String timeStr  = extractJson(raw, "timestamp");
                     LocalDateTime time = LocalDateTime.parse(timeStr, DT);
                     AppContext.addRating(new AppContext.RatingRecord(
-                            id, username, avatar, stars, comment, time, 0));
+                        id, username, avatar, stars, comment, time, 0));
                     return false;
                 }
 
@@ -261,8 +271,8 @@ public class ServerConnection {
                     LocalDateTime endTime   = LocalDateTime.parse(extractJson(raw, "endTime"), DT);
                     String topBidder = extractJson(raw, "topBidder");
                     AppContext.updateProduct(seller, new AppContext.ProductRecord(
-                            id, name, category, startP, currentP, bidCount,
-                            status, startTime, endTime, topBidder));
+                        id, name, category, startP, currentP, bidCount,
+                        status, startTime, endTime, topBidder));
                     return false; // also forward to UI
                 }
                 case "PRODUCT_PENDING" -> {
@@ -275,12 +285,12 @@ public class ServerConnection {
                     LocalDateTime endTime   = LocalDateTime.parse(extractJson(raw, "endTime"), DT);
 
                     boolean exists = AppContext.getAllProducts().stream()
-                            .anyMatch(p -> p.id().equals(productId));
+                        .anyMatch(p -> p.id().equals(productId));
                     if (!exists) {
                         AppContext.addProduct(sellerName, new AppContext.ProductRecord(
-                                productId, productName, category,
-                                startPrice, startPrice, 0,
-                                "CHỜ DUYỆT", startTime, endTime, "—"));
+                            productId, productName, category,
+                            startPrice, startPrice, 0,
+                            "CHỜ DUYỆT", startTime, endTime, "—"));
                     }
                     return false;
                 }
@@ -294,7 +304,7 @@ public class ServerConnection {
                     boolean wonBid  = Boolean.parseBoolean(extractJson(raw, "wonBid"));
                     LocalDateTime time = LocalDateTime.parse(extractJson(raw, "timestamp"), DT);
                     AppContext.addHistory(username, new AppContext.HistoryRecord(
-                            id, itemName, amount, counter, status, wonBid, time));
+                        id, itemName, amount, counter, status, wonBid, time));
                     return true;
                 }
                 case "ADD_SESSION_HISTORY" -> {
@@ -313,9 +323,9 @@ public class ServerConnection {
                     double myFinalBid= Double.parseDouble(extractJson(raw, "myFinalBid"));
                     boolean iWon     = Boolean.parseBoolean(extractJson(raw, "iWon"));
                     AppContext.addSessionHistory(username, new AppContext.AuctionSessionRecord(
-                            sessionId, itemName, sellerName, startP, finalP,
-                            "null".equals(winner) ? null : winner,
-                            totalBids, startT, endT, result, myRole, myFinalBid, iWon));
+                        sessionId, itemName, sellerName, startP, finalP,
+                        "null".equals(winner) ? null : winner,
+                        totalBids, startT, endT, result, myRole, myFinalBid, iWon));
                     return false;
                 }
                 default -> {
@@ -350,7 +360,7 @@ public class ServerConnection {
                 String[] parts = line.split(":", 2);
                 String key = parts[0].replaceAll("\"", "").trim();
                 String val = parts.length > 1
-                        ? parts[1].replaceAll("\"", "").replaceAll(",\\s*$", "").trim() : "";
+                    ? parts[1].replaceAll("\"", "").replaceAll(",\\s*$", "").trim() : "";
                 fields.put(key, val);
             }
             String username = fields.getOrDefault("username", "");
@@ -400,10 +410,10 @@ public class ServerConnection {
             if (p.length < 7) continue;
             String user = p[0].trim();
             var rec = new AppContext.TransactionRecord(
-                    p[1].trim(), p[2].trim(),
-                    Double.parseDouble(p[3].trim()),
-                    p[4].trim(), p[5].trim(),
-                    LocalDateTime.parse(p[6].trim(), DT));
+                p[1].trim(), p[2].trim(),
+                Double.parseDouble(p[3].trim()),
+                p[4].trim(), p[5].trim(),
+                LocalDateTime.parse(p[6].trim(), DT));
             map.computeIfAbsent(user, k -> new ArrayList<>()).add(rec);
         }
         return map;
@@ -419,14 +429,14 @@ public class ServerConnection {
             if (p.length < 11) continue;
             String seller = p[0].trim();
             var rec = new AppContext.ProductRecord(
-                    p[1].trim(), p[2].trim(), p[3].trim(),
-                    Double.parseDouble(p[4].trim()),
-                    Double.parseDouble(p[5].trim()),
-                    Integer.parseInt(p[6].trim()),
-                    p[7].trim(),
-                    LocalDateTime.parse(p[8].trim(), DT),
-                    LocalDateTime.parse(p[9].trim(), DT),
-                    p[10].trim());
+                p[1].trim(), p[2].trim(), p[3].trim(),
+                Double.parseDouble(p[4].trim()),
+                Double.parseDouble(p[5].trim()),
+                Integer.parseInt(p[6].trim()),
+                p[7].trim(),
+                LocalDateTime.parse(p[8].trim(), DT),
+                LocalDateTime.parse(p[9].trim(), DT),
+                p[10].trim());
             map.computeIfAbsent(seller, k -> new ArrayList<>()).add(rec);
         }
         return map;
@@ -442,11 +452,11 @@ public class ServerConnection {
             if (p.length < 8) continue;
             String user = p[0].trim();
             var rec = new AppContext.HistoryRecord(
-                    p[1].trim(), p[2].trim(),
-                    Double.parseDouble(p[3].trim()),
-                    p[4].trim(), p[5].trim(),
-                    Boolean.parseBoolean(p[6].trim()),
-                    LocalDateTime.parse(p[7].trim(), DT));
+                p[1].trim(), p[2].trim(),
+                Double.parseDouble(p[3].trim()),
+                p[4].trim(), p[5].trim(),
+                Boolean.parseBoolean(p[6].trim()),
+                LocalDateTime.parse(p[7].trim(), DT));
             map.computeIfAbsent(user, k -> new ArrayList<>()).add(rec);
         }
         return map;
@@ -462,11 +472,11 @@ public class ServerConnection {
             if (p.length < 7) continue;
             try {
                 list.add(new AppContext.RatingRecord(
-                        p[0].trim(), p[1].trim(), p[2].trim(),
-                        Integer.parseInt(p[3].trim()),
-                        p[4].trim(),
-                        LocalDateTime.parse(p[5].trim(), DT),
-                        Integer.parseInt(p[6].trim())));
+                    p[0].trim(), p[1].trim(), p[2].trim(),
+                    Integer.parseInt(p[3].trim()),
+                    p[4].trim(),
+                    LocalDateTime.parse(p[5].trim(), DT),
+                    Integer.parseInt(p[6].trim())));
             } catch (Exception e) {
                 System.err.println("[WS] parseRatings skip: " + line);
             }
@@ -484,16 +494,16 @@ public class ServerConnection {
             if (p.length < 14) continue;
             String user = p[0].trim();
             var rec = new AppContext.AuctionSessionRecord(
-                    p[1].trim(), p[2].trim(), p[3].trim(),
-                    Double.parseDouble(p[4].trim()),
-                    Double.parseDouble(p[5].trim()),
-                    p[6].trim().equals("null") ? null : p[6].trim(),
-                    Integer.parseInt(p[7].trim()),
-                    LocalDateTime.parse(p[8].trim(), DT),
-                    LocalDateTime.parse(p[9].trim(), DT),
-                    p[10].trim(), p[11].trim(),
-                    Double.parseDouble(p[12].trim()),
-                    Boolean.parseBoolean(p[13].trim()));
+                p[1].trim(), p[2].trim(), p[3].trim(),
+                Double.parseDouble(p[4].trim()),
+                Double.parseDouble(p[5].trim()),
+                p[6].trim().equals("null") ? null : p[6].trim(),
+                Integer.parseInt(p[7].trim()),
+                LocalDateTime.parse(p[8].trim(), DT),
+                LocalDateTime.parse(p[9].trim(), DT),
+                p[10].trim(), p[11].trim(),
+                Double.parseDouble(p[12].trim()),
+                Boolean.parseBoolean(p[13].trim()));
             map.computeIfAbsent(user, k -> new ArrayList<>()).add(rec);
         }
         return map;
@@ -518,16 +528,16 @@ public class ServerConnection {
             int bidCount      = Integer.parseInt(p[9].trim());
             String topBidder  = p[10].trim();
             int bidEntryCount = Integer.parseInt(p[11].trim());
-            List<org.example.auction.Bid> bids = new ArrayList<>();
+
+            java.util.List<org.example.auction.Bid> bids = new java.util.ArrayList<>();
             int idx = 12;
             for (int i = 0; i < bidEntryCount && idx + 2 < p.length; i++, idx += 3) {
                 String bidderId  = p[idx].trim();
                 double amount    = Double.parseDouble(p[idx + 1].trim());
                 LocalDateTime ts = LocalDateTime.parse(p[idx + 2].trim(), DT);
-                // Server sync has no bidId, so rebuild a local id.
-                bids.add(new org.example.auction.Bid(
-                        UUID.randomUUID().toString(), bidderId, amount, ts));
+                bids.add(new org.example.auction.Bid("BID-RESTORE-" + i, bidderId, amount, ts));
             }
+
             try {
                 AppContext.syncRunningSession(sessionId, itemName, startPrice,
                     minStep, endTime, sellerName, bids);
@@ -543,93 +553,93 @@ public class ServerConnection {
 
     public void sendRegister(org.example.user.User user) {
         sendJson("{\"action\":\"REGISTER\","
-                + "\"username\":\"" + esc(user.getUsername()) + "\","
-                + "\"role\":\"" + esc(user.getRole()) + "\","
-                + "\"fullName\":\"" + esc(user.getFullName()) + "\","
-                + "\"email\":\"" + esc(user.getEmail()) + "\"}");
+            + "\"username\":\"" + esc(user.getUsername()) + "\","
+            + "\"role\":\"" + esc(user.getRole()) + "\","
+            + "\"fullName\":\"" + esc(user.getFullName()) + "\","
+            + "\"email\":\"" + esc(user.getEmail()) + "\"}");
     }
 
     public void sendUnregister(String username) {
         sendJson("{\"action\":\"UNREGISTER\","
-                + "\"username\":\"" + esc(username) + "\"}");
+            + "\"username\":\"" + esc(username) + "\"}");
     }
 
     public void sendDeposit(String username, double amount) {
         sendJson("{\"action\":\"DEPOSIT\","
-                + "\"username\":\"" + esc(username) + "\","
-                + "\"amount\":\"" + amount + "\"}");
+            + "\"username\":\"" + esc(username) + "\","
+            + "\"amount\":\"" + amount + "\"}");
     }
 
     public void sendPayment(String username, double amount, String description) {
         sendJson("{\"action\":\"PAYMENT\","
-                + "\"username\":\"" + esc(username) + "\","
-                + "\"amount\":\"" + amount + "\","
-                + "\"description\":\"" + esc(description) + "\"}");
+            + "\"username\":\"" + esc(username) + "\","
+            + "\"amount\":\"" + amount + "\","
+            + "\"description\":\"" + esc(description) + "\"}");
     }
 
     public void sendAddProduct(String username, AppContext.ProductRecord product) {
         sendJson("{\"action\":\"ADD_PRODUCT\","
-                + "\"seller\":\"" + esc(username) + "\","
-                + "\"id\":\"" + esc(product.id()) + "\","
-                + "\"name\":\"" + esc(product.name()) + "\","
-                + "\"category\":\"" + esc(product.category()) + "\","
-                + "\"startPrice\":\"" + product.startPrice() + "\","
-                + "\"status\":\"" + esc(product.status()) + "\","
-                + "\"startTime\":\"" + product.startTime().format(DT) + "\","
-                + "\"endTime\":\"" + product.endTime().format(DT) + "\"}");
+            + "\"seller\":\"" + esc(username) + "\","
+            + "\"id\":\"" + esc(product.id()) + "\","
+            + "\"name\":\"" + esc(product.name()) + "\","
+            + "\"category\":\"" + esc(product.category()) + "\","
+            + "\"startPrice\":\"" + product.startPrice() + "\","
+            + "\"status\":\"" + esc(product.status()) + "\","
+            + "\"startTime\":\"" + product.startTime().format(DT) + "\","
+            + "\"endTime\":\"" + product.endTime().format(DT) + "\"}");
     }
 
     public void sendAddRating(AppContext.RatingRecord r) {
         sendJson("{\"action\":\"ADD_RATING\","
-                + "\"id\":\""        + esc(r.id())       + "\","
-                + "\"username\":\"" + esc(r.username())  + "\","
-                + "\"avatar\":\""   + esc(r.avatar())    + "\","
-                + "\"stars\":\""    + r.stars()           + "\","
-                + "\"comment\":\""  + esc(r.comment())   + "\","
-                + "\"timestamp\":\"" + r.time().format(DT) + "\"}");
+            + "\"id\":\""        + esc(r.id())       + "\","
+            + "\"username\":\"" + esc(r.username())  + "\","
+            + "\"avatar\":\""   + esc(r.avatar())    + "\","
+            + "\"stars\":\""    + r.stars()           + "\","
+            + "\"comment\":\""  + esc(r.comment())   + "\","
+            + "\"timestamp\":\"" + r.time().format(DT) + "\"}");
     }
 
     public void sendUpdateProduct(String username, AppContext.ProductRecord product) {
         sendJson("{\"action\":\"UPDATE_PRODUCT\","
-                + "\"seller\":\"" + esc(username) + "\","
-                + "\"id\":\"" + esc(product.id()) + "\","
-                + "\"name\":\"" + esc(product.name()) + "\","
-                + "\"category\":\"" + esc(product.category()) + "\","
-                + "\"currentPrice\":\"" + product.currentPrice() + "\","
-                + "\"bidCount\":\"" + product.bidCount() + "\","
-                + "\"status\":\"" + esc(product.status()) + "\","
-                + "\"endTime\":\"" + product.endTime().format(DT) + "\","
-                + "\"topBidder\":\"" + esc(product.topBidder()) + "\"}");
+            + "\"seller\":\"" + esc(username) + "\","
+            + "\"id\":\"" + esc(product.id()) + "\","
+            + "\"name\":\"" + esc(product.name()) + "\","
+            + "\"category\":\"" + esc(product.category()) + "\","
+            + "\"currentPrice\":\"" + product.currentPrice() + "\","
+            + "\"bidCount\":\"" + product.bidCount() + "\","
+            + "\"status\":\"" + esc(product.status()) + "\","
+            + "\"endTime\":\"" + product.endTime().format(DT) + "\","
+            + "\"topBidder\":\"" + esc(product.topBidder()) + "\"}");
     }
 
     public void sendAddHistory(String username, AppContext.HistoryRecord r) {
         sendJson("{\"action\":\"ADD_HISTORY\","
-                + "\"username\":\"" + esc(username) + "\","
-                + "\"id\":\"" + esc(r.id()) + "\","
-                + "\"itemName\":\"" + esc(r.itemName()) + "\","
-                + "\"amount\":\"" + r.amount() + "\","
-                + "\"counterparty\":\"" + esc(r.counterparty()) + "\","
-                + "\"status\":\"" + esc(r.status()) + "\","
-                + "\"wonBid\":\"" + r.wonBid() + "\","
-                + "\"timestamp\":\"" + r.time().format(DT) + "\"}");
+            + "\"username\":\"" + esc(username) + "\","
+            + "\"id\":\"" + esc(r.id()) + "\","
+            + "\"itemName\":\"" + esc(r.itemName()) + "\","
+            + "\"amount\":\"" + r.amount() + "\","
+            + "\"counterparty\":\"" + esc(r.counterparty()) + "\","
+            + "\"status\":\"" + esc(r.status()) + "\","
+            + "\"wonBid\":\"" + r.wonBid() + "\","
+            + "\"timestamp\":\"" + r.time().format(DT) + "\"}");
     }
 
     public void sendAddSessionHistory(String username, AppContext.AuctionSessionRecord r) {
         sendJson("{\"action\":\"ADD_SESSION_HISTORY\","
-                + "\"username\":\"" + esc(username) + "\","
-                + "\"sessionId\":\"" + esc(r.sessionId()) + "\","
-                + "\"itemName\":\"" + esc(r.itemName()) + "\","
-                + "\"sellerName\":\"" + esc(r.sellerName()) + "\","
-                + "\"startPrice\":\"" + r.startPrice() + "\","
-                + "\"finalPrice\":\"" + r.finalPrice() + "\","
-                + "\"winnerName\":\"" + (r.winnerName() == null ? "null" : esc(r.winnerName())) + "\","
-                + "\"totalBids\":\"" + r.totalBids() + "\","
-                + "\"startTime\":\"" + r.startTime().format(DT) + "\","
-                + "\"endTime\":\"" + r.endTime().format(DT) + "\","
-                + "\"result\":\"" + esc(r.result()) + "\","
-                + "\"myRole\":\"" + esc(r.myRole()) + "\","
-                + "\"myFinalBid\":\"" + r.myFinalBid() + "\","
-                + "\"iWon\":\"" + r.iWon() + "\"}");
+            + "\"username\":\"" + esc(username) + "\","
+            + "\"sessionId\":\"" + esc(r.sessionId()) + "\","
+            + "\"itemName\":\"" + esc(r.itemName()) + "\","
+            + "\"sellerName\":\"" + esc(r.sellerName()) + "\","
+            + "\"startPrice\":\"" + r.startPrice() + "\","
+            + "\"finalPrice\":\"" + r.finalPrice() + "\","
+            + "\"winnerName\":\"" + (r.winnerName() == null ? "null" : esc(r.winnerName())) + "\","
+            + "\"totalBids\":\"" + r.totalBids() + "\","
+            + "\"startTime\":\"" + r.startTime().format(DT) + "\","
+            + "\"endTime\":\"" + r.endTime().format(DT) + "\","
+            + "\"result\":\"" + esc(r.result()) + "\","
+            + "\"myRole\":\"" + esc(r.myRole()) + "\","
+            + "\"myFinalBid\":\"" + r.myFinalBid() + "\","
+            + "\"iWon\":\"" + r.iWon() + "\"}");
     }
 
     // =========================================================
@@ -638,86 +648,86 @@ public class ServerConnection {
 
     public void sendChat(String username, String message) {
         sendJson("{\"action\":\"CHAT\","
-                + "\"username\":\"" + esc(username) + "\","
-                + "\"message\":\""  + esc(message)  + "\"}");
+            + "\"username\":\"" + esc(username) + "\","
+            + "\"message\":\""  + esc(message)  + "\"}");
     }
 
     public void sendBid(String username, String sessionId, double amount) {
         sendJson("{\"action\":\"PLACE_BID\","
-                + "\"username\":\""  + esc(username)  + "\","
-                + "\"sessionId\":\"" + esc(sessionId) + "\","
-                + "\"amount\":\""    + amount          + "\"}");
+            + "\"username\":\""  + esc(username)  + "\","
+            + "\"sessionId\":\"" + esc(sessionId) + "\","
+            + "\"amount\":\""    + amount          + "\"}");
     }
 
     public void sendProductPending(String productId,
-                                    String productName,
-                                    String sellerName,
-                                    String category,
-                                    double startPrice,
-                                    LocalDateTime startTime,
-                                    LocalDateTime endTime) {
+                                   String productName,
+                                   String sellerName,
+                                   String category,
+                                   double startPrice,
+                                   LocalDateTime startTime,
+                                   LocalDateTime endTime) {
         sendJson("{\"action\":\"PRODUCT_PENDING\","
-                + "\"productId\":\""   + esc(productId)      + "\","
-                + "\"productName\":\"" + esc(productName)     + "\","
-                + "\"sellerName\":\""  + esc(sellerName)      + "\","
-                + "\"category\":\""    + esc(category)        + "\","
-                + "\"startPrice\":\""  + startPrice           + "\","
-                + "\"startTime\":\""   + startTime.format(DT) + "\","
-                + "\"endTime\":\""     + endTime.format(DT)   + "\"}");
+            + "\"productId\":\""   + esc(productId)      + "\","
+            + "\"productName\":\"" + esc(productName)     + "\","
+            + "\"sellerName\":\""  + esc(sellerName)      + "\","
+            + "\"category\":\""    + esc(category)        + "\","
+            + "\"startPrice\":\""  + startPrice           + "\","
+            + "\"startTime\":\""   + startTime.format(DT) + "\","
+            + "\"endTime\":\""     + endTime.format(DT)   + "\"}");
     }
 
     public void sendProductApproved(String productId,
-                                     String sellerUsername,
-                                     String productName) {
+                                    String sellerUsername,
+                                    String productName) {
         sendJson("{\"action\":\"PRODUCT_APPROVED\","
-                + "\"productId\":\""      + esc(productId)     + "\","
-                + "\"sellerUsername\":\"" + esc(sellerUsername) + "\","
-                + "\"productName\":\""    + esc(productName)    + "\"}");
+            + "\"productId\":\""      + esc(productId)     + "\","
+            + "\"sellerUsername\":\"" + esc(sellerUsername) + "\","
+            + "\"productName\":\""    + esc(productName)    + "\"}");
     }
 
     public void sendProductRejected(String productId,
-                                     String sellerUsername,
-                                     String productName,
-                                     String reason) {
+                                    String sellerUsername,
+                                    String productName,
+                                    String reason) {
         sendJson("{\"action\":\"PRODUCT_REJECTED\","
-                + "\"productId\":\""      + esc(productId)     + "\","
-                + "\"sellerUsername\":\"" + esc(sellerUsername) + "\","
-                + "\"productName\":\""    + esc(productName)    + "\","
-                + "\"reason\":\""         + esc(reason)         + "\"}");
+            + "\"productId\":\""      + esc(productId)     + "\","
+            + "\"sellerUsername\":\"" + esc(sellerUsername) + "\","
+            + "\"productName\":\""    + esc(productName)    + "\","
+            + "\"reason\":\""         + esc(reason)         + "\"}");
     }
 
     public void sendSessionStart(String sessionId,
-                                  String itemName,
-                                  double startPrice,
-                                  double minStep,
-                                  LocalDateTime endTime,
-                                  String sellerName,
-                                  String category) {
+                                 String itemName,
+                                 double startPrice,
+                                 double minStep,
+                                 LocalDateTime endTime,
+                                 String sellerName,
+                                 String category) {
         sendJson("{\"action\":\"SESSION_START\","
-                + "\"sessionId\":\""  + esc(sessionId)    + "\","
-                + "\"itemName\":\""   + esc(itemName)      + "\","
-                + "\"startPrice\":\"" + startPrice         + "\","
-                + "\"minStep\":\""    + minStep            + "\","
-                + "\"endTime\":\""    + endTime.format(DT) + "\","
-                + "\"sellerName\":\"" + esc(sellerName)    + "\","
-                + "\"category\":\""   + esc(category)      + "\"}");
+            + "\"sessionId\":\""  + esc(sessionId)    + "\","
+            + "\"itemName\":\""   + esc(itemName)      + "\","
+            + "\"startPrice\":\"" + startPrice         + "\","
+            + "\"minStep\":\""    + minStep            + "\","
+            + "\"endTime\":\""    + endTime.format(DT) + "\","
+            + "\"sellerName\":\"" + esc(sellerName)    + "\","
+            + "\"category\":\""   + esc(category)      + "\"}");
     }
 
     public void sendSessionEnd(String sessionId, String itemName,
-                                String winner, double finalPrice) {
+                               String winner, double finalPrice) {
         sendJson("{\"action\":\"SESSION_END\","
-                + "\"sessionId\":\"" + esc(sessionId) + "\","
-                + "\"itemName\":\""  + esc(itemName)  + "\","
-                + "\"winner\":\""    + esc(winner)    + "\","
-                + "\"finalPrice\":\"" + finalPrice    + "\"}");
+            + "\"sessionId\":\"" + esc(sessionId) + "\","
+            + "\"itemName\":\""  + esc(itemName)  + "\","
+            + "\"winner\":\""    + esc(winner)    + "\","
+            + "\"finalPrice\":\"" + finalPrice    + "\"}");
     }
 
     public void sendPaymentSuccess(String username,
-                                    String itemName, double amount) {
+                                   String itemName, double amount) {
         sendJson("{\"action\":\"PAYMENT_SUCCESS\","
-                + "\"username\":\"" + esc(username) + "\","
-                + "\"itemName\":\""  + esc(itemName) + "\","
-                + "\"amount\":\""    + amount        + "\"}");
+            + "\"username\":\"" + esc(username) + "\","
+            + "\"itemName\":\""  + esc(itemName) + "\","
+            + "\"amount\":\""    + amount        + "\"}");
     }
 
     /** Gửi JSON thô — dùng khi cần gửi custom message */
@@ -742,8 +752,21 @@ public class ServerConnection {
     // =========================================================
     // LISTENER
     // =========================================================
+    /** Ghi đè toàn bộ — dùng cho controller chính (MainController) */
     public void setListener(MessageListener listener) {
-        this.listener = listener;
+        listeners.clear();
+        if (listener != null) listeners.add(listener);
+    }
+
+    /** Thêm listener — dùng cho sub-controller (LiveAuctionController) */
+    public void addListener(MessageListener listener) {
+        if (listener != null && !listeners.contains(listener))
+            listeners.add(listener);
+    }
+
+    /** Gỡ listener khi rời màn hình */
+    public void removeListener(MessageListener listener) {
+        listeners.remove(listener);
     }
 
     // =========================================================
@@ -766,10 +789,10 @@ public class ServerConnection {
     private String esc(String s) {
         if (s == null) return "";
         return s.replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n",  "\\n")
-                .replace("\r",  "\\r")
-                .replace("\t",  "\\t");
+            .replace("\"", "\\\"")
+            .replace("\n",  "\\n")
+            .replace("\r",  "\\r")
+            .replace("\t",  "\\t");
     }
 
     private String extractJson(String json, String key) {
@@ -800,8 +823,9 @@ public class ServerConnection {
     private String unescapeData(String s) {
         if (s == null) return "";
         return s.replace("\\n", "\n")
-                .replace("\\t", "\t")
-                .replace("\\r", "")
-                .replace("\\|", "|");
+            .replace("\\t", "\t")
+            .replace("\\r", "")
+            .replace("\\|", "|");
     }
+    public void setOnSessionSynced(Runnable r) { this.onSessionSynced = r; }
 }

@@ -159,7 +159,13 @@
 /* ── Bid History ─────────────────────────────────────────── */
 .bid-scroll  { -fx-background-color: transparent; -fx-background: transparent; -fx-border-color: transparent; }
 .bid-row     { -fx-background-color: #0f172a; -fx-background-radius: 6; -fx-padding: 8 10 8 10; }
-.bid-row-top { -fx-background-color: #1e3a5f; }
+.bid-row-top {
+    -fx-background-color: #1e3a5f;
+    -fx-border-color: #f59e0b;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
 .bid-amount  { -fx-text-fill: #10b981; -fx-font-weight: bold; }
 .bid-time    { -fx-text-fill: #64748b; }
 .see-all-link { -fx-text-fill: #2563eb; -fx-border-color: transparent; }

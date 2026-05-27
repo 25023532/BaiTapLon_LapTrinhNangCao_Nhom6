@@ -74,7 +74,7 @@ public class LiveAuctionController {
     private int            currentOnlineCount = 0;
 
     private static final DateTimeFormatter TIME_FMT =
-            DateTimeFormatter.ofPattern("HH:mm:ss");
+        DateTimeFormatter.ofPattern("HH:mm:ss");
 
     // =========================================================
     // INITIALIZE
@@ -104,7 +104,7 @@ public class LiveAuctionController {
     // =========================================================
     private void connectToServer() {
         ServerConnection conn = ServerConnection.getInstance();
-        conn.setListener(this::handleServerMessage);
+        conn.addListener(this::handleServerMessage);  // addListener, không ghi đè MainController
 
         User user = AppContext.getCurrentUser();
         if (!conn.isConnected()) {
@@ -152,21 +152,21 @@ public class LiveAuctionController {
                             double amt = Double.parseDouble(amountStr);
 
                             if (currentSession != null
-                                    && currentSession.getSessionId().equals(sessionId)) {
+                                && currentSession.getSessionId().equals(sessionId)) {
 
                                 liveCurrentPrice.setText(
-                                        formatVND(currentSession.getCurrentPrice()));
+                                    formatVND(currentSession.getCurrentPrice()));
                                 liveLeaderLabel.setText("👑 " + bidder
-                                        + " (" + formatVND(amt) + ")");
+                                    + " (" + formatVND(amt) + ")");
                                 updateQuickBidLabels();
                                 refreshBidHistory();
                                 lastBidCount = currentSession.getBidHistory().size();
                                 bidCountLabel.setText(
-                                        currentSession.getBidHistory().size() + " lượt");
+                                    currentSession.getBidHistory().size() + " lượt");
 
                                 if (me == null || !bidder.equals(me.getUsername())) {
                                     addChatMsg("System",
-                                            "🔨 " + bidder + " đặt giá "
+                                        "🔨 " + bidder + " đặt giá "
                                             + formatVND(amt), false);
                                 }
                             }
@@ -183,7 +183,7 @@ public class LiveAuctionController {
                     Platform.runLater(() -> {
                         loadLiveSessionList();
                         addChatMsg("System",
-                                "🟢 Phiên mới bắt đầu: " + itemName, false);
+                            "🟢 Phiên mới bắt đầu: " + itemName, false);
                     });
                 }
 
@@ -192,10 +192,10 @@ public class LiveAuctionController {
                     String itemName  = extractJson(raw, "itemName");
                     Platform.runLater(() -> {
                         addChatMsg("System",
-                                "🔴 Phiên kết thúc: " + itemName, false);
+                            "🔴 Phiên kết thúc: " + itemName, false);
 
                         if (currentSession != null
-                                && currentSession.getSessionId().equals(sessionId)) {
+                            && currentSession.getSessionId().equals(sessionId)) {
                             liveStatusLabel.setText("● KẾT THÚC");
                             liveStatusLabel.setStyle("-fx-text-fill: #ef4444;");
                             if (countdownTimer != null) countdownTimer.stop();
@@ -256,10 +256,10 @@ public class LiveAuctionController {
             icon.setStyle("-fx-font-size: 32px;");
             Label msg = new Label("Chưa có phiên nào đang diễn ra.");
             msg.setStyle("-fx-text-fill: #64748b; -fx-font-size: 12px; "
-                    + "-fx-font-weight: bold; -fx-text-alignment: center;");
+                + "-fx-font-weight: bold; -fx-text-alignment: center;");
             Label hint = new Label("Seller cần bắt đầu phiên để hiển thị ở đây.");
             hint.setStyle("-fx-text-fill: #475569; -fx-font-size: 11px; "
-                    + "-fx-text-alignment: center;");
+                + "-fx-text-alignment: center;");
             emptyBox.getChildren().addAll(icon, msg, hint);
             liveSessionListBox.getChildren().add(emptyBox);
             return;
@@ -275,17 +275,17 @@ public class LiveAuctionController {
         card.setPadding(new Insets(10, 12, 10, 12));
 
         boolean isSelected = currentSession != null
-                && currentSession.getSessionId().equals(session.getSessionId());
+            && currentSession.getSessionId().equals(session.getSessionId());
 
         card.setStyle(
-                "-fx-background-color: " + (isSelected ? "#1e3a5f" : "#1e293b") + ";"
+            "-fx-background-color: " + (isSelected ? "#1e3a5f" : "#1e293b") + ";"
                 + "-fx-background-radius: 8;"
                 + "-fx-border-color: " + (isSelected ? "#2563eb" : "#334155") + ";"
                 + "-fx-border-radius: 8; -fx-border-width: 1; -fx-cursor: hand;");
 
         Label nameLabel = new Label(session.getItemName());
         nameLabel.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 12px; "
-                + "-fx-font-weight: bold;");
+            + "-fx-font-weight: bold;");
         nameLabel.setWrapText(true);
 
         String sellerName = AppContext.getSessionSeller(session.getSessionId());
@@ -300,7 +300,7 @@ public class LiveAuctionController {
         HBox metaRow2 = new HBox(8);
         Label priceL = new Label(formatVND(session.getCurrentPrice()));
         priceL.setStyle("-fx-font-size: 12px; -fx-text-fill: #38bdf8; "
-                + "-fx-font-weight: bold;");
+            + "-fx-font-weight: bold;");
         Label bidsL = new Label("🔨 " + session.getBidHistory().size() + " lượt");
         bidsL.setStyle("-fx-font-size: 11px; -fx-text-fill: #64748b;");
         metaRow2.getChildren().addAll(priceL, bidsL);
@@ -311,14 +311,14 @@ public class LiveAuctionController {
         card.setOnMouseEntered(e -> {
             if (!isSelected)
                 card.setStyle(card.getStyle()
-                        .replace("#1e293b", "#243447")
-                        .replace("#334155", "#475569"));
+                    .replace("#1e293b", "#243447")
+                    .replace("#334155", "#475569"));
         });
         card.setOnMouseExited(e -> {
             if (!isSelected)
                 card.setStyle(card.getStyle()
-                        .replace("#243447", "#1e293b")
-                        .replace("#475569", "#334155"));
+                    .replace("#243447", "#1e293b")
+                    .replace("#475569", "#334155"));
         });
 
         return card;
@@ -330,8 +330,8 @@ public class LiveAuctionController {
         liveSessionListBox.getChildren().forEach(node -> {
             if (node instanceof VBox vbox) {
                 boolean match = vbox.getChildren().stream()
-                        .anyMatch(n -> n instanceof Label l
-                                && l.getText().toLowerCase().contains(kw));
+                    .anyMatch(n -> n instanceof Label l
+                        && l.getText().toLowerCase().contains(kw));
                 vbox.setVisible(kw.isEmpty() || match);
                 vbox.setManaged(kw.isEmpty() || match);
             }
@@ -353,7 +353,7 @@ public class LiveAuctionController {
 
         liveTitleLabel.setText(session.getItemName());
         liveDescLabel.setText(
-                "Sản phẩm mới 100%, còn nguyên seal, bảo hành 12 tháng.");
+            "Sản phẩm mới 100%, còn nguyên seal, bảo hành 12 tháng.");
         liveStartPrice.setText(formatVND(session.getStartingPrice()));
         liveCurrentPrice.setText(formatVND(session.getCurrentPrice()));
         liveMinStep.setText(formatVND(session.getMinBidStep()));
@@ -376,13 +376,13 @@ public class LiveAuctionController {
             conn.sendJson("{\"action\":\"GET_ONLINE_COUNT\"}");
 
         addChatMsg("System",
-                "✅ Đã tham gia phiên: " + session.getItemName(), false);
+            "✅ Đã tham gia phiên: " + session.getItemName(), false);
     }
 
     private void setNoSessionState() {
         liveTitleLabel.setText("Chọn phiên bên trái để bắt đầu");
         liveDescLabel.setText(
-                "Các phiên đang LIVE sẽ xuất hiện ở danh sách bên trái.");
+            "Các phiên đang LIVE sẽ xuất hiện ở danh sách bên trái.");
         liveStartPrice.setText("—");
         liveCurrentPrice.setText("—");
         liveMinStep.setText("—");
@@ -434,18 +434,18 @@ public class LiveAuctionController {
 
         if (winner.equals(me.getUsername())) {
             AppContext.addHistory(me.getUsername(), new AppContext.HistoryRecord(
-                    "BID-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase(),
-                    currentSession.getItemName(),
-                    finalPrice,
-                    AppContext.getSessionSeller(currentSession.getSessionId()),
-                    "CHỜ XỬ LÝ",
-                    true,
-                    LocalDateTime.now()
+                "BID-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase(),
+                currentSession.getItemName(),
+                finalPrice,
+                AppContext.getSessionSeller(currentSession.getSessionId()),
+                "CHỜ XỬ LÝ",
+                true,
+                LocalDateTime.now()
             ));
             addChatMsg("System", "🏆 Bạn đã thắng! Vào Ví để thanh toán.", false);
         } else {
             boolean participated = history.stream()
-                    .anyMatch(b -> b.getBidderId().equals(me.getUsername()));
+                .anyMatch(b -> b.getBidderId().equals(me.getUsername()));
             if (participated) {
                 addChatMsg("System", "😔 Bạn đã thua. Người thắng: " + winner, false);
             }
@@ -463,7 +463,7 @@ public class LiveAuctionController {
                 lastBidCount = currentBidCount;
                 Platform.runLater(() -> {
                     liveCurrentPrice.setText(
-                            formatVND(currentSession.getCurrentPrice()));
+                        formatVND(currentSession.getCurrentPrice()));
                     updateLeaderLabel();
                     updateQuickBidLabels();
                     refreshBidHistory();
@@ -489,7 +489,7 @@ public class LiveAuctionController {
     private void handleCustomBid() {
         if (!sessionSelected || currentSession == null) {
             showAlert("Chưa chọn phiên",
-                    "Vui lòng chọn một phiên từ danh sách bên trái.");
+                "Vui lòng chọn một phiên từ danh sách bên trái.");
             return;
         }
         String text = customBidField.getText().trim().replaceAll("[^0-9.]", "");
@@ -512,11 +512,11 @@ public class LiveAuctionController {
     private void placeBidByStep(int steps) {
         if (!sessionSelected || currentSession == null) {
             showAlert("Chưa chọn phiên",
-                    "Vui lòng chọn một phiên từ danh sách bên trái.");
+                "Vui lòng chọn một phiên từ danh sách bên trái.");
             return;
         }
         placeBid(currentSession.getCurrentPrice()
-                + steps * currentSession.getMinBidStep());
+            + steps * currentSession.getMinBidStep());
     }
 
     private void placeBid(double amount) {
@@ -525,7 +525,7 @@ public class LiveAuctionController {
         double balance = AppContext.getWalletBalance(user.getUsername());
         if (balance < amount) {
             showAlert("Số dư không đủ",
-                    "Số dư hiện tại: " + formatVND(balance)
+                "Số dư hiện tại: " + formatVND(balance)
                     + "\nCần nạp thêm: " + formatVND(amount - balance));
             return;
         }
@@ -535,10 +535,10 @@ public class LiveAuctionController {
             boolean ok = conn.connect(user.getUsername());
             if (!ok) {
                 showAlert("Mất kết nối",
-                        "Không thể kết nối tới server. Vui lòng thử lại.");
+                    "Không thể kết nối tới server. Vui lòng thử lại.");
                 return;
             }
-            conn.setListener(this::handleServerMessage);
+            // không cần setListener — đã addListener trong connectToServer()
         }
 
         String sessionId = AppContext.getAllProducts().stream()
@@ -549,7 +549,7 @@ public class LiveAuctionController {
         conn.sendBid(user.getUsername(), sessionId, amount);
 
         addChatMsg("System",
-                "⏳ Đang xử lý giá " + formatVND(amount) + "...", false);
+            "⏳ Đang xử lý giá " + formatVND(amount) + "...", false);
 
         AppContext.HistoryRecord histRec = new AppContext.HistoryRecord(
             "BID-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase(),
@@ -573,24 +573,24 @@ public class LiveAuctionController {
 
         try {
             String newEnd = currentSession.getEndTime()
-                    .format(DateTimeFormatter.ofPattern("HH:mm:ss"));
+                .format(DateTimeFormatter.ofPattern("HH:mm:ss"));
             int count = currentSession.getExtensionCount();
             extensionNoticeLabel.setText(
-                    "⚡ Bid vào phút chót! Phiên kéo dài thêm. "
+                "⚡ Bid vào phút chót! Phiên kéo dài thêm. "
                     + "Kết thúc mới: " + newEnd
                     + " (lần " + count + "/5)");
             extensionNoticeLabel.setVisible(true);
             extensionNoticeLabel.setManaged(true);
 
             addChatMsg("System",
-                    "⚡ Anti-sniping kích hoạt! Phiên kéo dài đến "
+                "⚡ Anti-sniping kích hoạt! Phiên kéo dài đến "
                     + newEnd + " (lần " + count + "/5)", false);
 
             extensionNoticeTimer = new Timeline(
-                    new KeyFrame(Duration.seconds(8), ev -> {
-                        extensionNoticeLabel.setVisible(false);
-                        extensionNoticeLabel.setManaged(false);
-                    }));
+                new KeyFrame(Duration.seconds(8), ev -> {
+                    extensionNoticeLabel.setVisible(false);
+                    extensionNoticeLabel.setManaged(false);
+                }));
             extensionNoticeTimer.setCycleCount(1);
             extensionNoticeTimer.play();
         } catch (Exception ignored) {}
@@ -607,7 +607,7 @@ public class LiveAuctionController {
         if (history.isEmpty()) {
             Label empty = new Label("Chưa có lượt đặt giá nào.");
             empty.setStyle("-fx-text-fill: #64748b; -fx-font-size: 13px; "
-                    + "-fx-padding: 16 0 0 0;");
+                + "-fx-padding: 16 0 0 0;");
             liveBidHistoryBox.getChildren().add(empty);
             return;
         }
@@ -620,7 +620,7 @@ public class LiveAuctionController {
             if (i == history.size() - 1) row.getStyleClass().add("bid-row-top");
 
             Label rank = new Label(i == history.size() - 1
-                    ? "👑" : "#" + (history.size() - i));
+                ? "👑" : "#" + (history.size() - i));
             rank.setStyle("-fx-font-size: 14px; -fx-min-width: 28px;");
 
             Label name = new Label(b.getBidderId());
@@ -649,7 +649,7 @@ public class LiveAuctionController {
         User user = AppContext.getCurrentUser();
 
         addChatMsg(user.getUsername(), msg,
-                "SELLER".equalsIgnoreCase(user.getRole()));
+            "SELLER".equalsIgnoreCase(user.getRole()));
         liveChatInput.clear();
 
         ServerConnection conn = ServerConnection.getInstance();
@@ -658,7 +658,7 @@ public class LiveAuctionController {
         } else {
             boolean ok = conn.connect(user.getUsername());
             if (ok) {
-                conn.setListener(this::handleServerMessage);
+                // không cần setListener — đã addListener trong connectToServer()
                 conn.sendChat(user.getUsername(), msg);
             }
         }
@@ -667,7 +667,7 @@ public class LiveAuctionController {
     private void addChatMsg(String sender, String message, boolean isSeller) {
         VBox bubble = new VBox(2);
         bubble.getStyleClass().add(
-                isSeller ? "chat-bubble-seller" : "chat-bubble-buyer");
+            isSeller ? "chat-bubble-seller" : "chat-bubble-buyer");
         bubble.setPadding(new Insets(6, 10, 6, 10));
         Label nameLabel = new Label(sender);
         nameLabel.getStyleClass().add("chat-sender");
@@ -687,6 +687,8 @@ public class LiveAuctionController {
         if (countdownTimer       != null) countdownTimer.stop();
         if (uiRefreshTimer       != null) uiRefreshTimer.stop();
         if (extensionNoticeTimer != null) extensionNoticeTimer.stop();
+        // Gỡ listener để tránh nhận message khi đã rời màn hình
+        ServerConnection.getInstance().removeListener(this::handleServerMessage);
         try { HelloApplication.showMainView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
@@ -709,7 +711,7 @@ public class LiveAuctionController {
         if (!history.isEmpty()) {
             Bid top = history.get(history.size() - 1);
             liveLeaderLabel.setText(
-                    "👑 " + top.getBidderId()
+                "👑 " + top.getBidderId()
                     + "  (" + formatVND(top.getAmount()) + ")");
         } else {
             liveLeaderLabel.setText("Chưa có ai đặt giá");
