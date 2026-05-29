@@ -41,14 +41,15 @@ public class ProductManagementController {
     private boolean isAdmin;
 
     private static final DateTimeFormatter DT_FMT =
-            DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
+        DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
     private static final DateTimeFormatter TIME_ONLY =
-            DateTimeFormatter.ofPattern("HH:mm");
+        DateTimeFormatter.ofPattern("HH:mm");
 
     private static final String IMAGE_DIR = "D:/123/product_images/";
 
-    private static final List<ManagedProduct> managedList = new ArrayList<>();
+    private final List<ManagedProduct> managedList = new ArrayList<>();
     private static final Map<String, Double>  stepMap     = new HashMap<>();
+    public static final Map<String, String>  descMap     = new HashMap<>();
     public static final Map<String, String> imageMap = new HashMap<>();
 
     static {
@@ -71,15 +72,15 @@ public class ProductManagementController {
     }
 
     public record ManagedProduct(
-            String        id,
-            String        name,
-            String        category,
-            String        sellerName,
-            double        startPrice,
-            String        status,
-            LocalDateTime createdAt,
-            LocalDateTime auctionStart,
-            LocalDateTime auctionEnd
+        String        id,
+        String        name,
+        String        category,
+        String        sellerName,
+        double        startPrice,
+        String        status,
+        LocalDateTime createdAt,
+        LocalDateTime auctionStart,
+        LocalDateTime auctionEnd
     ) {}
 
     // =========================================================
@@ -94,12 +95,13 @@ public class ProductManagementController {
         new File(IMAGE_DIR).mkdirs();
 
         statusFilter.getItems().addAll(
-                "Tất cả", "CHỜ DUYỆT", "ĐÃ DUYỆT",
-                "ĐANG ĐẤU GIÁ", "ĐÃ BÁN", "TỪ CHỐI");
+            "Tất cả", "CHỜ DUYỆT", "ĐÃ DUYỆT",
+            "ĐANG ĐẤU GIÁ", "ĐÃ BÁN", "TỪ CHỐI");
         categoryFilter.getItems().addAll(
-                "Tất cả", "Laptop", "Điện thoại", "Máy ảnh",
-                "Điện tử", "Đồng hồ", "Xe cộ", "Khác");
+            "Tất cả", "Laptop", "Điện thoại", "Máy ảnh",
+            "Điện tử", "Đồng hồ", "Xe cộ", "Khác");
 
+        managedList.clear();
         if (isAdmin)
             syncAllSellersFromAppContext();
         else
@@ -111,15 +113,15 @@ public class ProductManagementController {
 
     private void syncFromAppContext(User user) {
         for (AppContext.ProductRecord p :
-                AppContext.getProducts(user.getUsername())) {
+            AppContext.getProducts(user.getUsername())) {
             boolean exists = managedList.stream()
-                    .anyMatch(m -> m.id().equals(p.id()));
+                .anyMatch(m -> m.id().equals(p.id()));
             if (!exists) {
                 managedList.add(new ManagedProduct(
-                        p.id(), p.name(), p.category(),
-                        user.getUsername(), p.startPrice(),
-                        p.status(), LocalDateTime.now(),
-                        p.startTime(), p.endTime()
+                    p.id(), p.name(), p.category(),
+                    user.getUsername(), p.startPrice(),
+                    p.status(), LocalDateTime.now(),
+                    p.startTime(), p.endTime()
                 ));
             }
         }
@@ -128,16 +130,16 @@ public class ProductManagementController {
     private void syncAllSellersFromAppContext() {
         for (AppContext.ProductRecord p : AppContext.getAllProducts()) {
             boolean exists = managedList.stream()
-                    .anyMatch(m -> m.id().equals(p.id()));
+                .anyMatch(m -> m.id().equals(p.id()));
             if (!exists) {
                 String sellerName = AppContext.getSessionSeller(p.id());
                 if (sellerName == null || sellerName.isBlank())
                     sellerName = "—";
                 managedList.add(new ManagedProduct(
-                        p.id(), p.name(), p.category(),
-                        sellerName, p.startPrice(),
-                        p.status(), LocalDateTime.now(),
-                        p.startTime(), p.endTime()
+                    p.id(), p.name(), p.category(),
+                    sellerName, p.startPrice(),
+                    p.status(), LocalDateTime.now(),
+                    p.startTime(), p.endTime()
                 ));
             }
         }
@@ -149,11 +151,11 @@ public class ProductManagementController {
     private void refreshStats() {
         totalProductsLabel.setText(String.valueOf(managedList.size()));
         approvedLabel.setText(String.valueOf(managedList.stream()
-                .filter(p -> "ĐÃ DUYỆT".equals(p.status())).count()));
+            .filter(p -> "ĐÃ DUYỆT".equals(p.status())).count()));
         pendingLabel.setText(String.valueOf(managedList.stream()
-                .filter(p -> "CHỜ DUYỆT".equals(p.status())).count()));
+            .filter(p -> "CHỜ DUYỆT".equals(p.status())).count()));
         auctioningLabel.setText(String.valueOf(managedList.stream()
-                .filter(p -> "ĐANG ĐẤU GIÁ".equals(p.status())).count()));
+            .filter(p -> "ĐANG ĐẤU GIÁ".equals(p.status())).count()));
     }
 
     // =========================================================
@@ -163,10 +165,10 @@ public class ProductManagementController {
         productListBox.getChildren().clear();
         if (list.isEmpty()) {
             Label empty = new Label(isAdmin
-                    ? "Chưa có sản phẩm nào cần duyệt."
-                    : "Chưa có sản phẩm nào. Nhấn \"＋ Thêm sản phẩm\".");
+                ? "Chưa có sản phẩm nào cần duyệt."
+                : "Chưa có sản phẩm nào. Nhấn \"＋ Thêm sản phẩm\".");
             empty.setStyle("-fx-text-fill: #64748b; -fx-font-size: 14px; "
-                    + "-fx-padding: 40 0 40 0;");
+                + "-fx-padding: 40 0 40 0;");
             productListBox.getChildren().add(empty);
             return;
         }
@@ -185,21 +187,21 @@ public class ProductManagementController {
         if (imgPath != null && new File(imgPath).exists()) {
             try {
                 ImageView thumb = new ImageView(
-                        new Image(new File(imgPath).toURI().toString()));
+                    new Image(new File(imgPath).toURI().toString()));
                 thumb.setFitWidth(48);
                 thumb.setFitHeight(48);
                 thumb.setPreserveRatio(true);
                 StackPane thumbBox = new StackPane(thumb);
                 thumbBox.setMinWidth(56);
                 thumbBox.setStyle("-fx-background-color: #0f172a; "
-                        + "-fx-background-radius: 8; -fx-padding: 4;");
+                    + "-fx-background-radius: 8; -fx-padding: 4;");
                 HBox.setMargin(thumbBox, new Insets(0, 12, 0, 0));
                 row.getChildren().add(thumbBox);
             } catch (Exception ignored) {}
         } else {
             Label placeholder = new Label("📦");
             placeholder.setStyle("-fx-font-size: 28px; -fx-min-width: 48px; "
-                    + "-fx-alignment: CENTER;");
+                + "-fx-alignment: CENTER;");
             row.getChildren().add(placeholder);
         }
 
@@ -209,7 +211,7 @@ public class ProductManagementController {
         Label name = new Label(p.name());
         name.getStyleClass().add("history-item-name");
         Label idLabel = new Label(
-                "ID: " + p.id()
+            "ID: " + p.id()
                 + "  •  Người bán: " + p.sellerName()
                 + "  •  Bắt đầu: " + p.auctionStart().format(DT_FMT)
                 + "  •  Kết thúc: " + p.auctionEnd().format(DT_FMT));
@@ -222,12 +224,12 @@ public class ProductManagementController {
 
         Label price = new Label(formatVND(p.startPrice()));
         price.setStyle("-fx-font-size: 13px; -fx-text-fill: #38bdf8; "
-                + "-fx-font-weight: bold;");
+            + "-fx-font-weight: bold;");
         price.setMinWidth(140);
 
         Label badge = new Label(p.status());
         badge.getStyleClass().addAll("history-badge",
-                managedBadgeStyle(p.status()));
+            managedBadgeStyle(p.status()));
         badge.setMinWidth(130);
 
         HBox actions = buildActions(p);
@@ -249,7 +251,7 @@ public class ProductManagementController {
                 if (isAdmin) {
                     Button approveBtn = new Button("✅ Duyệt");
                     approveBtn.setStyle(
-                            "-fx-background-color: #14532d; -fx-text-fill: #4ade80; "
+                        "-fx-background-color: #14532d; -fx-text-fill: #4ade80; "
                             + "-fx-background-radius: 6; -fx-cursor: hand; "
                             + "-fx-font-size: 12px; -fx-padding: 5 10 5 10;");
                     approveBtn.setOnAction(e -> handleApprove(p));
@@ -262,7 +264,7 @@ public class ProductManagementController {
                 } else {
                     Label waitLabel = new Label("⏳ Chờ Admin duyệt");
                     waitLabel.setStyle("-fx-text-fill: #94a3b8; "
-                            + "-fx-font-size: 12px; -fx-font-style: italic;");
+                        + "-fx-font-size: 12px; -fx-font-style: italic;");
 
                     Button deleteBtn = new Button("🗑 Xóa");
                     deleteBtn.getStyleClass().add("btn-danger");
@@ -315,98 +317,92 @@ public class ProductManagementController {
     // =========================================================
     // ADD PRODUCT
     // =========================================================
-    @FXML
-    private void handleAdd() {
+    @FXML private void handleAdd() {
         Dialog<ManagedProduct> dialog = new Dialog<>();
         dialog.setTitle("Thêm sản phẩm mới");
         dialog.setHeaderText(null);
-        dialog.getDialogPane().setPrefWidth(620);
+        dialog.getDialogPane().setPrefWidth(640);
         dialog.getDialogPane().setPrefHeight(620);
 
         ButtonType saveBtn =
-                new ButtonType("✚  Đăng bán", ButtonBar.ButtonData.OK_DONE);
+            new ButtonType("✚  Đăng bán", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes()
-                .addAll(saveBtn, ButtonType.CANCEL);
+            .addAll(saveBtn, ButtonType.CANCEL);
 
         dialog.getDialogPane().setStyle(
-                "-fx-background-color: #0f172a; "
-                + "-fx-border-color: #334155; -fx-border-width: 1;");
+            "-fx-background-color: #FFF8F0; "
+                + "-fx-border-color: #1A1A1A; -fx-border-width: 4;");
 
         // ── Upload ảnh ───────────────────────────────────────
         final String[] selectedImagePath = {null};
 
         VBox leftPanel = new VBox(16);
-        leftPanel.setPrefWidth(200);
-        leftPanel.setMinWidth(200);
+        leftPanel.setPrefWidth(220);
+        leftPanel.setMinWidth(220);
         leftPanel.setPadding(new Insets(24, 20, 24, 24));
         leftPanel.setAlignment(Pos.TOP_CENTER);
-        leftPanel.setStyle("-fx-background-color: #1e293b; "
-                + "-fx-border-color: transparent #334155 transparent transparent; "
-                + "-fx-border-width: 1;");
+        leftPanel.setStyle("-fx-background-color: #FFFFFF; "
+            + "-fx-border-color: transparent #1A1A1A transparent transparent; "
+            + "-fx-border-width: 3;");
 
-        Label imgTitle = new Label("Ảnh sản phẩm");
-        imgTitle.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 11px; "
-                + "-fx-font-weight: bold;");
+        Label imgTitle = new Label("ẢNH SẢN PHẨM");
+        imgTitle.setStyle("-fx-text-fill: #1A1A1A; -fx-font-size: 11px; "
+            + "-fx-font-weight: 900; -fx-letter-spacing: 1.5px;");
 
         ImageView preview = new ImageView();
-        preview.setFitWidth(148);
-        preview.setFitHeight(148);
+        preview.setFitWidth(160);
+        preview.setFitHeight(160);
         preview.setPreserveRatio(true);
 
         StackPane previewBox = new StackPane();
-        previewBox.setPrefSize(160, 160);
-        previewBox.setMaxSize(160, 160);
-        previewBox.setStyle("-fx-background-color: #0f172a; "
-                + "-fx-background-radius: 12; -fx-border-color: #334155; "
-                + "-fx-border-radius: 12; -fx-border-width: 2; -fx-cursor: hand;");
+        previewBox.setPrefSize(180, 180);
+        previewBox.setMaxSize(180, 180);
+        previewBox.setStyle("-fx-background-color: #FFFFFF; "
+            + "-fx-border-color: #1A1A1A; -fx-border-width: 3; "
+            + "-fx-cursor: hand; -fx-effect: dropshadow(one-pass-box, #1A1A1A, 0, 0, 4, 4);");
 
         VBox emptyHint = new VBox(8);
         emptyHint.setAlignment(Pos.CENTER);
         Label camIcon = new Label("📷");
-        camIcon.setStyle("-fx-font-size: 36px;");
-        Label hintTxt = new Label("Chưa có ảnh\nClick để chọn");
-        hintTxt.setStyle("-fx-text-fill: #475569; -fx-font-size: 11px; "
-                + "-fx-text-alignment: CENTER;");
+        camIcon.setStyle("-fx-font-size: 42px;");
+        Label hintTxt = new Label("CHƯA CÓ ẢNH\nCLICK ĐỂ CHỌN");
+        hintTxt.setStyle("-fx-text-fill: #1A1A1A; -fx-font-size: 10px; "
+            + "-fx-font-weight: 900; -fx-text-alignment: CENTER;");
         hintTxt.setWrapText(true);
         emptyHint.getChildren().addAll(camIcon, hintTxt);
         previewBox.getChildren().addAll(emptyHint, preview);
 
         Label fileNameLabel = new Label("Chưa chọn file");
-        fileNameLabel.setStyle("-fx-text-fill: #475569; -fx-font-size: 10px;");
+        fileNameLabel.setStyle("-fx-text-fill: #666666; -fx-font-size: 10px;");
         fileNameLabel.setWrapText(true);
-        fileNameLabel.setMaxWidth(160);
+        fileNameLabel.setMaxWidth(180);
 
-        Button chooseImgBtn = new Button("📂  Chọn ảnh");
+        Button chooseImgBtn = new Button("📂  CHỌN ẢNH");
         chooseImgBtn.setMaxWidth(Double.MAX_VALUE);
-        chooseImgBtn.setStyle("-fx-background-color: #1e3a5f; "
-                + "-fx-text-fill: #38bdf8; -fx-font-size: 12px; "
-                + "-fx-font-weight: bold; -fx-background-radius: 8; "
-                + "-fx-border-color: #2563eb; -fx-border-radius: 8; "
-                + "-fx-border-width: 1; -fx-cursor: hand; "
-                + "-fx-padding: 8 0 8 0;");
+        chooseImgBtn.setStyle("-fx-background-color: #FFFFFF; "
+            + "-fx-text-fill: #1F0C40; -fx-font-size: 12px; "
+            + "-fx-font-weight: 900; -fx-background-radius: 0; "
+            + "-fx-border-color: #1A1A1A; -fx-border-width: 3; "
+            + "-fx-cursor: hand; -fx-padding: 10 0 10 0; "
+            + "-fx-effect: dropshadow(one-pass-box, #1A1A1A, 0, 0, 3, 3);");
 
         Label fmtHint = new Label("PNG · JPG · WEBP · GIF");
-        fmtHint.setStyle("-fx-text-fill: #334155; -fx-font-size: 10px;");
+        fmtHint.setStyle("-fx-text-fill: #999999; -fx-font-size: 10px; -fx-font-weight: bold;");
 
         Runnable openFileChooser = () -> {
             FileChooser fc = new FileChooser();
             fc.setTitle("Chọn ảnh sản phẩm");
             fc.getExtensionFilters().add(new FileChooser.ExtensionFilter(
-                    "Ảnh", "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp"));
+                "Ảnh", "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp"));
             File file = fc.showOpenDialog(
-                    dialog.getDialogPane().getScene().getWindow());
+                dialog.getDialogPane().getScene().getWindow());
             if (file != null) {
                 selectedImagePath[0] = file.getAbsolutePath();
                 fileNameLabel.setText(file.getName());
                 try {
                     preview.setImage(new Image(
-                            file.toURI().toString(), 148, 148, true, true));
+                        file.toURI().toString(), 180, 180, true, true));
                     previewBox.getChildren().remove(emptyHint);
-                    previewBox.setStyle("-fx-background-color: #0f172a; "
-                            + "-fx-background-radius: 12; "
-                            + "-fx-border-color: #2563eb; "
-                            + "-fx-border-radius: 12; -fx-border-width: 2; "
-                            + "-fx-cursor: hand;");
                 } catch (Exception ex) {
                     fileNameLabel.setText("⚠ Không đọc được ảnh");
                 }
@@ -416,129 +412,127 @@ public class ProductManagementController {
         chooseImgBtn.setOnAction(e -> openFileChooser.run());
         previewBox.setOnMouseClicked(e -> openFileChooser.run());
         leftPanel.getChildren().addAll(
-                imgTitle, previewBox, chooseImgBtn, fileNameLabel, fmtHint);
+            imgTitle, previewBox, chooseImgBtn, fileNameLabel, fmtHint);
 
         // ── Form ─────────────────────────────────────────────
         VBox rightPanel = new VBox(0);
         rightPanel.setPadding(new Insets(24));
-        rightPanel.setStyle("-fx-background-color: #0f172a;");
+        rightPanel.setStyle("-fx-background-color: #FFF8F0;");
         HBox.setHgrow(rightPanel, Priority.ALWAYS);
 
-        Label formTitle = new Label("Thông tin sản phẩm");
-        formTitle.setStyle("-fx-text-fill: #f1f5f9; -fx-font-size: 15px; "
-                + "-fx-font-weight: bold;");
-        VBox.setMargin(formTitle, new Insets(0, 0, 16, 0));
+        Label formTitle = new Label("THÔNG TIN SẢN PHẨM");
+        formTitle.setStyle("-fx-text-fill: #1F0C40; -fx-font-size: 16px; "
+            + "-fx-font-weight: 900; -fx-letter-spacing: 1.5px;");
+        VBox.setMargin(formTitle, new Insets(0, 0, 20, 0));
 
-        VBox formFields = new VBox(12);
+        VBox formFields = new VBox(15);
 
-        TextField nameField = styledTextField("Tên sản phẩm...");
-        formFields.getChildren().add(fieldGroup("Tên sản phẩm *", nameField));
+        TextField nameField = styledTextFieldNeo("Tên sản phẩm...");
+        formFields.getChildren().add(fieldGroupNeo("TÊN SẢN PHẨM *", nameField));
 
         ComboBox<String> catBox = new ComboBox<>();
         catBox.getItems().addAll("Laptop","Điện thoại","Máy ảnh",
-                "Điện tử","Đồng hồ","Xe cộ","Khác");
+            "Điện tử","Đồng hồ","Xe cộ","Khác");
         catBox.setPromptText("Chọn danh mục");
         catBox.setMaxWidth(Double.MAX_VALUE);
-        catBox.setStyle("-fx-background-color: #1e293b; "
-                + "-fx-border-color: #334155; -fx-border-radius: 8; "
-                + "-fx-background-radius: 8; -fx-font-size: 13px; "
-                + "-fx-cursor: hand;");
-        // Fix chữ trắng khi chọn item
+        catBox.setStyle("-fx-background-color: #FFFFFF; "
+            + "-fx-border-color: #1A1A1A; -fx-border-width: 3; "
+            + "-fx-background-radius: 0; -fx-font-size: 13px; "
+            + "-fx-cursor: hand; -fx-padding: 8 12 8 12;");
+
         catBox.setCellFactory(lv -> new ListCell<>() {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
                 setText(empty || item == null ? null : item);
                 if (!empty && item != null)
-                    setStyle("-fx-text-fill: #e2e8f0; -fx-background-color: #1e293b; "
-                            + "-fx-font-size: 13px; -fx-padding: 6 12 6 12;");
+                    setStyle("-fx-text-fill: #1A1A1A; -fx-background-color: #FFFFFF; "
+                        + "-fx-font-size: 13px; -fx-padding: 8 12 8 12;");
             }
         });
-        catBox.setButtonCell(new ListCell<>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty || item == null) {
-                    setText("Chọn danh mục");
-                    setStyle("-fx-text-fill: #475569; -fx-font-size: 13px;");
-                } else {
-                    setText(item);
-                    setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 13px; "
-                            + "-fx-background-color: transparent;");
-                }
-            }
-        });
-        formFields.getChildren().add(fieldGroup("Danh mục *", catBox));
 
-        TextField priceField = styledTextField("VD: 5000000");
-        TextField stepField  = styledTextField("VD: 500000");
+        formFields.getChildren().add(fieldGroupNeo("DANH MỤC *", catBox));
+
+        TextArea descArea = new TextArea();
+        descArea.setPromptText("Mô tả chi tiết sản phẩm...");
+        descArea.setPrefHeight(80);
+        descArea.setWrapText(true);
+        descArea.setStyle("-fx-background-color: #FFFFFF; -fx-text-fill: #1A1A1A; "
+            + "-fx-border-color: #1A1A1A; -fx-border-width: 3; "
+            + "-fx-background-radius: 0; -fx-font-size: 13px;");
+        formFields.getChildren().add(fieldGroupNeo("MÔ TẢ SẢN PHẨM", descArea));
+
+        TextField priceField = styledTextFieldNeo("VD: 5.000.000");
+        TextField stepField  = styledTextFieldNeo("VD: 500.000");
         stepField.setText("500000");
-        HBox priceRow = new HBox(12, priceField, stepField);
+
+        HBox priceRow = new HBox(15, priceField, stepField);
         HBox.setHgrow(priceField, Priority.ALWAYS);
         HBox.setHgrow(stepField,  Priority.ALWAYS);
-        HBox priceLabels = new HBox(12,
-                fieldLabel("Giá khởi điểm *"),
-                fieldLabel("Bước giá tối thiểu *"));
-        HBox.setHgrow(priceLabels.getChildren().get(0), Priority.ALWAYS);
-        HBox.setHgrow(priceLabels.getChildren().get(1), Priority.ALWAYS);
-        formFields.getChildren().add(new VBox(6, priceLabels, priceRow));
 
-        DatePicker startDate = styledDatePicker(LocalDate.now());
-        TextField  startTime = styledTextField("");
+        HBox priceLabels = new HBox(15,
+            fieldLabelNeo("GIÁ KHỞI ĐIỂM (₫) *"),
+            fieldLabelNeo("BƯỚC GIÁ TỐI THIỂU (₫) *"));
+        priceLabels.getChildren().forEach(n -> HBox.setHgrow(n, Priority.ALWAYS));
+
+        formFields.getChildren().add(new VBox(8, priceLabels, priceRow));
+
+        DatePicker startDate = styledDatePickerNeo(LocalDate.now());
+        TextField  startTime = styledTextFieldNeo("");
         startTime.setText(LocalTime.now().plusMinutes(10).format(TIME_ONLY));
-        startTime.setPrefWidth(80);
-        startTime.setMaxWidth(80);
-        Label startLbl = new Label("lúc");
-        startLbl.setStyle("-fx-text-fill: #64748b; -fx-padding: 8 0 0 0;");
+        startTime.setPrefWidth(100);
+
+        Label startLbl = new Label("LÚC");
+        startLbl.setStyle("-fx-text-fill: #1A1A1A; -fx-font-weight: 900; -fx-padding: 12 0 0 0; -fx-font-size: 10px;");
         HBox startRow = new HBox(10, startDate, startLbl, startTime);
         HBox.setHgrow(startDate, Priority.ALWAYS);
-        formFields.getChildren().add(fieldGroup("Bắt đầu *", startRow));
+        formFields.getChildren().add(fieldGroupNeo("BẮT ĐẦU *", startRow));
 
-        DatePicker endDate = styledDatePicker(LocalDate.now().plusDays(7));
-        TextField  endTime = styledTextField("");
+        DatePicker endDate = styledDatePickerNeo(LocalDate.now().plusDays(7));
+        TextField  endTime = styledTextFieldNeo("");
         endTime.setText("23:59");
-        endTime.setPrefWidth(80);
-        endTime.setMaxWidth(80);
-        Label endLbl = new Label("lúc");
-        endLbl.setStyle("-fx-text-fill: #64748b; -fx-padding: 8 0 0 0;");
+        endTime.setPrefWidth(100);
+
+        Label endLbl = new Label("LÚC");
+        endLbl.setStyle("-fx-text-fill: #1A1A1A; -fx-font-weight: 900; -fx-padding: 12 0 0 0; -fx-font-size: 10px;");
         HBox endRow = new HBox(10, endDate, endLbl, endTime);
         HBox.setHgrow(endDate, Priority.ALWAYS);
-        formFields.getChildren().add(fieldGroup("Kết thúc *", endRow));
+        formFields.getChildren().add(fieldGroupNeo("KẾT THÚC *", endRow));
 
         Label errLabel = new Label();
-        errLabel.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 12px; "
-                + "-fx-padding: 4 0 0 0;");
+        errLabel.setStyle("-fx-text-fill: #FF3B3B; -fx-font-size: 12px; "
+            + "-fx-font-weight: bold; -fx-padding: 10 0 0 0;");
         errLabel.setWrapText(true);
 
         rightPanel.getChildren().addAll(formTitle, formFields, errLabel);
         VBox.setVgrow(formFields, Priority.ALWAYS);
 
         HBox root = new HBox(0);
-        root.setPrefHeight(520);
         root.getChildren().addAll(leftPanel, rightPanel);
         dialog.getDialogPane().setContent(root);
 
         javafx.application.Platform.runLater(() -> {
             javafx.scene.Node saveNode =
-                    dialog.getDialogPane().lookupButton(saveBtn);
+                dialog.getDialogPane().lookupButton(saveBtn);
             javafx.scene.Node cancelNode =
-                    dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
+                dialog.getDialogPane().lookupButton(ButtonType.CANCEL);
 
-            saveNode.setStyle("-fx-background-color: #2563eb; "
-                    + "-fx-text-fill: white; -fx-font-weight: bold; "
-                    + "-fx-font-size: 13px; -fx-background-radius: 8; "
-                    + "-fx-padding: 8 20 8 20; -fx-cursor: hand;");
-            cancelNode.setStyle("-fx-background-color: #1e293b; "
-                    + "-fx-text-fill: #94a3b8; -fx-font-size: 13px; "
-                    + "-fx-background-radius: 8; -fx-border-color: #334155; "
-                    + "-fx-border-radius: 8; -fx-border-width: 1; "
-                    + "-fx-padding: 8 20 8 20; -fx-cursor: hand;");
+            saveNode.setStyle("-fx-background-color: #FF6B35; "
+                + "-fx-text-fill: white; -fx-font-weight: 900; "
+                + "-fx-font-size: 14px; -fx-background-radius: 0; "
+                + "-fx-border-color: #1A1A1A; -fx-border-width: 3; "
+                + "-fx-padding: 12 30 12 30; -fx-cursor: hand; "
+                + "-fx-effect: dropshadow(one-pass-box, #1A1A1A, 0, 0, 4, 4);");
+
+            cancelNode.setStyle("-fx-background-color: #FFFFFF; "
+                + "-fx-text-fill: #1A1A1A; -fx-font-size: 14px; "
+                + "-fx-font-weight: 900; -fx-background-radius: 0; "
+                + "-fx-border-color: #1A1A1A; -fx-border-width: 3; "
+                + "-fx-padding: 12 30 12 30; -fx-cursor: hand;");
 
             saveNode.setDisable(nameField.getText().trim().isEmpty());
-            System.out.println("[DEBUG] saveNode disabled=" + saveNode.isDisabled()
-                + " | nameField='" + nameField.getText() + "'");
             nameField.textProperty().addListener((obs, o, n) ->
-                    saveNode.setDisable(n.trim().isEmpty()));
+                saveNode.setDisable(n.trim().isEmpty()));
 
             saveNode.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
                 errLabel.setText("");
@@ -552,7 +546,7 @@ public class ProductManagementController {
                 }
                 try {
                     double pr = Double.parseDouble(priceField.getText()
-                            .trim().replaceAll("[^0-9.]", ""));
+                        .trim().replaceAll("[^0-9.]", ""));
                     if (pr <= 0) throw new NumberFormatException();
                 } catch (NumberFormatException ex) {
                     errLabel.setText("⚠ Giá khởi điểm không hợp lệ.");
@@ -560,7 +554,7 @@ public class ProductManagementController {
                 }
                 try {
                     double st = Double.parseDouble(stepField.getText()
-                            .trim().replaceAll("[^0-9.]", ""));
+                        .trim().replaceAll("[^0-9.]", ""));
                     if (st <= 0) throw new NumberFormatException();
                 } catch (NumberFormatException ex) {
                     errLabel.setText("⚠ Bước giá không hợp lệ.");
@@ -572,9 +566,9 @@ public class ProductManagementController {
                 }
                 try {
                     LocalDateTime sDT = LocalDateTime.of(startDate.getValue(),
-                            LocalTime.parse(startTime.getText().trim(), TIME_ONLY));
+                        LocalTime.parse(startTime.getText().trim(), TIME_ONLY));
                     LocalDateTime eDT = LocalDateTime.of(endDate.getValue(),
-                            LocalTime.parse(endTime.getText().trim(), TIME_ONLY));
+                        LocalTime.parse(endTime.getText().trim(), TIME_ONLY));
                     if (!eDT.isAfter(sDT)) {
                         errLabel.setText("⚠ Thời gian kết thúc phải sau bắt đầu.");
                         event.consume(); return;
@@ -587,66 +581,67 @@ public class ProductManagementController {
         });
 
         dialog.setResultConverter(btn -> {
-            System.out.println("[DEBUG] btn=" + btn + " | saveBtn=" + saveBtn + " | equal=" + btn.equals(saveBtn));
             if (btn != saveBtn) return null;
-            System.out.println("[DEBUG] Bắt đầu lưu sản phẩm...");
-            String nameVal = nameField.getText().trim();
-            double price   = Double.parseDouble(priceField.getText()
+
+            try {
+                String nameVal = nameField.getText().trim();
+                double price   = Double.parseDouble(priceField.getText()
                     .trim().replaceAll("[^0-9.]", ""));
-            double step    = Double.parseDouble(stepField.getText()
+                double step    = Double.parseDouble(stepField.getText()
                     .trim().replaceAll("[^0-9.]", ""));
-            LocalDateTime startDT = LocalDateTime.of(startDate.getValue(),
+                LocalDateTime startDT = LocalDateTime.of(startDate.getValue(),
                     LocalTime.parse(startTime.getText().trim(), TIME_ONLY));
-            LocalDateTime endDT   = LocalDateTime.of(endDate.getValue(),
+                LocalDateTime endDT   = LocalDateTime.of(endDate.getValue(),
                     LocalTime.parse(endTime.getText().trim(), TIME_ONLY));
-            String catVal = catBox.getValue() == null
+                String catVal = catBox.getValue() == null
                     ? "Khác" : catBox.getValue();
-            String id = "P-" + UUID.randomUUID()
+                String id = "P-" + UUID.randomUUID()
                     .toString().substring(0, 6).toUpperCase();
 
-            stepMap.put(id, step);
+                stepMap.put(id, step);
+                descMap.put(id, descArea.getText().trim());
 
-            if (selectedImagePath[0] != null) {
-                try {
-                    File src = new File(selectedImagePath[0]);
-                    String ext = src.getName()
+                if (selectedImagePath[0] != null) {
+                    try {
+                        File src = new File(selectedImagePath[0]);
+                        String ext = src.getName()
                             .substring(src.getName().lastIndexOf('.'));
-                    Path dest = Paths.get(IMAGE_DIR + id + ext);
-                    Files.copy(src.toPath(), dest,
+                        Path dest = Paths.get(IMAGE_DIR + id + ext);
+                        Files.copy(src.toPath(), dest,
                             StandardCopyOption.REPLACE_EXISTING);
-                    imageMap.put(id, dest.toAbsolutePath().toString());
-                } catch (IOException ex) {
-                    System.err.println("Lưu ảnh thất bại: " + ex.getMessage());
+                        imageMap.put(id, dest.toAbsolutePath().toString());
+                    } catch (IOException ex) {
+                        System.err.println("Lưu ảnh thất bại: " + ex.getMessage());
+                    }
                 }
-            }
 
-            // Seller → CHỜ DUYỆT | Admin → ĐÃ DUYỆT
-            String status = isAdmin ? "ĐÃ DUYỆT" : "CHỜ DUYỆT";
-            return new ManagedProduct(id, nameVal, catVal, username,
+                String status = isAdmin ? "ĐÃ DUYỆT" : "CHỜ DUYỆT";
+                return new ManagedProduct(id, nameVal, catVal, username,
                     price, status, LocalDateTime.now(), startDT, endDT);
+            } catch (Exception e) {
+                return null;
+            }
         });
 
         dialog.showAndWait().ifPresent(p -> {
             if (p == null) return;
             managedList.add(p);
             AppContext.addProduct(username, new AppContext.ProductRecord(
-                    p.id(), p.name(), p.category(),
-                    p.startPrice(), p.startPrice(), 0,
-                    p.status(), p.auctionStart(), p.auctionEnd(), "—"
+                p.id(), p.name(), p.category(),
+                p.startPrice(), p.startPrice(), 0,
+                p.status(), p.auctionStart(), p.auctionEnd(), "—"
             ));
 
-            // ── Seller notify Admin qua Server ───────────────
             if (!isAdmin) {
                 ServerConnection conn = ServerConnection.getInstance();
                 if (conn.isConnected()) {
                     conn.sendProductPending(
-                            p.id(), p.name(), username,
-                            p.category(), p.startPrice(),
-                            p.auctionStart(), p.auctionEnd()
+                        p.id(), p.name(), username,
+                        p.category(), p.startPrice(),
+                        p.auctionStart(), p.auctionEnd()
                     );
                 }
             }
-            // ─────────────────────────────────────────────────
 
             refreshStats();
             renderList(managedList);
@@ -661,9 +656,9 @@ public class ProductManagementController {
     private void handleApprove(ManagedProduct p) {
         replaceStatus(p, "ĐÃ DUYỆT");
         AppContext.updateProduct(p.sellerName(), new AppContext.ProductRecord(
-                p.id(), p.name(), p.category(),
-                p.startPrice(), p.startPrice(), 0,
-                "ĐÃ DUYỆT", p.auctionStart(), p.auctionEnd(), "—"
+            p.id(), p.name(), p.category(),
+            p.startPrice(), p.startPrice(), 0,
+            "ĐÃ DUYỆT", p.auctionStart(), p.auctionEnd(), "—"
         ));
 
         // ── Notify Seller qua Server ──────────────────────
@@ -682,13 +677,13 @@ public class ProductManagementController {
         reasonDlg.setHeaderText("Từ chối: " + p.name());
         reasonDlg.setContentText("Lý do:");
         String reason = reasonDlg.showAndWait()
-                .orElse("Không đạt yêu cầu");
+            .orElse("Không đạt yêu cầu");
 
         replaceStatus(p, "TỪ CHỐI");
         AppContext.updateProduct(p.sellerName(), new AppContext.ProductRecord(
-                p.id(), p.name(), p.category(),
-                p.startPrice(), p.startPrice(), 0,
-                "TỪ CHỐI", p.auctionStart(), p.auctionEnd(), "—"
+            p.id(), p.name(), p.category(),
+            p.startPrice(), p.startPrice(), 0,
+            "TỪ CHỐI", p.auctionStart(), p.auctionEnd(), "—"
         ));
 
         // ── Notify Seller qua Server ──────────────────────
@@ -705,7 +700,7 @@ public class ProductManagementController {
         confirm.setTitle("Bắt đầu đấu giá");
         confirm.setHeaderText(p.name());
         confirm.setContentText(
-                "Xác nhận bắt đầu phiên đấu giá?\n"
+            "Xác nhận bắt đầu phiên đấu giá?\n"
                 + "Bắt đầu : " + p.auctionStart().format(DT_FMT)
                 + "\nKết thúc: " + p.auctionEnd().format(DT_FMT));
 
@@ -714,17 +709,17 @@ public class ProductManagementController {
 
             if (p.auctionEnd().isBefore(LocalDateTime.now())) {
                 showAlert("Hết hạn",
-                        "Thời gian kết thúc đã qua, không thể bắt đầu.");
+                    "Thời gian kết thúc đã qua, không thể bắt đầu.");
                 return;
             }
 
             try {
                 double step = stepMap.getOrDefault(
-                        p.id(), p.startPrice() * 0.05);
+                    p.id(), p.startPrice() * 0.05);
                 if (step <= 0) step = 500_000;
 
                 AuctionSession session = new AuctionSession(
-                        p.id(), p.name(), p.startPrice(), step, p.auctionEnd());
+                    p.id(), p.name(), p.startPrice(), step, p.auctionEnd());
                 session.start();
 
                 AppContext.registerSession(session, username);
@@ -732,22 +727,22 @@ public class ProductManagementController {
 
                 replaceStatus(p, "ĐANG ĐẤU GIÁ");
                 AppContext.updateProduct(username, new AppContext.ProductRecord(
-                        p.id(), p.name(), p.category(),
-                        p.startPrice(), p.startPrice(), 0,
-                        "ĐANG ĐẤU GIÁ", p.auctionStart(), p.auctionEnd(), "—"
+                    p.id(), p.name(), p.category(),
+                    p.startPrice(), p.startPrice(), 0,
+                    "ĐANG ĐẤU GIÁ", p.auctionStart(), p.auctionEnd(), "—"
                 ));
 
                 // ── Notify Bidder qua Server ──────────────
                 ServerConnection conn = ServerConnection.getInstance();
                 if (conn.isConnected()) {
                     conn.sendSessionStart(
-                            session.getSessionId(),
-                            session.getItemName(),
-                            session.getStartingPrice(),
-                            session.getMinBidStep(),
-                            session.getEndTime(),
-                            username,
-                            p.category()
+                        session.getSessionId(),
+                        session.getItemName(),
+                        session.getStartingPrice(),
+                        session.getMinBidStep(),
+                        session.getEndTime(),
+                        username,
+                        p.category()
                     );
                 }
                 // ─────────────────────────────────────────
@@ -763,8 +758,8 @@ public class ProductManagementController {
 
     private void handleGoLive(ManagedProduct p) {
         AuctionSession existing = AppContext.getGlobalSessions().stream()
-                .filter(s -> s.getSessionId().equals(p.id()))
-                .findFirst().orElse(null);
+            .filter(s -> s.getSessionId().equals(p.id()))
+            .findFirst().orElse(null);
 
         if (existing != null) {
             AppContext.setActiveSession(existing);
@@ -775,10 +770,10 @@ public class ProductManagementController {
             }
             try {
                 double step = stepMap.getOrDefault(
-                        p.id(), p.startPrice() * 0.05);
+                    p.id(), p.startPrice() * 0.05);
                 if (step <= 0) step = 500_000;
                 AuctionSession ns = new AuctionSession(
-                        p.id(), p.name(), p.startPrice(), step, p.auctionEnd());
+                    p.id(), p.name(), p.startPrice(), step, p.auctionEnd());
                 ns.start();
                 AppContext.registerSession(ns, username);
                 AppContext.setActiveSession(ns);
@@ -787,8 +782,8 @@ public class ProductManagementController {
                 ServerConnection conn = ServerConnection.getInstance();
                 if (conn.isConnected()) {
                     conn.sendSessionStart(ns.getSessionId(), ns.getItemName(),
-                            ns.getStartingPrice(), ns.getMinBidStep(),
-                            ns.getEndTime(), username, p.category());
+                        ns.getStartingPrice(), ns.getMinBidStep(),
+                        ns.getEndTime(), username, p.category());
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -808,9 +803,9 @@ public class ProductManagementController {
         dlg.showAndWait().ifPresent(newName -> {
             if (!newName.trim().isEmpty()) {
                 ManagedProduct updated = new ManagedProduct(
-                        p.id(), newName.trim(), p.category(),
-                        p.sellerName(), p.startPrice(), p.status(),
-                        p.createdAt(), p.auctionStart(), p.auctionEnd());
+                    p.id(), newName.trim(), p.category(),
+                    p.sellerName(), p.startPrice(), p.status(),
+                    p.createdAt(), p.auctionStart(), p.auctionEnd());
                 int idx = managedList.indexOf(p);
                 if (idx >= 0) managedList.set(idx, updated);
                 refreshStats();
@@ -842,11 +837,11 @@ public class ProductManagementController {
         if (imgPath != null && new File(imgPath).exists()) {
             try {
                 a.setGraphic(new ImageView(new Image(
-                        new File(imgPath).toURI().toString(), 160, 160, true, true)));
+                    new File(imgPath).toURI().toString(), 160, 160, true, true)));
             } catch (Exception ignored) {}
         }
         a.setContentText(
-                "ID          : " + p.id()
+            "ID          : " + p.id()
                 + "\nDanh mục  : " + p.category()
                 + "\nGiá KĐ   : " + formatVND(p.startPrice())
                 + "\nBước giá  : " + formatVND(stepMap.getOrDefault(p.id(), 0.0))
@@ -860,9 +855,9 @@ public class ProductManagementController {
 
     private void replaceStatus(ManagedProduct p, String newStatus) {
         ManagedProduct updated = new ManagedProduct(
-                p.id(), p.name(), p.category(), p.sellerName(),
-                p.startPrice(), newStatus,
-                p.createdAt(), p.auctionStart(), p.auctionEnd());
+            p.id(), p.name(), p.category(), p.sellerName(),
+            p.startPrice(), newStatus,
+            p.createdAt(), p.auctionStart(), p.auctionEnd());
         int idx = managedList.indexOf(p);
         if (idx >= 0) managedList.set(idx, updated);
         refreshStats();
@@ -870,14 +865,14 @@ public class ProductManagementController {
     }
 
     private String findTimeConflict(LocalDateTime newStart,
-                                     LocalDateTime newEnd,
-                                     String excludeId) {
+                                    LocalDateTime newEnd,
+                                    String excludeId) {
         for (ManagedProduct p : managedList) {
             if (excludeId != null && excludeId.equals(p.id())) continue;
             if (!"ĐANG ĐẤU GIÁ".equals(p.status())
-                    && !"ĐÃ DUYỆT".equals(p.status())) continue;
+                && !"ĐÃ DUYỆT".equals(p.status())) continue;
             if (newStart.isBefore(p.auctionEnd())
-                    && newEnd.isAfter(p.auctionStart()))
+                && newEnd.isAfter(p.auctionStart()))
                 return p.name();
         }
         return null;
@@ -886,6 +881,9 @@ public class ProductManagementController {
     // =========================================================
     // FILTER & SEARCH
     // =========================================================
+    @FXML private void handleAddMultiple() { /* TODO */ }
+    @FXML private void handleApproveAll()  { /* TODO */ }
+    @FXML private void handleStartAll()    { /* TODO */ }
     @FXML private void handleFilter() { applyFilters(); }
     @FXML private void handleSearch() { applyFilters(); }
 
@@ -896,15 +894,15 @@ public class ProductManagementController {
         List<ManagedProduct> filtered = managedList.stream()
             .filter(p -> {
                 if (status != null && !"Tất cả".equals(status)
-                        && !status.isEmpty()
-                        && !status.equals(p.status())) return false;
+                    && !status.isEmpty()
+                    && !status.equals(p.status())) return false;
                 if (category != null && !"Tất cả".equals(category)
-                        && !category.isEmpty()
-                        && !category.equals(p.category())) return false;
+                    && !category.isEmpty()
+                    && !category.equals(p.category())) return false;
                 if (!keyword.isEmpty()
-                        && !p.name().toLowerCase().contains(keyword)
-                        && !p.sellerName().toLowerCase().contains(keyword)
-                        && !p.id().toLowerCase().contains(keyword))
+                    && !p.name().toLowerCase().contains(keyword)
+                    && !p.sellerName().toLowerCase().contains(keyword)
+                    && !p.id().toLowerCase().contains(keyword))
                     return false;
                 return true;
             }).collect(Collectors.toList());
@@ -919,35 +917,35 @@ public class ProductManagementController {
     // =========================================================
     // UI HELPERS
     // =========================================================
-    private TextField styledTextField(String prompt) {
+    private TextField styledTextFieldNeo(String prompt) {
         TextField tf = new TextField();
         tf.setPromptText(prompt);
         tf.setMaxWidth(Double.MAX_VALUE);
-        tf.setStyle("-fx-background-color: #1e293b; -fx-text-fill: #f1f5f9; "
-                + "-fx-prompt-text-fill: #475569; -fx-border-color: #334155; "
-                + "-fx-border-radius: 8; -fx-background-radius: 8; "
-                + "-fx-padding: 8 12 8 12; -fx-font-size: 13px;");
+        tf.setStyle("-fx-background-color: #FFFFFF; -fx-text-fill: #1A1A1A; "
+            + "-fx-prompt-text-fill: #999999; -fx-border-color: #1A1A1A; "
+            + "-fx-border-width: 3; -fx-background-radius: 0; "
+            + "-fx-padding: 10 14 10 14; -fx-font-size: 13px;");
         return tf;
     }
 
-    private DatePicker styledDatePicker(LocalDate value) {
+    private DatePicker styledDatePickerNeo(LocalDate value) {
         DatePicker dp = new DatePicker(value);
         dp.setMaxWidth(Double.MAX_VALUE);
-        dp.setStyle("-fx-background-color: #1e293b; -fx-border-color: #334155; "
-                + "-fx-border-radius: 8; -fx-background-radius: 8; "
-                + "-fx-font-size: 13px;");
+        dp.setStyle("-fx-background-color: #FFFFFF; -fx-border-color: #1A1A1A; "
+            + "-fx-border-width: 3; -fx-background-radius: 0; "
+            + "-fx-font-size: 13px;");
         return dp;
     }
 
-    private Label fieldLabel(String text) {
+    private Label fieldLabelNeo(String text) {
         Label l = new Label(text);
-        l.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 11px; "
-                + "-fx-font-weight: bold;");
+        l.setStyle("-fx-text-fill: #1A1A1A; -fx-font-size: 10px; "
+            + "-fx-font-weight: 900; -fx-letter-spacing: 1.2px;");
         return l;
     }
 
-    private VBox fieldGroup(String labelText, javafx.scene.Node field) {
-        return new VBox(6, fieldLabel(labelText), field);
+    private VBox fieldGroupNeo(String labelText, javafx.scene.Node field) {
+        return new VBox(6, fieldLabelNeo(labelText), field);
     }
 
     private String managedBadgeStyle(String s) {

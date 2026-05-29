@@ -3,6 +3,7 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.chart.*?>
+<?import javafx.scene.image.*?>
 
 <BorderPane xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.nhom6.auctionsystem_nhom6.controller.LiveAuctionController"
@@ -50,7 +51,10 @@
                     <!-- Ảnh sản phẩm -->
                     <VBox styleClass="product-image-box" alignment="CENTER"
                           minWidth="180" maxWidth="180">
-                        <Label text="⬡" styleClass="product-image-icon"/>
+                        <StackPane VBox.vgrow="ALWAYS">
+                            <Label text="⬡" styleClass="product-image-icon"/>
+                            <ImageView fx:id="liveProductImage" fitWidth="150" fitHeight="150" preserveRatio="true"/>
+                        </StackPane>
                         <Label fx:id="liveStatusLabel" styleClass="status-badge"/>
                     </VBox>
 
@@ -91,20 +95,20 @@
                                        styleClass="countdown-label"/>
                                 <HBox spacing="4" alignment="CENTER_LEFT">
                                     <VBox alignment="CENTER">
-                                        <Label fx:id="liveHours" text="--"
+                                        <Label fx:id="liveHours" text="00"
                                                styleClass="countdown-num"/>
                                         <Label text="GIỜ" styleClass="countdown-unit"/>
                                     </VBox>
                                     <Label text=":" styleClass="countdown-sep"/>
                                     <VBox alignment="CENTER">
-                                        <Label fx:id="liveMins" text="--"
+                                        <Label fx:id="liveMins" text="00"
                                                styleClass="countdown-num"/>
                                         <Label text="PHÚT" styleClass="countdown-unit"/>
                                     </VBox>
                                     <Label text=":" styleClass="countdown-sep"/>
                                     <VBox alignment="CENTER">
-                                        <Label fx:id="liveSecs" text="--"
-                                               styleClass="countdown-num"/>
+                                        <Label fx:id="liveSecs" text="00"
+                                               styleClass="countdown-num, countdown-num-red"/>
                                         <Label text="GIÂY" styleClass="countdown-unit"/>
                                     </VBox>
                                 </HBox>

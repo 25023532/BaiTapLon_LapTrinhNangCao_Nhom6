@@ -14,7 +14,6 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.StackPane;
 import javafx.stage.Popup;
 import javafx.util.Duration;
 
@@ -24,6 +23,7 @@ import org.example.exception.AuctionClosedException;
 import org.example.exception.InvalidBidException;
 import org.example.user.User;
 
+import java.io.File;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -63,870 +63,273 @@ public class MainController {
     @FXML private TextField  chatInput;
     @FXML private ScrollPane chatScrollPane;
     @FXML private Label      onlineCountLabel;
+    @FXML private Label      sessionCountLabel;
 
+    private List<AuctionSession> runningSessions;
+    private int            currentIndex = 0;
     private AuctionSession session;
     private Timeline       countdownTimer;
     private LocalDateTime  sessionStartTime;
     private boolean        auctionEnded = false;
 
-    // Timer định kỳ refresh online count khi offline
     private Timeline onlineRefreshTimer;
-
     private final NotificationManager notifManager = new NotificationManager();
     private       Popup               notifPopup;
 
-    private static final DateTimeFormatter TIME_FMT =
-            DateTimeFormatter.ofPattern("HH:mm:ss");
-    private static final DateTimeFormatter DT_FMT =
-            DateTimeFormatter.ofPattern("HH:mm:ss dd/MM/yyyy");
-    private static final DateTimeFormatter ISO_DT =
-            DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss");
+    private static final DateTimeFormatter DT_FMT = DateTimeFormatter.ofPattern("HH:mm:ss dd/MM/yyyy");
+    private static final DateTimeFormatter ISO_DT = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
-    // =========================================================
-    // INITIALIZE
-    // =========================================================
     @FXML
     public void initialize() {
         User user = AppContext.getCurrentUser();
-        if (user == null) {
-            showAlert("Loi dang nhap", "Khong tim thay user hien tai.");
-            return;
-        }
+        if (user == null) return;
 
         userNameLabel.setText(user.getUsername());
         userRoleLabel.setText(user.getRole());
         String avatar = user.getUsername().length() >= 2
-                ? user.getUsername().substring(0, 2).toUpperCase()
-                : user.getUsername().toUpperCase();
+            ? user.getUsername().substring(0, 2).toUpperCase()
+            : user.getUsername().toUpperCase();
         userAvatarLabel.setText(avatar);
-        walletLabel.setText(String.format("d %,.0f",
-                AppContext.getWalletBalance(user.getUsername())));
+        walletLabel.setText(String.format("₫ %,.0f", AppContext.getWalletBalance(user.getUsername())));
 
         applyRoleMenu(user);
+        refreshSessions();
+        updateBadge();
+        setOnlineCount(AppContext.getOnlineUserCount());
+        connectToServer(user);
+    }
 
-        session = resolveSession(user);
-        if (session != null) {
+    private void applyRoleMenu(User user) {
+        String role = user.getRole() == null ? "" : user.getRole().toUpperCase();
+        boolean isSeller = "SELLER".equals(role);
+        boolean isAdmin  = "ADMIN".equals(role);
+
+        if (btnSellerProducts != null) { btnSellerProducts.setVisible(isSeller); btnSellerProducts.setManaged(isSeller); }
+        if (btnAdminProducts != null) { btnAdminProducts.setVisible(isAdmin); btnAdminProducts.setManaged(isAdmin); }
+
+        if ("BIDDER".equals(role)) { if (menuItemHistory != null) menuItemHistory.setText("Lịch sử mua hàng"); }
+        else if ("SELLER".equals(role)) { if (menuItemHistory != null) menuItemHistory.setText("Lịch sử bán hàng"); }
+    }
+
+    private void refreshSessions() {
+        runningSessions = AppContext.getRunningSessions();
+        if (runningSessions != null && !runningSessions.isEmpty()) {
+            if (currentIndex >= runningSessions.size()) currentIndex = 0;
+            session = runningSessions.get(currentIndex);
             AppContext.setActiveSession(session);
             sessionStartTime = LocalDateTime.now();
+            auctionEnded = false;
             showAuctionCard(true);
             loadAuctionInfo();
             refreshBidHistory();
             startCountdown();
+            if (sessionCountLabel != null) sessionCountLabel.setText(String.format("Phiên %d / %d", currentIndex + 1, runningSessions.size()));
         } else {
+            session = null;
             showAuctionCard(false);
-        }
-
-        updateBadge();
-
-        // Hien thi so nguoi online tu AppContext ngay lap tuc (it nhat la 1)
-        setOnlineCount(AppContext.getOnlineUserCount());
-
-        // Ket noi server trong background
-        connectToServer(user);
-    }
-
-    // =========================================================
-    // ROLE MENU + SIDEBAR
-    // =========================================================
-    private void applyRoleMenu(User user) {
-        String  role     = user.getRole() == null ? "" : user.getRole().toUpperCase();
-        boolean isSeller = "SELLER".equals(role);
-        boolean isAdmin  = "ADMIN".equals(role);
-
-        if (btnSellerProducts != null) {
-            btnSellerProducts.setVisible(isSeller);
-            btnSellerProducts.setManaged(isSeller);
-        }
-        if (btnAdminProducts != null) {
-            btnAdminProducts.setVisible(isAdmin);
-            btnAdminProducts.setManaged(isAdmin);
-        }
-
-        switch (role) {
-            case "BIDDER" -> {
-                if (menuItemHistory != null)
-                    menuItemHistory.setText("Lich su mua hang");
-            }
-            case "SELLER" -> {
-                if (menuItemHistory != null)
-                    menuItemHistory.setText("Lich su ban hang");
-            }
-            default -> {
-                if (menuItemHistory != null && profileMenuBtn != null)
-                    profileMenuBtn.getItems().remove(menuItemHistory);
-            }
+            if (sessionCountLabel != null) sessionCountLabel.setText("0 phiên");
         }
     }
 
-    // =========================================================
-    // RESOLVE SESSION
-    // =========================================================
-    private AuctionSession resolveSession(User user) {
-        AuctionSession active = AppContext.getActiveSession();
-        if (active != null) return active;
+    @FXML private void handlePrevSession() { if (runningSessions != null && runningSessions.size() > 1) { currentIndex = (currentIndex - 1 + runningSessions.size()) % runningSessions.size(); refreshSessions(); } }
+    @FXML private void handleNextSession() { if (runningSessions != null && runningSessions.size() > 1) { currentIndex = (currentIndex + 1) % runningSessions.size(); refreshSessions(); } }
 
-        String role = user.getRole() == null ? "" : user.getRole().toUpperCase();
-        if ("SELLER".equals(role)) {
-            for (AuctionSession s : AppContext.getRunningSessions()) {
-                if (user.getUsername().equalsIgnoreCase(
-                        AppContext.getSessionSeller(s.getSessionId()))) {
-                    return s;
-                }
-            }
-        }
-
-        List<AuctionSession> running = AppContext.getRunningSessions();
-        return running.isEmpty() ? null : running.get(0);
-    }
-
-    // =========================================================
-    // SERVER CONNECTION
-    // =========================================================
     private void connectToServer(User user) {
         ServerConnection conn = ServerConnection.getInstance();
         conn.setListener(this::handleServerMessage);
-
         if (!conn.isConnected()) {
             Thread t = new Thread(() -> {
                 boolean ok = conn.connect(user.getUsername());
-                conn.setOnSessionSynced(() -> {
-                    if (session == null) {
-                        session = resolveSession(user);
-                        if (session != null) {
-                            AppContext.setActiveSession(session);
-                            sessionStartTime = LocalDateTime.now();
-                            showAuctionCard(true);
-                            loadAuctionInfo();
-                            refreshBidHistory();
-                            startCountdown();
-                        }
-                    }
-                });
+                conn.setOnSessionSynced(() -> Platform.runLater(this::refreshSessions));
                 Platform.runLater(() -> {
-                    if (ok) {
-                        // Server online: yeu cau so chinh xac
-                        conn.sendJson("{\"action\":\"GET_ONLINE_COUNT\"}");
-                        stopOnlineRefreshTimer();
-                    } else {
-                        // Offline: dung local count va refresh dinh ky
-                        setOnlineCount(AppContext.getOnlineUserCount());
-                        startOnlineRefreshTimer();
-                    }
+                    if (ok) { conn.sendJson("{\"action\":\"GET_ONLINE_COUNT\"}"); stopOnlineRefreshTimer(); }
+                    else { setOnlineCount(AppContext.getOnlineUserCount()); startOnlineRefreshTimer(); }
                 });
-            }, "WS-Connect-BG");
-            t.setDaemon(true);
-            t.start();
-        } else {
-            conn.sendJson("{\"action\":\"GET_ONLINE_COUNT\"}");
-        }
+            });
+            t.setDaemon(true); t.start();
+        } else { conn.sendJson("{\"action\":\"GET_ONLINE_COUNT\"}"); }
     }
 
-    // =========================================================
-    // ONLINE COUNT
-    // =========================================================
-
-    /**
-     * Cap nhat label online count.
-     * Luon hien thi it nhat 1 (ban than user dang online).
-     */
-    private void setOnlineCount(int count) {
-        int display = Math.max(1, count);
-        if (onlineCountLabel != null)
-            onlineCountLabel.setText("Online " + display);
-    }
-
-    /**
-     * Timer moi 10 giay refresh count khi offline.
-     * Tu dong dung khi server ket noi duoc.
-     */
+    private void setOnlineCount(int count) { if (onlineCountLabel != null) onlineCountLabel.setText("Online " + Math.max(1, count)); }
     private void startOnlineRefreshTimer() {
         stopOnlineRefreshTimer();
-        onlineRefreshTimer = new Timeline(
-                new KeyFrame(Duration.seconds(10), e -> {
-                    ServerConnection conn = ServerConnection.getInstance();
-                    if (conn.isConnected()) {
-                        conn.sendJson("{\"action\":\"GET_ONLINE_COUNT\"}");
-                        stopOnlineRefreshTimer();
-                    } else {
-                        Platform.runLater(() ->
-                                setOnlineCount(AppContext.getOnlineUserCount()));
-                    }
-                })
-        );
-        onlineRefreshTimer.setCycleCount(Timeline.INDEFINITE);
-        onlineRefreshTimer.play();
+        onlineRefreshTimer = new Timeline(new KeyFrame(Duration.seconds(10), e -> {
+            if (ServerConnection.getInstance().isConnected()) { ServerConnection.getInstance().sendJson("{\"action\":\"GET_ONLINE_COUNT\"}"); stopOnlineRefreshTimer(); }
+            else { Platform.runLater(() -> setOnlineCount(AppContext.getOnlineUserCount())); }
+        }));
+        onlineRefreshTimer.setCycleCount(Timeline.INDEFINITE); onlineRefreshTimer.play();
     }
+    private void stopOnlineRefreshTimer() { if (onlineRefreshTimer != null) { onlineRefreshTimer.stop(); onlineRefreshTimer = null; } }
 
-    private void stopOnlineRefreshTimer() {
-        if (onlineRefreshTimer != null) {
-            onlineRefreshTimer.stop();
-            onlineRefreshTimer = null;
-        }
-    }
-
-    // =========================================================
-    // HANDLE SERVER MESSAGE
-    // =========================================================
     private void handleServerMessage(String raw) {
         try {
             String type = extractJson(raw, "type");
-            if (type == null || type.isEmpty()) return;
+            if (type == null) return;
+            User me = AppContext.getCurrentUser();
 
             switch (type) {
-
                 case "ONLINE_COUNT" -> {
-                    String countStr = extractJson(raw, "count");
-                    Platform.runLater(() -> {
-                        try {
-                            int count = Integer.parseInt(countStr.trim());
-                            // Dong bo ve AppContext de cac man hinh khac dung
-                            AppContext.setServerOnlineCount(count);
-                            setOnlineCount(count);
-                        } catch (NumberFormatException ex) {
-                            setOnlineCount(AppContext.getOnlineUserCount());
-                        }
-                    });
+                    int c = Integer.parseInt(extractJson(raw, "count"));
+                    AppContext.setServerOnlineCount(c);
+                    Platform.runLater(() -> setOnlineCount(c));
                 }
-
                 case "CHAT" -> {
-                    String sender  = extractJson(raw, "username");
-                    String message = extractJson(raw, "message");
-                    User me = AppContext.getCurrentUser();
-                    if (me != null && !sender.equals(me.getUsername()))
-                        Platform.runLater(() ->
-                                addChatMessage(sender, message, false));
+                    String s = extractJson(raw, "username"), m = extractJson(raw, "message");
+                    if (me != null && !s.equals(me.getUsername()))
+                        Platform.runLater(() -> addChatMessage(s, m, false));
                 }
-
                 case "NEW_BID" -> {
-                    String bidder    = extractJson(raw, "username");
-                    String amountStr = extractJson(raw, "amount");
-                    String sessionId = extractJson(raw, "sessionId");
-                    User me = AppContext.getCurrentUser();
-                    if (me == null || bidder.equals(me.getUsername())) return;
-
-                    try {
-                        double amt = Double.parseDouble(amountStr);
-                        Platform.runLater(() -> {
-                            if (session != null) {
-                                currentPriceLabel.setText(
-                                        formatVND(session.getCurrentPrice()));
-                                updateCountdown();
-                                refreshBidHistory();
-                            }
-                            addChatMessage("System",
-                                    bidder + " dat gia " + formatVND(amt), false);
-
-                            if (session != null) {
-                                java.util.List<Bid> hist = session.getBidHistory();
-                                System.out.println("[OUTBID DEBUG] hist.size=" + hist.size()
-                                    + " | me=" + me.getUsername() + " | bidder=" + bidder);
-                                boolean iWasTopBidder = hist.size() >= 2 &&
-                                    hist.get(hist.size() - 2).getBidderId().equals(me.getUsername());
-                                System.out.println("[OUTBID DEBUG] iWasTopBidder=" + iWasTopBidder);
-                                if (iWasTopBidder && !bidder.equals(me.getUsername()))
-                                    pushNotification(
-                                        NotificationManager.NotifType.OUTBID,
-                                        "⚠️ Bạn bị vượt giá!",
-                                        String.format("%s vừa đặt %s cho \"%s\"",
-                                            bidder, formatVND(amt),
-                                            session.getItemName()));
-                            }
-                        });
-                    } catch (NumberFormatException ignored) {}
-                }
-
-                case "SYSTEM" -> {
-                    String message = extractJson(raw, "message");
-                    Platform.runLater(() ->
-                            addChatMessage("System", message, false));
-                }
-
-                case "NOTIFY_ADMIN_NEW_PRODUCT" -> {
-                    String productId    = extractJson(raw, "productId");
-                    String productName  = extractJson(raw, "productName");
-                    String sellerName   = extractJson(raw, "sellerName");
-                    String category     = extractJson(raw, "category");
-                    double startPrice   = parseDouble(extractJson(raw, "startPrice"));
-                    String startTimeStr = extractJson(raw, "startTime");
-                    String endTimeStr   = extractJson(raw, "endTime");
-
-                    try {
-                        LocalDateTime startTime =
-                                LocalDateTime.parse(startTimeStr, ISO_DT);
-                        LocalDateTime endTime =
-                                LocalDateTime.parse(endTimeStr, ISO_DT);
-                        boolean exists = AppContext.getAllProducts().stream()
-                                .anyMatch(p -> p.id().equals(productId));
-                        if (!exists) {
-                            AppContext.addProduct(sellerName,
-                                    new AppContext.ProductRecord(
-                                            productId, productName, category,
-                                            startPrice, startPrice, 0,
-                                            "CHO DUYET", startTime, endTime, "—"));
-                        }
-                    } catch (Exception e) {
-                        System.err.println("[MainController] Parse product: "
-                                + e.getMessage());
-                    }
-
-                    Platform.runLater(() ->
-                        pushNotification(
-                                NotificationManager.NotifType.SYSTEM,
-                                "San pham moi can duyet",
-                                sellerName + " vua dang \""
-                                + productName + "\" (" + category
-                                + ") — Vao Quan ly san pham de duyet."));
-                }
-
-                case "NOTIFY_SELLER_APPROVED" -> {
-                    String productId   = extractJson(raw, "productId");
-                    String productName = extractJson(raw, "productName");
-                    User me = AppContext.getCurrentUser();
-                    if (me != null) {
-                        AppContext.getProducts(me.getUsername()).stream()
-                                .filter(p -> p.id().equals(productId))
-                                .findFirst()
-                                .ifPresent(p -> AppContext.updateProduct(
-                                        me.getUsername(),
-                                        p.withUpdated(p.currentPrice(),
-                                                p.bidCount(), "DA DUYET",
-                                                p.topBidder())));
-                    }
-                    Platform.runLater(() ->
-                        pushNotification(
-                                NotificationManager.NotifType.BID_PLACED,
-                                "San pham duoc duyet!",
-                                "\"" + productName + "\" da duoc Admin duyet."));
-                }
-
-                case "NOTIFY_BIDDER_SESSION_START" -> {
-                    String sessionId  = extractJson(raw, "sessionId");
-                    String itemName   = extractJson(raw, "itemName");
-                    String sellerName = extractJson(raw, "sellerName");
-                    double startPrice, minStep;
-                    try {
-                        startPrice = Double.parseDouble(
-                                extractJson(raw, "startPrice"));
-                        minStep    = Double.parseDouble(
-                                extractJson(raw, "minStep"));
-                    } catch (NumberFormatException e) {
-                        startPrice = 0; minStep = 500_000;
-                    }
-                    LocalDateTime endTime;
-                    try {
-                        endTime = LocalDateTime.parse(
-                                extractJson(raw, "endTime"), ISO_DT);
-                    } catch (Exception e) {
-                        endTime = LocalDateTime.now().plusHours(1);
-                    }
-
-                    final LocalDateTime finalEnd   = endTime;
-                    final double        finalStart = startPrice;
-                    final double        finalStep  = minStep;
-
+                    String b = extractJson(raw, "username");
+                    double a = Double.parseDouble(extractJson(raw, "amount"));
+                    String sid = extractJson(raw, "sessionId");
                     Platform.runLater(() -> {
-                        try {
-                            AuctionSession newSession = new AuctionSession(
-                                    sessionId, itemName, finalStart,
-                                    finalStep, finalEnd);
-                            newSession.start();
-                            AppContext.registerSession(newSession, sellerName);
-                            if (AppContext.getActiveSession() == null) {
-                                AppContext.setActiveSession(newSession);
-                                session = newSession;
-                                showAuctionCard(true);
-                                loadAuctionInfo();
-                                refreshBidHistory();
-                                startCountdown();
-                            }
-                            pushNotification(
-                                    NotificationManager.NotifType.SYSTEM,
-                                    "Phien moi bat dau!",
-                                    "\"" + itemName + "\" cua " + sellerName
-                                    + ". Gia KD: "
-                                    + String.format("d %,.0f", finalStart));
-                        } catch (Exception e) { e.printStackTrace(); }
+                        if (session != null && sid.equals(session.getSessionId())) {
+                            currentPriceLabel.setText(formatVND(session.getCurrentPrice()));
+                            refreshBidHistory();
+                        }
+                        addChatMessage("System", b + " đặt giá " + formatVND(a), false);
                     });
                 }
-
-                case "NOTIFY_BIDDER_SESSION_END" -> {
-                    String itemName = extractJson(raw, "itemName");
-                    Platform.runLater(() ->
-                        pushNotification(
-                                NotificationManager.NotifType.SYSTEM,
-                                "Phien dau gia ket thuc",
-                                "\"" + itemName + "\" da ket thuc."));
-                }
+                case "NOTIFY_BIDDER_SESSION_START" -> Platform.runLater(this::refreshSessions);
             }
-        } catch (Exception e) {
-            System.err.println("[MainController] handleServerMessage: "
-                    + e.getMessage());
-        }
+        } catch (Exception ignored) {}
     }
 
-    // =========================================================
-    // JSON PARSER
-    // =========================================================
     private String extractJson(String json, String key) {
-        String search = "\"" + key + "\":\"";
-        int start = json.indexOf(search);
-        if (start != -1) {
-            start += search.length();
-            int end = json.indexOf("\"", start);
-            return end == -1 ? "" : json.substring(start, end);
-        }
-        String searchNum = "\"" + key + "\":";
-        int s2 = json.indexOf(searchNum);
-        if (s2 == -1) return "";
-        s2 += searchNum.length();
-        int e2 = json.indexOf(",", s2);
-        if (e2 == -1) e2 = json.indexOf("}", s2);
-        if (e2 == -1) return "";
-        return json.substring(s2, e2).trim().replace("\"", "");
+        String s = "\"" + key + "\":\""; int i = json.indexOf(s);
+        if (i != -1) { i += s.length(); int e = json.indexOf("\"", i); return json.substring(i, e); }
+        s = "\"" + key + "\":"; i = json.indexOf(s);
+        if (i == -1) return null; i += s.length(); int e = json.indexOf(",", i); if (e == -1) e = json.indexOf("}", i);
+        return json.substring(i, e).trim().replace("\"", "");
     }
 
-    private double parseDouble(String s) {
-        try { return Double.parseDouble(s.trim()); }
-        catch (NumberFormatException e) { return 0; }
-    }
-
-    // =========================================================
-    // AUCTION CARD
-    // =========================================================
-    private void showAuctionCard(boolean hasSession) {
-        if (auctionCard != null) {
-            auctionCard.setVisible(hasSession);
-            auctionCard.setManaged(hasSession);
-        }
-        if (emptyAuctionBox != null) {
-            emptyAuctionBox.setVisible(!hasSession);
-            emptyAuctionBox.setManaged(!hasSession);
-        }
-    }
+    private void showAuctionCard(boolean has) { if (auctionCard != null) { auctionCard.setVisible(has); auctionCard.setManaged(has); } if (emptyAuctionBox != null) { emptyAuctionBox.setVisible(!has); emptyAuctionBox.setManaged(!has); } }
 
     private void loadAuctionInfo() {
         if (session == null) return;
         productTitleLabel.setText(session.getItemName());
-        productDescLabel.setText(
-            "San pham moi 100%, con nguyen seal, bao hanh 12 thang.");
+        String desc = ProductManagementController.descMap.get(session.getSessionId());
+        productDescLabel.setText(desc != null ? desc : "Sản phẩm đấu giá chất lượng cao.");
         startPriceLabel.setText(formatVND(session.getStartingPrice()));
         currentPriceLabel.setText(formatVND(session.getCurrentPrice()));
         minStepLabel.setText(formatVND(session.getMinBidStep()));
         endTimeLabel.setText(session.getEndTime().format(DT_FMT));
         statusLabel.setText("  " + session.getStatus().name());
-        statusLabel.getStyleClass().setAll("status-badge", "status-running");
 
-        // ── Load ảnh sản phẩm ─────────────────────────────────
-        String imgPath = ProductManagementController.imageMap.get(session.getSessionId());
-        System.out.println("[DEBUG] sessionId=" + session.getSessionId()
-            + " | imageMap=" + ProductManagementController.imageMap);
-        if (imgPath != null) {
-            try {
-                Image img = new Image(new java.io.File(imgPath).toURI().toString());
-                productImageView.setImage(img);
-                productImageView.setVisible(true);
-                productImageIcon.setVisible(false);
-            } catch (Exception ignored) {
-                productImageView.setVisible(false);
-                productImageIcon.setVisible(true);
+        String id = session.getSessionId();
+        File imgF = null;
+        String path = ProductManagementController.imageMap.get(id);
+        if (path != null) imgF = new File(path);
+        if (imgF == null || !imgF.exists()) {
+            for (String ext : new String[]{".jpg",".png",".jpeg",".webp",".gif"}) {
+                File f = new File("product_images/" + id + ext);
+                if (f.exists()) { imgF = f; break; }
             }
-        } else {
-            productImageView.setVisible(false);
-            productImageIcon.setVisible(true);
         }
+        if (imgF != null && imgF.exists()) {
+            try { productImageView.setImage(new Image(imgF.toURI().toString(), 200, 140, true, true)); productImageView.setVisible(true); productImageIcon.setVisible(false); }
+            catch (Exception e) { productImageView.setVisible(false); productImageIcon.setVisible(true); }
+        } else { productImageView.setVisible(false); productImageIcon.setVisible(true); }
     }
 
-    // =========================================================
-    // COUNTDOWN
-    // =========================================================
-    private void startCountdown() {
-        if (countdownTimer != null) countdownTimer.stop();
-        countdownTimer = new Timeline(
-                new KeyFrame(Duration.seconds(1), e -> updateCountdown()));
-        countdownTimer.setCycleCount(Timeline.INDEFINITE);
-        countdownTimer.play();
-    }
-
+    private void startCountdown() { if (countdownTimer != null) countdownTimer.stop(); countdownTimer = new Timeline(new KeyFrame(Duration.seconds(1), e -> updateCountdown())); countdownTimer.setCycleCount(Timeline.INDEFINITE); countdownTimer.play(); }
     private void updateCountdown() {
         if (session == null) return;
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime end = session.getEndTime();
+        LocalDateTime now = LocalDateTime.now(), end = session.getEndTime();
         if (now.isAfter(end)) {
-            if (auctionEnded) return;
-            auctionEnded = true;
-            hoursLabel.setText("00");
-            minsLabel.setText("00");
-            secsLabel.setText("00");
-            if (statusLabel != null) statusLabel.setText("KET THUC");
-            countdownTimer.stop();
-            saveSessionToHistory();
-            handleAuctionEnd();
-            pushNotification(NotificationManager.NotifType.SYSTEM,
-                    "Phien dau gia ket thuc",
-                    "Phien \"" + session.getItemName() + "\" da ket thuc.");
-            return;
+            if (auctionEnded) return; auctionEnded = true;
+            hoursLabel.setText("00"); minsLabel.setText("00"); secsLabel.setText("00");
+            statusLabel.setText("KẾT THÚC"); countdownTimer.stop();
+            AppContext.finalizeSession(session, sessionStartTime);
+            handleAuctionEnd(); return;
         }
-        long total = java.time.Duration.between(now, end).getSeconds();
-        hoursLabel.setText(String.format("%02d", total / 3600));
-        minsLabel.setText(String.format("%02d",  (total % 3600) / 60));
-        secsLabel.setText(String.format("%02d",  total % 60));
-        if (total == 300)
-            pushNotification(NotificationManager.NotifType.AUCTION_ENDING_SOON,
-                    "Sap het gio!",
-                    "Con 5 phut! Gia: " + formatVND(session.getCurrentPrice()));
+        long t = java.time.Duration.between(now, end).getSeconds();
+        hoursLabel.setText(String.format("%02d", t/3600)); minsLabel.setText(String.format("%02d", (t%3600)/60)); secsLabel.setText(String.format("%02d", t%60));
     }
 
-    private void saveSessionToHistory() {
+    @FXML private void handlePlaceBid() {
         if (session == null) return;
-        LocalDateTime start = sessionStartTime != null
-                ? sessionStartTime : session.getEndTime().minusHours(1);
-        AppContext.finalizeSession(session, start);
-    }
-
-    // =========================================================
-    // PLACE BID
-    // =========================================================
-    @FXML
-    private void handlePlaceBid() {
-        if (session == null) {
-            showAlert("Chưa có phiên", "Hiện chưa có phiên nào đang diễn ra.");
-            return;
-        }
-        User user = AppContext.getCurrentUser();
-        if (user == null) { showAlert("Lỗi", "Bạn chưa đăng nhập."); return; }
-
-        double newPrice = session.getCurrentPrice() + session.getMinBidStep();
-        double balance  = AppContext.getWalletBalance(user.getUsername());
-        if (balance < newPrice) {
-            showAlert("Số dư không đủ!",
-                    "Cần: " + formatVND(newPrice)
-                    + "\nSố dư: " + formatVND(balance));
-            return;
-        }
-
+        User u = AppContext.getCurrentUser();
+        double p = session.getCurrentPrice() + session.getMinBidStep();
+        if (AppContext.getWalletBalance(u.getUsername()) < p) { showAlert("Số dư không đủ", "Cần " + formatVND(p)); return; }
         try {
-            Bid bid = new Bid(UUID.randomUUID().toString(),
-                    user.getUsername(), newPrice);
-            session.placeBid(bid);
+            session.placeBid(new Bid(UUID.randomUUID().toString(), u.getUsername(), p));
             currentPriceLabel.setText(formatVND(session.getCurrentPrice()));
-            updateCountdown();
             refreshBidHistory();
-            addChatMessage("System",
-                    user.getUsername() + " da dat gia " + formatVND(newPrice),
-                    false);
-            pushNotification(NotificationManager.NotifType.BID_PLACED,
-                    "Dat gia thanh cong",
-                    String.format("Ban da dat %s cho \"%s\"",
-                            formatVND(newPrice), session.getItemName()));
-
-            ServerConnection conn = ServerConnection.getInstance();
-            if (conn.isConnected())
-                conn.sendBid(user.getUsername(),
-                        session.getSessionId(), newPrice);
-
-        } catch (InvalidBidException e) {
-            showAlert("Bid khong hop le", e.getMessage());
-        } catch (AuctionClosedException e) {
-            showAlert("Phien da dong", e.getMessage());
-        } catch (Exception e) {
-            e.printStackTrace();
-            showAlert("Loi he thong", e.getMessage());
-        }
+            if (ServerConnection.getInstance().isConnected()) ServerConnection.getInstance().sendBid(u.getUsername(), session.getSessionId(), p);
+        } catch (Exception e) { showAlert("Lỗi", e.getMessage()); }
     }
 
-    // =========================================================
-    // SEARCH
-    // =========================================================
-    @FXML
-    private void handleSearch(javafx.scene.input.KeyEvent event) {
-        if (searchField == null) return;
-        String keyword = searchField.getText().trim();
-        if (keyword.isEmpty()) return;
-        try { HelloApplication.showAuctionListByKeyword(keyword); }
-        catch (Exception e) {
-            try { HelloApplication.showAuctionListByCategory(keyword); }
-            catch (Exception ex) { ex.printStackTrace(); }
-        }
+    @FXML private void handleSearch(javafx.scene.input.KeyEvent e) {
+        String k = searchField.getText().trim(); if (k.isEmpty()) return;
+        try { HelloApplication.showAuctionListByKeyword(k); } catch (Exception ex) {}
     }
 
-    // =========================================================
-    // NOTIFICATION BELL
-    // =========================================================
-    @FXML
-    private void handleBellClick() {
-        if (notifPopup != null && notifPopup.isShowing()) {
-            notifPopup.hide(); return;
-        }
-        notifManager.markAllRead();
-        updateBadge();
+    @FXML private void handleBellClick() {
+        if (notifPopup != null && notifPopup.isShowing()) { notifPopup.hide(); return; }
+        notifManager.markAllRead(); updateBadge();
         notifPopup = NotificationPopup.show(bellButton, notifManager.getAll());
     }
 
-    public void pushNotification(NotificationManager.NotifType type,
-                                  String title, String body) {
-        Platform.runLater(() -> {
-            notifManager.add(new NotificationManager.NotifItem(
-                    type, title, body, LocalDateTime.now()));
-            updateBadge();
-        });
+    public void pushNotification(NotificationManager.NotifType t, String ti, String b) { Platform.runLater(() -> { notifManager.add(new NotificationManager.NotifItem(t, ti, b, LocalDateTime.now())); updateBadge(); }); }
+    private void updateBadge() { if (badgeLabel == null) return; int u = notifManager.countUnread(); badgeLabel.setText(u > 9 ? "9+" : String.valueOf(u)); badgeLabel.setVisible(u > 0); badgeLabel.setManaged(u > 0); }
+
+    @FXML private void handleToggleChat() { boolean v = !chatPanel.isVisible(); chatPanel.setVisible(v); chatPanel.setManaged(v); if (v) Platform.runLater(() -> chatScrollPane.setVvalue(1.0)); }
+    @FXML private void handleSendChat() {
+        String m = chatInput.getText().trim(); if (m.isEmpty()) return;
+        User u = AppContext.getCurrentUser(); addChatMessage(u.getUsername(), m, "SELLER".equalsIgnoreCase(u.getRole())); chatInput.clear();
+        if (ServerConnection.getInstance().isConnected()) ServerConnection.getInstance().sendChat(u.getUsername(), m);
     }
 
-    private void updateBadge() {
-        if (badgeLabel == null) return;
-        int unread = notifManager.countUnread();
-        badgeLabel.setText(unread > 9 ? "9+" : String.valueOf(unread));
-        badgeLabel.setVisible(unread > 0);
-        badgeLabel.setManaged(unread > 0);
-    }
-
-    // =========================================================
-    // CHAT
-    // =========================================================
-    @FXML
-    private void handleToggleChat() {
-        boolean visible = !chatPanel.isVisible();
-        chatPanel.setVisible(visible);
-        chatPanel.setManaged(visible);
-        if (visible) Platform.runLater(() -> chatScrollPane.setVvalue(1.0));
-    }
-
-    @FXML
-    private void handleSendChat() {
-        String msg = chatInput.getText().trim();
-        if (msg.isEmpty()) return;
-        User user = AppContext.getCurrentUser();
-        addChatMessage(user.getUsername(), msg,
-                "SELLER".equalsIgnoreCase(user.getRole()));
-        chatInput.clear();
-        ServerConnection conn = ServerConnection.getInstance();
-        if (conn.isConnected()) {
-            conn.sendChat(user.getUsername(), msg);
-        } else {
-            boolean ok = conn.connect(user.getUsername());
-            if (ok) {
-                conn.setListener(this::handleServerMessage);
-                conn.sendChat(user.getUsername(), msg);
-            }
-        }
-    }
-
-    // =========================================================
-    // NAVIGATION
-    // =========================================================
-    @FXML private void handleAuctionList() {
-        try { HelloApplication.showAuctionListView(); }
-        catch (Exception e) { e.printStackTrace(); }
-    }
-
-    @FXML private void handleLiveAuction() {
-        if (AppContext.getActiveSession() == null) {
-            List<AuctionSession> running = AppContext.getRunningSessions();
-            if (!running.isEmpty()) AppContext.setActiveSession(running.get(0));
-            else { showAlert("Thong bao", "Hien chua co phien nao dang dien ra."); return; }
-        }
-        try { HelloApplication.showLiveAuctionView(); }
-        catch (Exception e) { e.printStackTrace(); }
-    }
-
-    @FXML private void handleSellerProducts() {
-        try { HelloApplication.showMyProductsView(); }
-        catch (Exception e) { e.printStackTrace(); }
-    }
-
-    @FXML private void handleAdminProducts() {
-        try { HelloApplication.showProductManagementView(); }
-        catch (Exception e) { e.printStackTrace(); }
-    }
-
-    @FXML private void handleAuctionSessionHistory() {
-        try { HelloApplication.showAuctionSessionHistoryView(); }
-        catch (Exception e) { e.printStackTrace(); }
-    }
-
-    @FXML private void handleCategoryDienTu() {
-        try { HelloApplication.showAuctionListByCategory("Dien tu"); }
-        catch (Exception e) { e.printStackTrace(); }
-    }
-
-    @FXML private void handleCategoryMayAnh() {
-        try { HelloApplication.showAuctionListByCategory("May anh"); }
-        catch (Exception e) { e.printStackTrace(); }
-    }
-
-    @FXML private void handleCategoryLaptop() {
-        try { HelloApplication.showAuctionListByCategory("Laptop"); }
-        catch (Exception e) { e.printStackTrace(); }
-    }
-
-    @FXML private void handleCategoryDienThoai() {
-        try { HelloApplication.showAuctionListByCategory("Dien thoai"); }
-        catch (Exception e) { e.printStackTrace(); }
-    }
-
-    @FXML private void handleCategoryDongHo() {
-        try { HelloApplication.showAuctionListByCategory("Dong ho"); }
-        catch (Exception e) { e.printStackTrace(); }
-    }
-
-    @FXML private void handleCategoryXeCo() {
-        try { HelloApplication.showAuctionListByCategory("Xe co"); }
-        catch (Exception e) { e.printStackTrace(); }
-    }
-
-    @FXML private void handleProfile() {
-        try { HelloApplication.showProfileView(); }
-        catch (Exception e) { e.printStackTrace(); }
-    }
-
-    @FXML private void handleHistory() {
-        try { HelloApplication.showHistoryView(); }
-        catch (Exception e) { e.printStackTrace(); }
-    }
-
-    @FXML private void handleWallet() {
-        try { HelloApplication.showWalletView(); }
-        catch (Exception e) { e.printStackTrace(); }
-    }
-
-    @FXML private void handleRating() {
-        try { HelloApplication.showRatingView(); }
-        catch (Exception e) { e.printStackTrace(); }
-    }
-
-    @FXML private void handleHelp() {
-        try { HelloApplication.showHelpView(); }
-        catch (Exception e) { e.printStackTrace(); }
-    }
-
+    @FXML private void handleAuctionList() { try { HelloApplication.showAuctionListView(); } catch (Exception e) {} }
+    @FXML private void handleLiveAuction() { try { HelloApplication.showLiveAuctionView(); } catch (Exception e) {} }
+    @FXML private void handleCategoryDienTu()    { try { HelloApplication.showAuctionListByCategory("Dien tu");     } catch (Exception e) {} }
+    @FXML private void handleCategoryMayAnh()    { try { HelloApplication.showAuctionListByCategory("May anh");    } catch (Exception e) {} }
+    @FXML private void handleCategoryLaptop()    { try { HelloApplication.showAuctionListByCategory("Laptop");     } catch (Exception e) {} }
+    @FXML private void handleCategoryDienThoai() { try { HelloApplication.showAuctionListByCategory("Dien thoai"); } catch (Exception e) {} }
+    @FXML private void handleCategoryDongHo()    { try { HelloApplication.showAuctionListByCategory("Dong ho");    } catch (Exception e) {} }
+    @FXML private void handleCategoryXeCo()      { try { HelloApplication.showAuctionListByCategory("Xe co");      } catch (Exception e) {} }
+    @FXML private void handleSellerProducts() { try { HelloApplication.showMyProductsView(); } catch (Exception e) {} }
+    @FXML private void handleAdminProducts() { try { HelloApplication.showProductManagementView(); } catch (Exception e) {} }
+    @FXML private void handleProfile() { try { HelloApplication.showProfileView(); } catch (Exception e) {} }
+    @FXML private void handleHistory() { try { HelloApplication.showHistoryView(); } catch (Exception e) {} }
+    @FXML private void handleWallet() { try { HelloApplication.showWalletView(); } catch (Exception e) {} }
+    @FXML private void handleRating() { try { HelloApplication.showRatingView(); } catch (Exception e) {} }
+    @FXML private void handleHelp() { try { HelloApplication.showHelpView(); } catch (Exception e) {} }
     @FXML private void handleLogout() {
-        if (countdownTimer != null) countdownTimer.stop();
-        stopOnlineRefreshTimer();
-        AppContext.markUserOffline(AppContext.getCurrentUser() != null
-                ? AppContext.getCurrentUser().getUsername() : "");
-        ServerConnection.getInstance().disconnect();
-        AppContext.logout();
-        try { HelloApplication.showLoginView(); }
-        catch (Exception e) { e.printStackTrace(); }
+        if (countdownTimer != null) countdownTimer.stop(); stopOnlineRefreshTimer();
+        User u = AppContext.getCurrentUser();
+        if (u != null) AppContext.markUserOffline(u.getUsername());
+        ServerConnection.getInstance().disconnect(); AppContext.logout();
+        try { HelloApplication.showLoginView(); } catch (Exception e) {}
     }
 
-    // =========================================================
-    // BID HISTORY
-    // =========================================================
     private void refreshBidHistory() {
-        bidHistoryBox.getChildren().clear();
-        if (session == null) return;
-        var history = session.getBidHistory();
-        if (history.isEmpty()) {
-            Label empty = new Label("Chua co luot dat gia nao.");
-            empty.setStyle("-fx-text-fill: #64748b; -fx-font-size: 13px;");
-            bidHistoryBox.getChildren().add(empty);
-            return;
-        }
-        for (int i = history.size() - 1; i >= 0; i--) {
-            Bid b = history.get(i);
-            HBox row = new HBox(12);
-            row.getStyleClass().add("bid-row");
-            if (i == history.size() - 1) row.getStyleClass().add("bid-row-top");
-            Label name = new Label(
-                (i == history.size() - 1 ? "👑 " : "") + b.getBidderId());
-            Label amount = new Label(formatVND(b.getAmount()));
-            Label time   = new Label(b.getTimestamp().format(TIME_FMT));
-            amount.getStyleClass().add("bid-amount");
-            time.getStyleClass().add("bid-time");
-            HBox.setHgrow(name, Priority.ALWAYS);
-            row.getChildren().addAll(name, amount, time);
-            bidHistoryBox.getChildren().add(row);
+        bidHistoryBox.getChildren().clear(); if (session == null) return;
+        var h = session.getBidHistory();
+        if (h.isEmpty()) { Label e = new Label("Chưa có lượt đặt giá nào."); e.setStyle("-fx-text-fill: #64748b;"); bidHistoryBox.getChildren().add(e); return; }
+        for (int i = h.size() - 1; i >= 0; i--) {
+            Bid b = h.get(i); HBox r = new HBox(12); Label n = new Label((i == h.size() - 1 ? "👑 " : "") + b.getBidderId());
+            Label a = new Label(formatVND(b.getAmount())); Label t = new Label(b.getTimestamp().format(TIME_FMT));
+            HBox.setHgrow(n, Priority.ALWAYS); r.getChildren().addAll(n, a, t); bidHistoryBox.getChildren().add(r);
         }
     }
 
-    // =========================================================
-    // CHAT UI
-    // =========================================================
-    private void addChatMessage(String sender, String message,
-                                 boolean isSeller) {
-        VBox bubble = new VBox(2);
-        bubble.getStyleClass().add(
-                isSeller ? "chat-bubble-seller" : "chat-bubble-buyer");
-        Label senderLabel = new Label(sender);
-        senderLabel.getStyleClass().add("chat-sender");
-        Label msgLabel = new Label(message);
-        msgLabel.setWrapText(true);
-        msgLabel.getStyleClass().add("chat-message");
-        bubble.getChildren().addAll(senderLabel, msgLabel);
-        chatMessagesBox.getChildren().add(bubble);
+    private void addChatMessage(String s, String m, boolean isS) {
+        VBox b = new VBox(2); b.getStyleClass().add(isS ? "chat-bubble-seller" : "chat-bubble-buyer");
+        Label sl = new Label(s); sl.getStyleClass().add("chat-sender");
+        Label ml = new Label(m); ml.setWrapText(true); ml.getStyleClass().add("chat-message");
+        b.getChildren().addAll(sl, ml); chatMessagesBox.getChildren().add(b);
         Platform.runLater(() -> chatScrollPane.setVvalue(1.0));
     }
 
-    // =========================================================
-    // KET THUC PHIEN
-    // =========================================================
     private void handleAuctionEnd() {
-        if (session == null) return;
-        User me = AppContext.getCurrentUser();
-        if (me == null) return;
-        var history = session.getBidHistory();
-        if (history.isEmpty()) return;
-        var    winnerBid  = history.get(history.size() - 1);
-        String winner     = winnerBid.getBidderId();
-        double finalPrice = winnerBid.getAmount();
-        if (winner.equals(me.getUsername())) {
-            AppContext.addHistory(me.getUsername(),
-                    new AppContext.HistoryRecord(
-                            "BID-" + UUID.randomUUID().toString()
-                                    .substring(0, 6).toUpperCase(),
-                            session.getItemName(), finalPrice,
-                            AppContext.getSessionSeller(session.getSessionId()),
-                            "CHO XU LY", true, LocalDateTime.now()));
-            pushNotification(NotificationManager.NotifType.SYSTEM,
-                    "Ban da thang!",
-                    "Vao Vi & Giao dich -> Thanh toan de hoan tat.");
-        } else {
-            boolean participated = history.stream()
-                    .anyMatch(b -> b.getBidderId().equals(me.getUsername()));
-            if (participated)
-                pushNotification(NotificationManager.NotifType.SYSTEM,
-                        "Ban da thua",
-                        "Nguoi thang: " + winner
-                        + " (" + formatVND(finalPrice) + ")");
-        }
+        if (session == null) return; User me = AppContext.getCurrentUser(); var h = session.getBidHistory(); if (h.isEmpty()) return;
+        var wb = h.get(h.size() - 1); String w = wb.getBidderId(); double f = wb.getAmount();
+        if (w.equals(me.getUsername())) { AppContext.addHistory(me.getUsername(), new AppContext.HistoryRecord("BID-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase(), session.getItemName(), f, AppContext.getSessionSeller(session.getSessionId()), "CHỜ XỬ LÝ", true, LocalDateTime.now())); }
     }
 
-    // =========================================================
-    // UTIL
-    // =========================================================
-    private String formatVND(double amount) {
-        return String.format("d %,.0f", amount);
-    }
-
-    private void showAlert(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-
-        DialogPane dialogPane = alert.getDialogPane();
-        dialogPane.setStyle("""
-        -fx-background-color: #1e293b;
-        -fx-border-color: #334155;
-        -fx-border-width: 1;
-        -fx-border-radius: 8;
-        -fx-background-radius: 8;
-    """);
-        dialogPane.lookup(".content.label").setStyle("""
-        -fx-text-fill: #e2e8f0;
-        -fx-font-size: 14px;
-    """);
-        dialogPane.lookupButton(ButtonType.OK).setStyle("""
-        -fx-background-color: #2563eb;
-        -fx-text-fill: white;
-        -fx-font-weight: bold;
-        -fx-background-radius: 6;
-        -fx-padding: 6 20 6 20;
-        -fx-cursor: hand;
-    """);
-
-        alert.setGraphic(null);
-
-        alert.showAndWait();
-    }
+    private String formatVND(double a) { return String.format("₫ %,.0f", a); }
+    private void showAlert(String t, String m) { Alert a = new Alert(Alert.AlertType.WARNING); a.setTitle(t); a.setHeaderText(null); a.setContentText(m); a.showAndWait(); }
 }

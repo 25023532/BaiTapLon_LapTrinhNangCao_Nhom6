@@ -12,6 +12,8 @@ import javafx.geometry.Pos;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.XYChart;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.util.Duration;
 import org.example.auction.AuctionSession;
@@ -20,6 +22,7 @@ import org.example.exception.AuctionClosedException;
 import org.example.exception.InvalidBidException;
 import org.example.user.User;
 
+import java.io.File;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -46,6 +49,7 @@ public class LiveAuctionController {
     @FXML private Label      liveHours;
     @FXML private Label      liveMins;
     @FXML private Label      liveSecs;
+    @FXML private ImageView  liveProductImage;
     @FXML private TextField  customBidField;
     @FXML private Button     quickBid1Btn;
     @FXML private Button     quickBid2Btn;
@@ -92,8 +96,8 @@ public class LiveAuctionController {
             extensionNoticeLabel.setManaged(false);
         }
 
-        onlineLabel.setText("● -- online");
-        participantsLabel.setText("👥 -- người tham gia");
+        onlineLabel.setText("● 0 online");
+        participantsLabel.setText("👥 0 người tham gia");
 
         priceSeries = new XYChart.Series<>();
         priceSeries.setName("Giá hiện tại");
@@ -365,13 +369,20 @@ public class LiveAuctionController {
         AppContext.setActiveSession(session);
 
         liveTitleLabel.setText(session.getItemName());
-        liveDescLabel.setText(
-            "Sản phẩm mới 100%, còn nguyên seal, bảo hành 12 tháng.");
+        String desc = ProductManagementController.descMap.get(session.getSessionId());
+        if (desc == null || desc.isBlank()) {
+            desc = "Sản phẩm đấu giá trực tiếp chất lượng cao.";
+        }
+        liveDescLabel.setText(desc);
+
         liveStartPrice.setText(formatVND(session.getStartingPrice()));
         liveCurrentPrice.setText(formatVND(session.getCurrentPrice()));
         liveMinStep.setText(formatVND(session.getMinBidStep()));
         liveStatusLabel.setText("● " + session.getStatus().name());
         liveStatusLabel.getStyleClass().setAll("status-badge", "status-running");
+
+        // Load image
+        loadProductImage(session.getSessionId());
 
         updateLeaderLabel();
         updateQuickBidLabels();
@@ -392,6 +403,40 @@ public class LiveAuctionController {
             "✅ Đã tham gia phiên: " + session.getItemName(), false);
     }
 
+    private void loadProductImage(String productId) {
+        if (liveProductImage == null) return;
+
+        File imageFile = null;
+        String path = ProductManagementController.imageMap.get(productId);
+        if (path != null) imageFile = new File(path);
+
+        if (imageFile == null || !imageFile.exists()) {
+            // Thử tìm ảnh trong thư mục product_images
+            String[] extensions = {".jpg", ".png", ".jpeg", ".webp", ".gif"};
+            for (String ext : extensions) {
+                File f = new File("product_images/" + productId + ext);
+                if (f.exists()) {
+                    imageFile = f;
+                    break;
+                }
+            }
+        }
+
+        if (imageFile != null && imageFile.exists()) {
+            try {
+                Image img = new Image(imageFile.toURI().toString(), 150, 150, true, true);
+                liveProductImage.setImage(img);
+                liveProductImage.setVisible(true);
+            } catch (Exception e) {
+                liveProductImage.setImage(null);
+                liveProductImage.setVisible(false);
+            }
+        } else {
+            liveProductImage.setImage(null);
+            liveProductImage.setVisible(false);
+        }
+    }
+
     private void setNoSessionState() {
         liveTitleLabel.setText("Chọn phiên bên trái để bắt đầu");
         liveDescLabel.setText(
@@ -400,9 +445,10 @@ public class LiveAuctionController {
         liveCurrentPrice.setText("—");
         liveMinStep.setText("—");
         liveLeaderLabel.setText("—");
-        liveHours.setText("--");
-        liveMins.setText("--");
-        liveSecs.setText("--");
+        liveHours.setText("00");
+        liveMins.setText("00");
+        liveSecs.setText("00");
+        if (liveProductImage != null) liveProductImage.setImage(null);
         bidCountLabel.setText("0 lượt");
     }
 
@@ -410,27 +456,36 @@ public class LiveAuctionController {
     // COUNTDOWN
     // =========================================================
     private void startCountdown() {
-        countdownTimer = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
-            if (currentSession == null) return;
-            LocalDateTime now = LocalDateTime.now();
-            LocalDateTime end = currentSession.getEndTime();
-            if (now.isAfter(end)) {
-                liveHours.setText("00");
-                liveMins.setText("00");
-                liveSecs.setText("00");
-                liveStatusLabel.setText("● KẾT THÚC");
-                liveStatusLabel.setStyle("-fx-text-fill: #ef4444;");
-                countdownTimer.stop();
-                if (uiRefreshTimer != null) uiRefreshTimer.stop();
-                return;
-            }
-            long total = java.time.Duration.between(now, end).getSeconds();
-            liveHours.setText(String.format("%02d", total / 3600));
-            liveMins.setText(String.format("%02d",  (total % 3600) / 60));
-            liveSecs.setText(String.format("%02d",  total % 60));
-        }));
+        if (currentSession == null) return;
+
+        // Cập nhật ngay lập tức trước khi chạy Timeline
+        updateCountdownUI();
+
+        countdownTimer = new Timeline(new KeyFrame(Duration.seconds(1), e -> updateCountdownUI()));
         countdownTimer.setCycleCount(Timeline.INDEFINITE);
         countdownTimer.play();
+    }
+
+    private void updateCountdownUI() {
+        if (currentSession == null) return;
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime end = currentSession.getEndTime();
+
+        if (now.isAfter(end)) {
+            liveHours.setText("00");
+            liveMins.setText("00");
+            liveSecs.setText("00");
+            liveStatusLabel.setText("● KẾT THÚC");
+            liveStatusLabel.setStyle("-fx-text-fill: #ef4444;");
+            if (countdownTimer != null) countdownTimer.stop();
+            if (uiRefreshTimer != null) uiRefreshTimer.stop();
+            return;
+        }
+
+        long total = java.time.Duration.between(now, end).getSeconds();
+        liveHours.setText(String.format("%02d", total / 3600));
+        liveMins.setText(String.format("%02d", (total % 3600) / 60));
+        liveSecs.setText(String.format("%02d", total % 60));
     }
 
     private void handleAuctionEnd() {

@@ -136,12 +136,21 @@
                 <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
 
                 <HBox spacing="12" alignment="CENTER_LEFT">
-                    <Label text="🏷️  Sản phẩm đấu giá hiện tại"
-                           styleClass="section-title"/>
+                    <Label text="🏷️  SẢN PHẨM ĐANG ĐẤU GIÁ"
+                           styleClass="section-title"
+                           style="-fx-text-fill: #1F0C40; -fx-font-weight: 900; -fx-letter-spacing: 1.5px;"/>
                     <Region HBox.hgrow="ALWAYS"/>
-                    <Label fx:id="sessionCountLabel" styleClass="product-desc"/>
-                    <Button text="Xem tất cả →" onAction="#handleAuctionList"
-                            styleClass="btn-secondary"/>
+                    <HBox spacing="10" alignment="CENTER_LEFT" fx:id="navigationBox">
+                        <Button text="◀" onAction="#handlePrevSession" styleClass="btn-secondary"
+                                style="-fx-font-size: 16px; -fx-padding: 5 12 5 12; -fx-border-width: 3; -fx-background-radius: 0;"/>
+                        <Label fx:id="sessionCountLabel" text="Phiên 0 / 0"
+                               style="-fx-text-fill: #1A1A1A; -fx-font-weight: 900; -fx-font-size: 13px; -fx-min-width: 80; -fx-alignment: CENTER;"/>
+                        <Button text="▶" onAction="#handleNextSession" styleClass="btn-secondary"
+                                style="-fx-font-size: 16px; -fx-padding: 5 12 5 12; -fx-border-width: 3; -fx-background-radius: 0;"/>
+                    </HBox>
+                    <Button text="XEM TẤT CẢ →" onAction="#handleAuctionList"
+                            styleClass="btn-secondary"
+                            style="-fx-background-color: #FFFFFF; -fx-text-fill: #1A1A1A; -fx-font-weight: 900; -fx-border-color: #1A1A1A; -fx-border-width: 3; -fx-background-radius: 0;"/>
                 </HBox>
 
                 <!-- Auction Card -->
@@ -266,7 +275,7 @@
                     <padding><Insets top="12" right="16" bottom="12" left="16"/></padding>
                     <Label text="💬 CHAT TRỰC TUYẾN" styleClass="chat-title"/>
                     <Region HBox.hgrow="ALWAYS"/>
-                    <Label fx:id="onlineCountLabel" text="● Online ..." styleClass="chat-online"/>
+                    <Label fx:id="onlineCountLabel" text="● Online 0" styleClass="chat-online"/>
                     <Button text="✕" onAction="#handleToggleChat" styleClass="btn-close-chat"/>
                 </HBox>
 

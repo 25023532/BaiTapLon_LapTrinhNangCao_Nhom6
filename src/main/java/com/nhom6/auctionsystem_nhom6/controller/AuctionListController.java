@@ -11,12 +11,15 @@ import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.util.Duration;
 import org.example.auction.AuctionSession;
 import org.example.auction.AuctionStatus;
 import org.example.user.User;
 
+import java.io.File;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -239,6 +242,9 @@ public class AuctionListController {
         card.getStyleClass().add("history-row");
         card.setPadding(new Insets(16, 20, 16, 20));
 
+        // Thumbnail
+        StackPane thumb = buildThumbnail(s.id(), 64);
+
         // Status icon + badge
         VBox leftBar = new VBox(6);
         leftBar.setAlignment(Pos.CENTER);
@@ -310,8 +316,38 @@ public class AuctionListController {
         joinBtn.setOnAction(e -> handleJoinSession(s));
 
         actions.getChildren().addAll(viewBtn, joinBtn);
-        card.getChildren().addAll(leftBar, info, priceBox, actions);
+        card.getChildren().addAll(thumb, leftBar, info, priceBox, actions);
         return card;
+    }
+
+    private StackPane buildThumbnail(String productId, double size) {
+        StackPane pane = new StackPane();
+        pane.setMinSize(size, size);
+        pane.setMaxSize(size, size);
+        pane.setStyle("-fx-background-color: #1e3a5f; -fx-background-radius: 8;");
+
+        File imgF = null;
+        String path = ProductManagementController.imageMap.get(productId);
+        if (path != null) imgF = new File(path);
+        if (imgF == null || !imgF.exists()) {
+            for (String ext : new String[]{".jpg",".png",".jpeg",".webp",".gif"}) {
+                File f = new File("product_images/" + productId + ext);
+                if (f.exists()) { imgF = f; break; }
+            }
+        }
+
+        if (imgF != null && imgF.exists()) {
+            try {
+                ImageView iv = new ImageView(new Image(imgF.toURI().toString(), size, size, true, true));
+                iv.setFitWidth(size); iv.setFitHeight(size);
+                pane.getChildren().add(iv);
+                return pane;
+            } catch (Exception ignored) {}
+        }
+        Label icon = new Label("⬡");
+        icon.setStyle("-fx-font-size: 28px; -fx-text-fill: #3b82f6;");
+        pane.getChildren().add(icon);
+        return pane;
     }
 
     // =========================================================
@@ -368,10 +404,15 @@ public class AuctionListController {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Chi tiết phiên đấu giá");
         alert.setHeaderText(s.itemName());
+
+        String desc = ProductManagementController.descMap.get(s.id());
+        if (desc == null || desc.isBlank()) desc = "Sản phẩm chất lượng cao.";
+
         alert.setContentText(
                 "ID             : " + s.id()                      + "\n" +
                 "Danh mục      : " + s.category()                 + "\n" +
                 "Người bán     : " + s.sellerName()               + "\n" +
+                "Mô tả         : " + desc                         + "\n" +
                 "Giá khởi điểm : " + formatVND(s.startPrice())    + "\n" +
                 "Giá hiện tại  : " + formatVND(s.currentPrice())  + "\n" +
                 "Số lượt bid   : " + s.bidCount()                 + "\n" +
@@ -379,6 +420,7 @@ public class AuctionListController {
                 "Kết thúc      : " + s.endTime().format(DT_FMT)   + "\n" +
                 "Trạng thái    : " + statusText(s.status())
         );
+        alert.getDialogPane().setStyle("-fx-background-color: #FFF8F0; -fx-border-color: #1A1A1A; -fx-border-width: 3;");
         alert.showAndWait();
     }
 

@@ -10,49 +10,60 @@
 
     <!-- ══ HEADER ══ -->
     <top>
-        <HBox styleClass="header" spacing="12" alignment="CENTER_LEFT">
-            <padding><Insets top="0" right="20" bottom="0" left="20"/></padding>
-            <Button text="← Quay lại" onAction="#handleBack" styleClass="btn-secondary"/>
-            <Label text="Sản phẩm đăng bán" styleClass="header-username"/>
+        <HBox styleClass="header" spacing="15" alignment="CENTER_LEFT"
+              style="-fx-background-color: #1F0C40; -fx-border-color: #1A1A1A; -fx-border-width: 0 0 4 0;">
+            <padding><Insets top="15" right="25" bottom="15" left="25"/></padding>
+            <Button text="← QUAY LẠI" onAction="#handleBack" styleClass="btn-secondary"
+                    style="-fx-background-color: #FFFFFF; -fx-text-fill: #1A1A1A; -fx-font-weight: 900; -fx-border-color: #1A1A1A; -fx-border-width: 3; -fx-background-radius: 0;"/>
+            <Label text="SẢN PHẨM ĐĂNG BÁN" styleClass="header-username"
+                   style="-fx-text-fill: #FFFFFF; -fx-font-weight: 900; -fx-letter-spacing: 2px;"/>
             <Region HBox.hgrow="ALWAYS"/>
             <ComboBox fx:id="statusFilter" promptText="Tất cả trạng thái"
-                      styleClass="filter-combo" onAction="#handleFilter"/>
+                      styleClass="filter-combo" onAction="#handleFilter"
+                      style="-fx-background-color: #FFFFFF; -fx-border-color: #1A1A1A; -fx-border-width: 3; -fx-background-radius: 0;"/>
             <TextField fx:id="searchField" promptText="Tìm sản phẩm..."
-                       prefWidth="200" styleClass="search-field"
-                       onKeyReleased="#handleSearch"/>
-            <Button text="＋  Đăng bán mới" onAction="#handleAddProduct"
-                    styleClass="btn-primary"/>
-            <Button text="⚡  Bắt đầu tất cả" onAction="#handleStartAll"
-                    styleClass="btn-primary"/>
+                       prefWidth="220" styleClass="search-field"
+                       onKeyReleased="#handleSearch"
+                       style="-fx-background-color: #FFFFFF; -fx-border-color: #1A1A1A; -fx-border-width: 3; -fx-background-radius: 0;"/>
+            <Button text="＋  ĐĂNG BÁN MỚI" onAction="#handleAddProduct"
+                    styleClass="btn-primary"
+                    style="-fx-background-color: #FF6B35; -fx-text-fill: #FFFFFF; -fx-font-weight: 900; -fx-border-color: #1A1A1A; -fx-border-width: 3; -fx-background-radius: 0; -fx-effect: dropshadow(one-pass-box, #1A1A1A, 0, 0, 3, 3);"/>
+            <Button text="⚡  BẮT ĐẦU TẤT CẢ" onAction="#handleStartAll"
+                    styleClass="btn-primary"
+                    style="-fx-background-color: #22C55E; -fx-text-fill: #FFFFFF; -fx-font-weight: 900; -fx-border-color: #1A1A1A; -fx-border-width: 3; -fx-background-radius: 0; -fx-effect: dropshadow(one-pass-box, #1A1A1A, 0, 0, 3, 3);"/>
         </HBox>
     </top>
 
     <!-- ══ CONTENT ══ -->
     <center>
-        <VBox styleClass="content-area" spacing="16">
-            <padding><Insets top="24" right="24" bottom="24" left="24"/></padding>
+        <VBox styleClass="content-area" spacing="20" style="-fx-background-color: #FFF8F0;">
+            <padding><Insets top="30" right="30" bottom="30" left="30"/></padding>
 
             <!-- Thống kê -->
-            <HBox spacing="16">
-                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" alignment="CENTER" spacing="4">
-                    <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
-                    <Label fx:id="totalProductsLabel" text="0" styleClass="stat-big-num"/>
-                    <Label text="Tổng sản phẩm" styleClass="stat-big-label"/>
+            <HBox spacing="20">
+                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" alignment="CENTER" spacing="5"
+                      style="-fx-background-color: #FFFFFF; -fx-border-color: #1A1A1A; -fx-border-width: 4; -fx-effect: dropshadow(one-pass-box, #1A1A1A, 0, 0, 6, 6);">
+                    <padding><Insets top="20" right="20" bottom="20" left="20"/></padding>
+                    <Label fx:id="totalProductsLabel" text="0" styleClass="stat-big-num" style="-fx-text-fill: #1F0C40; -fx-font-weight: 900;"/>
+                    <Label text="TỔNG SẢN PHẨM" styleClass="stat-big-label" style="-fx-text-fill: #1A1A1A; -fx-font-weight: 900; -fx-font-size: 10px;"/>
                 </VBox>
-                <VBox styleClass="stat-card stat-card-success" HBox.hgrow="ALWAYS" alignment="CENTER" spacing="4">
-                    <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
-                    <Label fx:id="activeProductsLabel" text="0" styleClass="stat-big-num"/>
-                    <Label text="Đang đấu giá" styleClass="stat-big-label"/>
+                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" alignment="CENTER" spacing="5"
+                      style="-fx-background-color: #FFFFFF; -fx-border-color: #1A1A1A; -fx-border-width: 4; -fx-effect: dropshadow(one-pass-box, #1A1A1A, 0, 0, 6, 6);">
+                    <padding><Insets top="20" right="20" bottom="20" left="20"/></padding>
+                    <Label fx:id="activeProductsLabel" text="0" styleClass="stat-big-num" style="-fx-text-fill: #22C55E; -fx-font-weight: 900;"/>
+                    <Label text="ĐANG ĐẤU GIÁ" styleClass="stat-big-label" style="-fx-text-fill: #1A1A1A; -fx-font-weight: 900; -fx-font-size: 10px;"/>
                 </VBox>
-                <VBox styleClass="stat-card stat-card-warn" HBox.hgrow="ALWAYS" alignment="CENTER" spacing="4">
-                    <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
-                    <Label fx:id="soldProductsLabel" text="0" styleClass="stat-big-num"/>
-                    <Label text="Đã bán" styleClass="stat-big-label"/>
+                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" alignment="CENTER" spacing="5"
+                      style="-fx-background-color: #FFFFFF; -fx-border-color: #1A1A1A; -fx-border-width: 4; -fx-effect: dropshadow(one-pass-box, #1A1A1A, 0, 0, 6, 6);">
+                    <padding><Insets top="20" right="20" bottom="20" left="20"/></padding>
+                    <Label fx:id="soldProductsLabel" text="0" styleClass="stat-big-num" style="-fx-text-fill: #FF6B35; -fx-font-weight: 900;"/>
+                    <Label text="ĐÃ BÁN" styleClass="stat-big-label" style="-fx-text-fill: #1A1A1A; -fx-font-weight: 900; -fx-font-size: 10px;"/>
                 </VBox>
-                <VBox styleClass="stat-card stat-card-info" HBox.hgrow="ALWAYS" alignment="CENTER" spacing="4">
-                    <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
-                    <Label fx:id="revenueLabel" text="₫ 0" styleClass="stat-big-num"/>
-                    <Label text="Doanh thu" styleClass="stat-big-label"/>
+                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS" alignment="CENTER" spacing="5"
+                      style="-fx-background-color: #FFFFFF; -fx-border-color: #1A1A1A; -fx-border-width: 4; -fx-effect: dropshadow(one-pass-box, #1A1A1A, 0, 0, 6, 6);">
+                    <padding><Insets top="20" right="20" bottom="20" left="20"/></padding>
+                    <Label fx:id="revenueLabel" text="₫ 0" styleClass="stat-big-num" style="-fx-text-fill: #3B82F6; -fx-font-weight: 900;"/>
+                    <Label text="DOANHTHU" styleClass="stat-big-label" style="-fx-text-fill: #1A1A1A; -fx-font-weight: 900; -fx-font-size: 10px;"/>
                 </VBox>
             </HBox>
 

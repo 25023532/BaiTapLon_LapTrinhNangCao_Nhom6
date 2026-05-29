@@ -48,21 +48,20 @@
     </left>
 
     <top>
-        <HBox styleClass="header" spacing="12" alignment="CENTER_LEFT">
-            <padding><Insets top="0" right="20" bottom="0" left="20"/></padding>
-            <Button text="← Quay lại" onAction="#handleBack" styleClass="btn-secondary"/>
-            <Label text="Danh sách phiên đấu giá" styleClass="header-username"/>
+        <HBox styleClass="header" spacing="15" alignment="CENTER_LEFT"
+              style="-fx-background-color: #1F0C40; -fx-border-color: #1A1A1A; -fx-border-width: 0 0 4 0;">
+            <padding><Insets top="15" right="25" bottom="15" left="25"/></padding>
+            <Button text="← QUAY LẠI" onAction="#handleBack" styleClass="btn-secondary"
+                    style="-fx-background-color: #FFFFFF; -fx-text-fill: #1A1A1A; -fx-font-weight: 900; -fx-border-color: #1A1A1A; -fx-border-width: 3; -fx-background-radius: 0;"/>
+            <Label text="DANH SÁCH PHIÊN ĐẤU GIÁ" styleClass="header-username"
+                   style="-fx-text-fill: #FFFFFF; -fx-font-weight: 900; -fx-letter-spacing: 2px;"/>
             <Region HBox.hgrow="ALWAYS"/>
-            <!-- Lọc trạng thái -->
-            <ComboBox fx:id="statusFilter" promptText="Tất cả trạng thái"
-                      styleClass="filter-combo" onAction="#handleFilter" prefWidth="180"/>
-            <!-- Lọc danh mục -->
-            <ComboBox fx:id="categoryFilter" promptText="Tất cả danh mục"
-                      styleClass="filter-combo" onAction="#handleFilter" prefWidth="160"/>
-            <!-- Tìm kiếm -->
-            <TextField fx:id="searchField" promptText="Tìm phiên, sản phẩm..."
-                       prefWidth="220" styleClass="search-field"
-                       onKeyReleased="#handleSearch"/>
+            <ComboBox fx:id="statusFilter" promptText="Trạng thái" onAction="#handleFilter"
+                      style="-fx-background-color: #FFFFFF; -fx-border-color: #1A1A1A; -fx-border-width: 3; -fx-background-radius: 0;"/>
+            <ComboBox fx:id="categoryFilter" promptText="Danh mục" onAction="#handleFilter"
+                      style="-fx-background-color: #FFFFFF; -fx-border-color: #1A1A1A; -fx-border-width: 3; -fx-background-radius: 0;"/>
+            <TextField fx:id="searchField" promptText="Tìm phiên..." prefWidth="200" onKeyReleased="#handleSearch"
+                       style="-fx-background-color: #FFFFFF; -fx-border-color: #1A1A1A; -fx-border-width: 3; -fx-background-radius: 0;"/>
         </HBox>
     </top>
 
