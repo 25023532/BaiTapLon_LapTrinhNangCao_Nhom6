@@ -5,6 +5,7 @@
 
 <BorderPane xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.nhom6.auctionsystem_nhom6.controller.ProfileController"
+            stylesheets="@../styles/main.css"
             styleClass="main-root">
 
     <!-- ══ HEADER ══ -->
@@ -23,7 +24,7 @@
                 <padding><Insets top="32" right="0" bottom="32" left="0"/></padding>
 
                 <!-- Profile Card -->
-                <VBox styleClass="login-card" maxWidth="480" spacing="20">
+                <VBox styleClass="profile-card" maxWidth="480" spacing="20">
                     <padding><Insets top="32" right="32" bottom="32" left="32"/></padding>
 
                     <!-- Avatar + tên -->
@@ -39,7 +40,7 @@
 
                     <!-- Tên đăng nhập (readonly) -->
                     <VBox spacing="6">
-                        <Label text="* Tên đăng nhập" styleClass="login-card .label"/>
+                        <Label text="* Tên đăng nhập" styleClass="form-label"/>
                         <TextField fx:id="usernameField"
                                    promptText="Tối thiểu 4 ký tự..."
                                    styleClass="login-input"
@@ -48,7 +49,7 @@
 
                     <!-- Họ và tên -->
                     <VBox spacing="6">
-                        <Label text="Họ và tên" styleClass="login-card .label"/>
+                        <Label text="Họ và tên" styleClass="form-label"/>
                         <TextField fx:id="fullNameField"
                                    promptText="Nguyễn Văn A..."
                                    styleClass="login-input"/>
@@ -56,7 +57,7 @@
 
                     <!-- Email -->
                     <VBox spacing="6">
-                        <Label text="Email" styleClass="login-card .label"/>
+                        <Label text="Email" styleClass="form-label"/>
                         <TextField fx:id="emailField"
                                    promptText="example@email.com"
                                    styleClass="login-input"/>
@@ -66,7 +67,7 @@
 
                     <!-- Đổi mật khẩu -->
                     <VBox spacing="6">
-                        <Label text="* Đổi mật khẩu" styleClass="login-card .label"/>
+                        <Label text="* Đổi mật khẩu" styleClass="form-label"/>
                         <PasswordField fx:id="newPasswordField"
                                        promptText="Tối thiểu 6 ký tự..."
                                        styleClass="login-input"/>
@@ -74,7 +75,7 @@
 
                     <!-- Xác nhận mật khẩu -->
                     <VBox spacing="6">
-                        <Label text="* Xác nhận mật khẩu" styleClass="login-card .label"/>
+                        <Label text="* Xác nhận mật khẩu" styleClass="form-label"/>
                         <PasswordField fx:id="confirmPasswordField"
                                        promptText="Nhập lại mật khẩu..."
                                        styleClass="login-input"/>

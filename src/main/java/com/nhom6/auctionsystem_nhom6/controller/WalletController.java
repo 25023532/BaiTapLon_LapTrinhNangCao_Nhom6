@@ -51,6 +51,8 @@ public class WalletController {
     @FXML private Label              paymentBalanceLabel;
     @FXML private VBox               pendingOrdersBox;    // danh sách đơn chờ thanh toán
     @FXML private Label              paymentResultLabel;
+    @FXML private TextField          paymentAmountField;
+    @FXML private TextField          paymentDescField;
 
     // ── Lịch sử ──────────────────────────────────────────────
     @FXML private VBox               transactionListBox;
@@ -61,7 +63,7 @@ public class WalletController {
     private String username;
 
     private static final DateTimeFormatter DT_FMT =
-            DateTimeFormatter.ofPattern("HH:mm  dd/MM/yyyy");
+        DateTimeFormatter.ofPattern("HH:mm  dd/MM/yyyy");
 
     // =========================================================
     // INITIALIZE
@@ -77,14 +79,14 @@ public class WalletController {
         userNameLabel.setText(username);
         userRoleLabel.setText(user.getRole());
         String av = username.length() >= 2
-                ? username.substring(0, 2).toUpperCase()
-                : username.toUpperCase();
+            ? username.substring(0, 2).toUpperCase()
+            : username.toUpperCase();
         userAvatarLabel.setText(av);
 
         // Phương thức nạp tiền
         depositMethodBox.getItems().addAll(
-                "Ngân hàng VCB", "Ngân hàng TCB",
-                "MoMo", "ZaloPay", "VNPay");
+            "Ngân hàng VCB", "Ngân hàng TCB",
+            "MoMo", "ZaloPay", "VNPay");
         depositMethodBox.getSelectionModel().selectFirst();
 
         depositResultLabel.setVisible(false);
@@ -166,10 +168,48 @@ public class WalletController {
             refreshBalance();
             depositAmountField.clear();
             showResult(depositResultLabel,
-                    "✅  Nạp " + formatVND(amount) + " qua " + method + " thành công!", true);
+                "✅  Nạp " + formatVND(amount) + " qua " + method + " thành công!", true);
             loadTransactions();
         } else {
             showResult(depositResultLabel, "❌  Nạp tiền thất bại. Vui lòng thử lại.", false);
+        }
+    }
+
+    @FXML
+    private void handlePayment() {
+        paymentResultLabel.setVisible(false);
+
+        String raw = paymentAmountField != null
+            ? paymentAmountField.getText().trim().replaceAll("[^0-9]", "")
+            : "";
+        if (raw.isEmpty()) {
+            showResult(paymentResultLabel, "❌  Vui lòng nhập số tiền cần thanh toán.", false);
+            return;
+        }
+        double amount = Double.parseDouble(raw);
+        if (amount < 1_000) {
+            showResult(paymentResultLabel, "❌  Số tiền tối thiểu là 1,000 ₫.", false);
+            return;
+        }
+        String desc = paymentDescField != null && !paymentDescField.getText().trim().isEmpty()
+            ? paymentDescField.getText().trim()
+            : "Thanh toán";
+        double balance = AppContext.getWalletBalance(username);
+        if (balance < amount) {
+            showResult(paymentResultLabel,
+                "❌  Số dư không đủ. Cần nạp thêm " + formatVND(amount - balance) + ".", false);
+            return;
+        }
+        boolean ok = AppContext.payment(username, amount, desc);
+        if (ok) {
+            refreshBalance();
+            if (paymentAmountField != null) paymentAmountField.clear();
+            if (paymentDescField != null) paymentDescField.clear();
+            showResult(paymentResultLabel,
+                "✅  Thanh toán " + formatVND(amount) + " thành công!", true);
+            loadTransactions();
+        } else {
+            showResult(paymentResultLabel, "❌  Thanh toán thất bại. Vui lòng thử lại.", false);
         }
     }
 
@@ -186,9 +226,9 @@ public class WalletController {
         paymentResultLabel.setVisible(false);
 
         List<AppContext.HistoryRecord> pending = AppContext.getHistory(username)
-                .stream()
-                .filter(r -> r.wonBid() && "CHỜ XỬ LÝ".equals(r.status()))
-                .collect(Collectors.toList());
+            .stream()
+            .filter(r -> r.wonBid() && "CHỜ XỬ LÝ".equals(r.status()))
+            .collect(Collectors.toList());
 
         if (pending.isEmpty()) {
             VBox emptyBox = new VBox(8);
@@ -286,12 +326,12 @@ public class WalletController {
 
         Button payBtn = new Button(canPay ? "💳  THANH TOÁN NGAY" : "❌  Số dư không đủ");
         payBtn.setStyle(canPay
-                ? "-fx-background-color:#2563eb; -fx-text-fill:white; "
-                  + "-fx-font-weight:bold; -fx-font-size:13px; "
-                  + "-fx-background-radius:8; -fx-padding:10 20 10 20; -fx-cursor:hand;"
-                : "-fx-background-color:#374151; -fx-text-fill:#6b7280; "
-                  + "-fx-font-weight:bold; -fx-font-size:13px; "
-                  + "-fx-background-radius:8; -fx-padding:10 20 10 20;");
+            ? "-fx-background-color:#2563eb; -fx-text-fill:white; "
+            + "-fx-font-weight:bold; -fx-font-size:13px; "
+            + "-fx-background-radius:8; -fx-padding:10 20 10 20; -fx-cursor:hand;"
+            : "-fx-background-color:#374151; -fx-text-fill:#6b7280; "
+            + "-fx-font-weight:bold; -fx-font-size:13px; "
+            + "-fx-background-radius:8; -fx-padding:10 20 10 20;");
         payBtn.setDisable(!canPay);
 
         if (canPay) {
@@ -315,7 +355,7 @@ public class WalletController {
             Label warnIcon = new Label("⚠️");
             warnIcon.setStyle("-fx-font-size:14px;");
             Label warnText = new Label(
-                    "Số dư ví không đủ. Cần nạp thêm "
+                "Số dư ví không đủ. Cần nạp thêm "
                     + formatVND(record.amount() - balance) + " để thanh toán.");
             warnText.setStyle("-fx-text-fill:#fca5a5; -fx-font-size:12px;");
             warnText.setWrapText(true);
@@ -333,19 +373,19 @@ public class WalletController {
      * Xử lý thanh toán cho một đơn cụ thể.
      */
     private void handlePayOrder(AppContext.HistoryRecord record,
-                                 Button payBtn, VBox card) {
+                                Button payBtn, VBox card) {
         paymentResultLabel.setVisible(false);
 
         double balance = AppContext.getWalletBalance(username);
         if (balance < record.amount()) {
             showResult(paymentResultLabel,
-                    "❌  Số dư không đủ. Cần nạp thêm "
+                "❌  Số dư không đủ. Cần nạp thêm "
                     + formatVND(record.amount() - balance) + ".", false);
             return;
         }
 
         String desc = "Thanh toán đấu giá: " + record.itemName()
-                + " (Mã: " + record.id() + ")";
+            + " (Mã: " + record.id() + ")";
         boolean ok = AppContext.payment(username, record.amount(), desc);
 
         if (ok) {
@@ -355,9 +395,9 @@ public class WalletController {
                 AppContext.HistoryRecord r = list.get(i);
                 if (r.id().equals(record.id())) {
                     list.set(i, new AppContext.HistoryRecord(
-                            r.id(), r.itemName(), r.amount(),
-                            r.counterparty(), "THÀNH CÔNG",
-                            r.wonBid(), r.time()));
+                        r.id(), r.itemName(), r.amount(),
+                        r.counterparty(), "THÀNH CÔNG",
+                        r.wonBid(), r.time()));
                     break;
                 }
             }
@@ -367,11 +407,11 @@ public class WalletController {
 
             // Hiện card "đã thanh toán" thay vì xóa
             card.setStyle(card.getStyle()
-                    .replace("#1e293b", "#0f2a1a")
-                    .replace("#334155", "#166534"));
+                .replace("#1e293b", "#0f2a1a")
+                .replace("#334155", "#166534"));
             card.getChildren().removeIf(n -> n instanceof HBox hb
-                    && hb.getChildren().stream()
-                        .anyMatch(c -> c instanceof Button));
+                && hb.getChildren().stream()
+                .anyMatch(c -> c instanceof Button));
 
             HBox doneRow = new HBox(8);
             doneRow.setAlignment(Pos.CENTER);
@@ -379,18 +419,18 @@ public class WalletController {
             Label doneIcon = new Label("✅");
             doneIcon.setStyle("-fx-font-size:16px;");
             Label doneText = new Label("Đã thanh toán thành công "
-                    + formatVND(record.amount()));
+                + formatVND(record.amount()));
             doneText.setStyle("-fx-text-fill:#4ade80; -fx-font-size:14px; "
-                    + "-fx-font-weight:bold;");
+                + "-fx-font-weight:bold;");
             doneRow.getChildren().addAll(doneIcon, doneText);
             card.getChildren().add(doneRow);
 
             showResult(paymentResultLabel,
-                    "✅  Thanh toán " + record.itemName()
+                "✅  Thanh toán " + record.itemName()
                     + " – " + formatVND(record.amount()) + " thành công!", true);
         } else {
             showResult(paymentResultLabel,
-                    "❌  Thanh toán thất bại. Vui lòng thử lại.", false);
+                "❌  Thanh toán thất bại. Vui lòng thử lại.", false);
         }
     }
 
@@ -422,14 +462,14 @@ public class WalletController {
 
             Label icon = new Label(tx.amount() >= 0 ? "⬆" : "⬇");
             icon.setStyle("-fx-font-size:18px; -fx-text-fill:"
-                    + (tx.amount() >= 0 ? "#22c55e" : "#f87171") + ";");
+                + (tx.amount() >= 0 ? "#22c55e" : "#f87171") + ";");
 
             VBox info = new VBox(2);
             HBox.setHgrow(info, Priority.ALWAYS);
 
             Label typeLabel = new Label(tx.type());
             typeLabel.setStyle("-fx-font-weight:bold; -fx-text-fill:#e2e8f0; "
-                    + "-fx-font-size:14px;");
+                + "-fx-font-size:14px;");
             Label descLabel = new Label(tx.description());
             descLabel.setStyle("-fx-text-fill:#94a3b8; -fx-font-size:12px;");
             Label timeLabel = new Label(tx.time().format(DT_FMT));
@@ -442,9 +482,9 @@ public class WalletController {
 
             boolean isPositive = tx.amount() >= 0;
             Label amountLabel = new Label(
-                    (isPositive ? "+" : "") + formatVND(tx.amount()));
+                (isPositive ? "+" : "") + formatVND(tx.amount()));
             amountLabel.setStyle("-fx-font-weight:bold; -fx-font-size:15px; -fx-text-fill:"
-                    + (isPositive ? "#22c55e" : "#f87171") + ";");
+                + (isPositive ? "#22c55e" : "#f87171") + ";");
             Label statusLabel = new Label(tx.status());
             statusLabel.setStyle("-fx-font-size:11px; -fx-text-fill:#64748b;");
 
@@ -459,6 +499,35 @@ public class WalletController {
     // =========================================================
     @FXML private void handleBack() {
         try { HelloApplication.showMainView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleAuctionList() {
+        try { HelloApplication.showAuctionListView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleLiveAuction() {
+        try { HelloApplication.showLiveAuctionView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleMyProducts() {
+        try { HelloApplication.showMyProductsView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleWallet() {
+        // Already here
+    }
+
+    @FXML private void handleRating() {
+        try { HelloApplication.showRatingView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleHelp() {
+        try { HelloApplication.showHelpView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
 
@@ -477,8 +546,28 @@ public class WalletController {
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    @FXML private void handleRating() {
-        try { HelloApplication.showRatingView(); }
+    @FXML private void handleCategoryDienTu() {
+        try { HelloApplication.showAuctionListByCategory("Điện tử"); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+    @FXML private void handleCategoryMayAnh() {
+        try { HelloApplication.showAuctionListByCategory("Máy ảnh"); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+    @FXML private void handleCategoryLaptop() {
+        try { HelloApplication.showAuctionListByCategory("Laptop"); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+    @FXML private void handleCategoryDienThoai() {
+        try { HelloApplication.showAuctionListByCategory("Điện thoại"); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+    @FXML private void handleCategoryDongHo() {
+        try { HelloApplication.showAuctionListByCategory("Đồng hồ"); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+    @FXML private void handleCategoryXeCo() {
+        try { HelloApplication.showAuctionListByCategory("Xe cộ"); }
         catch (Exception e) { e.printStackTrace(); }
     }
 
@@ -492,8 +581,8 @@ public class WalletController {
     private void showResult(Label label, String msg, boolean success) {
         label.setText(msg);
         label.setStyle(success
-                ? "-fx-text-fill:#22c55e; -fx-font-size:13px;"
-                : "-fx-text-fill:#f87171; -fx-font-size:13px;");
+            ? "-fx-text-fill:#22c55e; -fx-font-size:13px;"
+            : "-fx-text-fill:#f87171; -fx-font-size:13px;");
         label.setVisible(true);
     }
 }

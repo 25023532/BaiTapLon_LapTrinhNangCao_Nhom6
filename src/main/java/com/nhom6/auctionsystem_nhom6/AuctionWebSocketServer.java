@@ -253,8 +253,15 @@ public class AuctionWebSocketServer extends WebSocketServer {
                 db.addHistory(username, new AppContext.HistoryRecord(
                         id, itemName, amount, counter, status, wonBid, time));
                 log("📜 ADD_HISTORY: " + username + " → " + itemName);
-                broadcastAddHistory(username, new AppContext.HistoryRecord(
-                        id, itemName, amount, counter, status, wonBid, time));
+                sendToUser(username, json("type", "ADD_HISTORY",
+                        "username", username,
+                        "id", id,
+                        "itemName", itemName,
+                        "amount", String.valueOf(amount),
+                        "counterparty", counter,
+                        "status", status,
+                        "wonBid", String.valueOf(wonBid),
+                        "timestamp", time.format(DT)));
             }
 
             // ── Thêm lịch sử phiên ────────────────────────────
@@ -278,10 +285,21 @@ public class AuctionWebSocketServer extends WebSocketServer {
                         winner.equals("null") ? null : winner,
                         totalBids, startT, endT, result, myRole, myFinalBid, iWon));
                 log("🏁 ADD_SESSION_HISTORY: " + username + " → " + sessionId);
-                broadcastAddSessionHistory(username, new AppContext.AuctionSessionRecord(
-                        sessionId, itemName, sellerName, startP, finalP,
-                        winner.equals("null") ? null : winner,
-                        totalBids, startT, endT, result, myRole, myFinalBid, iWon));
+                sendToUser(username, json("type", "ADD_SESSION_HISTORY",
+                        "username", username,
+                        "sessionId", sessionId,
+                        "itemName", itemName,
+                        "sellerName", sellerName,
+                        "startPrice", String.valueOf(startP),
+                        "finalPrice", String.valueOf(finalP),
+                        "winnerName", winner,
+                        "totalBids", String.valueOf(totalBids),
+                        "startTime", startT.format(DT),
+                        "endTime", endT.format(DT),
+                        "result", result,
+                        "myRole", myRole,
+                        "myFinalBid", String.valueOf(myFinalBid),
+                        "iWon", String.valueOf(iWon)));
             }
 
             // ── Đặt giá ───────────────────────────────────────

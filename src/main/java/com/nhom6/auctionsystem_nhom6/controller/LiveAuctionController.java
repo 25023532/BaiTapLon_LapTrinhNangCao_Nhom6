@@ -9,6 +9,8 @@ import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.chart.LineChart;
+import javafx.scene.chart.XYChart;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.util.Duration;
@@ -58,6 +60,10 @@ public class LiveAuctionController {
     @FXML private ScrollPane bidScrollPane;
     @FXML private Label      bidCountLabel;
 
+    // ── Chart ──────────────────────────────────────────────────
+    @FXML private LineChart<String, Number> bidPriceChart;
+    private XYChart.Series<String, Number> priceSeries;
+
     // ── Chat ──────────────────────────────────────────────────
     @FXML private VBox       liveChatBox;
     @FXML private TextField  liveChatInput;
@@ -88,6 +94,13 @@ public class LiveAuctionController {
 
         onlineLabel.setText("● -- online");
         participantsLabel.setText("👥 -- người tham gia");
+
+        priceSeries = new XYChart.Series<>();
+        priceSeries.setName("Giá hiện tại");
+        if (bidPriceChart != null) {
+            bidPriceChart.getData().add(priceSeries);
+            bidPriceChart.setAnimated(false);
+        }
 
         loadLiveSessionList();
         setNoSessionState();
@@ -559,7 +572,7 @@ public class LiveAuctionController {
         );
         AppContext.addHistory(user.getUsername(), histRec);
 
-        if (conn.isConnected()) conn.sendAddHistory(user.getUsername(), histRec);
+        // Conn.sendAddHistory(user.getUsername(), histRec); // Bỏ vì AppContext.addHistory đã gọi rồi
 
         customBidField.clear();
     }
@@ -604,6 +617,16 @@ public class LiveAuctionController {
         if (currentSession == null) return;
 
         var history = currentSession.getBidHistory();
+
+        // Cập nhật biểu đồ
+        if (priceSeries != null) {
+            priceSeries.getData().clear();
+            priceSeries.getData().add(new XYChart.Data<>("0", currentSession.getStartingPrice()));
+            for (int i = 0; i < history.size(); i++) {
+                priceSeries.getData().add(new XYChart.Data<>(String.valueOf(i + 1), history.get(i).getAmount()));
+            }
+        }
+
         if (history.isEmpty()) {
             Label empty = new Label("Chưa có lượt đặt giá nào.");
             empty.setStyle("-fx-text-fill: #64748b; -fx-font-size: 13px; "

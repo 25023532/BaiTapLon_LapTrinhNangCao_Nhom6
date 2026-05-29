@@ -81,20 +81,20 @@ public class RatingController {
     // DATA — dùng AppContext thay vì static list
     // =========================================================
     public record Review(
-            String id,
-            String username,
-            String avatar,
-            int    stars,
-            String comment,
-            LocalDateTime time,
-            int    likes
+        String id,
+        String username,
+        String avatar,
+        int    stars,
+        String comment,
+        LocalDateTime time,
+        int    likes
     ) {}
 
     private int    selectedStars = 0;
     private String username;
 
     private static final DateTimeFormatter DT_FMT =
-            DateTimeFormatter.ofPattern("HH:mm  dd/MM/yyyy");
+        DateTimeFormatter.ofPattern("HH:mm  dd/MM/yyyy");
     private static final int MAX_CHARS = 500;
 
     // =========================================================
@@ -102,9 +102,9 @@ public class RatingController {
     // =========================================================
     private List<Review> toReviewList(java.util.Collection<AppContext.RatingRecord> recs) {
         return recs.stream()
-                .map(r -> new Review(r.id(), r.username(), r.avatar(),
-                        r.stars(), r.comment(), r.time(), r.likes()))
-                .collect(Collectors.toList());
+            .map(r -> new Review(r.id(), r.username(), r.avatar(),
+                r.stars(), r.comment(), r.time(), r.likes()))
+            .collect(Collectors.toList());
     }
 
     // =========================================================
@@ -124,9 +124,9 @@ public class RatingController {
         sortBox.getSelectionModel().selectFirst();
 
         filterStarBox.getItems().addAll(
-                "Tất cả", "10 ★", "9 ★ trở lên", "8 ★ trở lên",
-                "7 ★ trở lên", "6 ★ trở lên", "5 ★ trở xuống",
-                "4 ★ trở xuống", "3 ★ trở xuống"
+            "Tất cả", "10 ★", "9 ★ trở lên", "8 ★ trở lên",
+            "7 ★ trở lên", "6 ★ trở lên", "5 ★ trở xuống",
+            "4 ★ trở xuống", "3 ★ trở xuống"
         );
         filterStarBox.getSelectionModel().selectFirst();
 
@@ -211,13 +211,13 @@ public class RatingController {
         String comment = commentArea.getText().trim();
 
         AppContext.RatingRecord rec = new AppContext.RatingRecord(
-                UUID.randomUUID().toString(),
-                username,
-                username.substring(0, Math.min(2, username.length())).toUpperCase(),
-                selectedStars,
-                comment,
-                LocalDateTime.now(),
-                0
+            UUID.randomUUID().toString(),
+            username,
+            username.substring(0, Math.min(2, username.length())).toUpperCase(),
+            selectedStars,
+            comment,
+            LocalDateTime.now(),
+            0
         );
 
         // Lưu vào AppContext và gửi lên server
@@ -229,7 +229,7 @@ public class RatingController {
         selectedStars = 0;
         highlightStars(0);
         selectedStarLabel.setText("Chưa chọn sao");
-        selectedStarLabel.setStyle("-fx-text-fill: #64748b;");
+        selectedStarLabel.setStyle("-fx-text-fill: #999999;");
         commentArea.clear();
         charCountLabel.setText("0/" + MAX_CHARS);
 
@@ -238,9 +238,9 @@ public class RatingController {
         applyFilters();
 
         NotificationService.getInstance().add(
-                NotificationService.Type.SYSTEM,
-                "⭐ Đánh giá của bạn đã được ghi nhận",
-                "Bạn đã đánh giá " + rec.stars() + " sao"
+            NotificationService.Type.SYSTEM,
+            "⭐ Đánh giá của bạn đã được ghi nhận",
+            "Bạn đã đánh giá " + rec.stars() + " sao"
         );
     }
 
@@ -258,7 +258,7 @@ public class RatingController {
         }
 
         double avg = allReviews.stream()
-                .mapToInt(Review::stars).average().orElse(0);
+            .mapToInt(Review::stars).average().orElse(0);
         avgRatingLabel.setText(String.format("%.1f", avg));
         avgStarsLabel.setText(starString((int) Math.round(avg)));
         totalReviewsLabel.setText(allReviews.size() + " đánh giá");
@@ -268,10 +268,10 @@ public class RatingController {
         for (Review r : allReviews) counts[r.stars()]++;
 
         Label[] labels = {null, count1Label, count2Label, count3Label,
-                count4Label, count5Label, count6Label, count7Label,
-                count8Label, count9Label, count10Label};
+            count4Label, count5Label, count6Label, count7Label,
+            count8Label, count9Label, count10Label};
         ProgressBar[] bars = {null, bar1, bar2, bar3, bar4, bar5,
-                bar6, bar7, bar8, bar9, bar10};
+            bar6, bar7, bar8, bar9, bar10};
 
         for (int i = 1; i <= 10; i++) {
             if (labels[i] != null) labels[i].setText(String.valueOf(counts[i]));
@@ -298,27 +298,27 @@ public class RatingController {
         String starVal = filterStarBox.getValue();
 
         List<Review> filtered = toReviewList(AppContext.getRatings()).stream()
-                .filter(r -> {
-                    if (!keyword.isEmpty()
-                            && !r.comment().toLowerCase().contains(keyword)
-                            && !r.username().toLowerCase().contains(keyword))
-                        return false;
-                    if (starVal != null) {
-                        return switch (starVal) {
-                            case "10 ★"          -> r.stars() == 10;
-                            case "9 ★ trở lên"   -> r.stars() >= 9;
-                            case "8 ★ trở lên"   -> r.stars() >= 8;
-                            case "7 ★ trở lên"   -> r.stars() >= 7;
-                            case "6 ★ trở lên"   -> r.stars() >= 6;
-                            case "5 ★ trở xuống" -> r.stars() <= 5;
-                            case "4 ★ trở xuống" -> r.stars() <= 4;
-                            case "3 ★ trở xuống" -> r.stars() <= 3;
-                            default              -> true;
-                        };
-                    }
-                    return true;
-                })
-                .collect(Collectors.toList());
+            .filter(r -> {
+                if (!keyword.isEmpty()
+                    && !r.comment().toLowerCase().contains(keyword)
+                    && !r.username().toLowerCase().contains(keyword))
+                    return false;
+                if (starVal != null) {
+                    return switch (starVal) {
+                        case "10 ★"          -> r.stars() == 10;
+                        case "9 ★ trở lên"   -> r.stars() >= 9;
+                        case "8 ★ trở lên"   -> r.stars() >= 8;
+                        case "7 ★ trở lên"   -> r.stars() >= 7;
+                        case "6 ★ trở lên"   -> r.stars() >= 6;
+                        case "5 ★ trở xuống" -> r.stars() <= 5;
+                        case "4 ★ trở xuống" -> r.stars() <= 4;
+                        case "3 ★ trở xuống" -> r.stars() <= 3;
+                        default              -> true;
+                    };
+                }
+                return true;
+            })
+            .collect(Collectors.toList());
 
         if (sortVal != null) {
             filtered.sort(switch (sortVal) {
@@ -342,7 +342,7 @@ public class RatingController {
 
         if (list.isEmpty()) {
             Label empty = new Label("Chưa có đánh giá nào phù hợp.");
-            empty.setStyle("-fx-text-fill: #64748b; -fx-font-size: 14px; -fx-padding: 40 0 40 0;");
+            empty.setStyle("-fx-text-fill: #999999; -fx-font-size: 14px; -fx-padding: 40 0 40 0;");
             reviewListBox.getChildren().add(empty);
             return;
         }
@@ -355,11 +355,9 @@ public class RatingController {
         VBox card = new VBox(10);
         card.setPadding(new Insets(16, 20, 16, 20));
         card.setStyle("""
-                -fx-background-color: #1e293b;
-                -fx-background-radius: 12;
-                -fx-border-color: #334155;
-                -fx-border-radius: 12;
-                -fx-border-width: 1;
+                -fx-background-color: #FFFFFF;
+                -fx-background-radius: 0;
+                -fx-border-width: 3;
                 """ + starBorderColor(r.stars()));
 
         HBox header = new HBox(12);
@@ -367,11 +365,13 @@ public class RatingController {
 
         Label avatar = new Label(r.avatar());
         avatar.setStyle("""
-                -fx-background-color: #2563eb;
-                -fx-text-fill: white;
+                -fx-background-color: #1F0C40;
+                -fx-text-fill: #FFFFFF;
                 -fx-font-weight: bold;
                 -fx-font-size: 13px;
-                -fx-background-radius: 20;
+                -fx-background-radius: 0;
+                -fx-border-color: #1A1A1A;
+                -fx-border-width: 2;
                 -fx-padding: 8 10 8 10;
                 -fx-min-width: 36;
                 -fx-alignment: CENTER;
@@ -383,15 +383,18 @@ public class RatingController {
         HBox nameRow = new HBox(8);
         nameRow.setAlignment(Pos.CENTER_LEFT);
         Label name = new Label(r.username());
-        name.setStyle("-fx-text-fill: #e2e8f0; -fx-font-weight: bold; -fx-font-size: 14px;");
+        name.setStyle("-fx-text-fill: #1F0C40; -fx-font-weight: bold; -fx-font-size: 14px;");
 
         if (r.username().equals(username)) {
             Label meBadge = new Label("Bạn");
             meBadge.setStyle("""
-                    -fx-background-color: #1e3a5f;
-                    -fx-text-fill: #38bdf8;
+                    -fx-background-color: #FF6B35;
+                    -fx-text-fill: #FFFFFF;
                     -fx-font-size: 10px;
-                    -fx-background-radius: 4;
+                    -fx-font-weight: bold;
+                    -fx-background-radius: 0;
+                    -fx-border-color: #1A1A1A;
+                    -fx-border-width: 1;
                     -fx-padding: 2 6 2 6;
                     """);
             nameRow.getChildren().addAll(name, meBadge);
@@ -400,7 +403,7 @@ public class RatingController {
         }
 
         Label time = new Label(r.time().format(DT_FMT));
-        time.setStyle("-fx-text-fill: #475569; -fx-font-size: 11px;");
+        time.setStyle("-fx-text-fill: #999999; -fx-font-size: 11px;");
         nameBox.getChildren().addAll(nameRow, time);
 
         VBox starBox = new VBox(2);
@@ -409,13 +412,13 @@ public class RatingController {
         starDisplay.setStyle("-fx-text-fill: #fbbf24; -fx-font-size: 14px;");
         Label starNum = new Label(r.stars() + "/10");
         starNum.setStyle("-fx-text-fill: " + starColor(r.stars()) + "; "
-                + "-fx-font-weight: bold; -fx-font-size: 18px;");
+            + "-fx-font-weight: bold; -fx-font-size: 18px;");
         starBox.getChildren().addAll(starNum, starDisplay);
 
         header.getChildren().addAll(avatar, nameBox, starBox);
 
         Label comment = new Label(r.comment());
-        comment.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 13px; -fx-line-spacing: 2;");
+        comment.setStyle("-fx-text-fill: #333333; -fx-font-size: 13px; -fx-line-spacing: 2;");
         comment.setWrapText(true);
 
         HBox footer = new HBox(12);
@@ -423,25 +426,25 @@ public class RatingController {
 
         Button likeBtn = new Button("👍  " + r.likes());
         likeBtn.setStyle("""
-                -fx-background-color: transparent;
-                -fx-text-fill: #64748b;
+                -fx-background-color: #FFF8F0;
+                -fx-text-fill: #666666;
                 -fx-font-size: 12px;
                 -fx-cursor: hand;
-                -fx-border-color: #334155;
-                -fx-border-radius: 6;
-                -fx-border-width: 1;
+                -fx-border-color: #1A1A1A;
+                -fx-border-radius: 0;
+                -fx-border-width: 2;
                 -fx-padding: 4 10 4 10;
                 """);
         likeBtn.setOnAction(e -> {
             likeBtn.setText("👍  " + (r.likes() + 1));
             likeBtn.setStyle("""
-                    -fx-background-color: #1e3a5f;
-                    -fx-text-fill: #38bdf8;
+                    -fx-background-color: #1F0C40;
+                    -fx-text-fill: #FFFFFF;
                     -fx-font-size: 12px;
                     -fx-cursor: hand;
-                    -fx-border-color: #2563eb;
-                    -fx-border-radius: 6;
-                    -fx-border-width: 1;
+                    -fx-border-color: #1A1A1A;
+                    -fx-border-radius: 0;
+                    -fx-border-width: 2;
                     -fx-padding: 4 10 4 10;
                     """);
             likeBtn.setDisable(true);
@@ -449,9 +452,9 @@ public class RatingController {
 
         Label starTag = new Label(starTagText(r.stars()));
         starTag.setStyle("-fx-background-color: " + starTagBg(r.stars()) + "; "
-                + "-fx-text-fill: " + starTagColor(r.stars()) + "; "
-                + "-fx-font-size: 11px; -fx-background-radius: 4; "
-                + "-fx-padding: 3 8 3 8; -fx-font-weight: bold;");
+            + "-fx-text-fill: " + starTagColor(r.stars()) + "; "
+            + "-fx-font-size: 11px; -fx-background-radius: 4; "
+            + "-fx-padding: 3 8 3 8; -fx-font-weight: bold;");
 
         footer.getChildren().addAll(likeBtn, starTag);
         card.getChildren().addAll(header, comment, footer);
@@ -469,10 +472,10 @@ public class RatingController {
     }
 
     private String starBorderColor(int stars) {
-        if (stars >= 9) return "-fx-border-color: #10b981;";
-        if (stars >= 7) return "-fx-border-color: #334155;";
-        if (stars >= 5) return "-fx-border-color: #f97316;";
-        return "-fx-border-color: #ef4444;";
+        if (stars >= 9) return "-fx-border-color: #FF6B35;";
+        if (stars >= 7) return "-fx-border-color: #1F0C40;";
+        if (stars >= 5) return "-fx-border-color: #1A1A1A;";
+        return "-fx-border-color: #1A1A1A;";
     }
 
     private String starTagText(int stars) {
@@ -485,24 +488,24 @@ public class RatingController {
     }
 
     private String starTagBg(int stars) {
-        if (stars >= 9) return "#14532d";
-        if (stars >= 7) return "#1c2a1e";
-        if (stars >= 5) return "#431407";
-        return "#450a0a";
+        if (stars >= 9) return "#FF6B35";
+        if (stars >= 7) return "#1F0C40";
+        if (stars >= 5) return "#FFF8F0";
+        return "#FFF8F0";
     }
 
     private String starTagColor(int stars) {
-        if (stars >= 9) return "#4ade80";
-        if (stars >= 7) return "#fbbf24";
-        if (stars >= 5) return "#fb923c";
-        return "#f87171";
+        if (stars >= 9) return "#FFFFFF";
+        if (stars >= 7) return "#FFFFFF";
+        if (stars >= 5) return "#1A1A1A";
+        return "#1A1A1A";
     }
 
     private void showWriteResult(String msg, boolean success) {
         writeResultLabel.setText(msg);
         writeResultLabel.setStyle(success
-                ? "-fx-text-fill: #22c55e; -fx-font-size: 13px;"
-                : "-fx-text-fill: #f87171; -fx-font-size: 13px;");
+            ? "-fx-text-fill: #FF6B35; -fx-font-weight: bold; -fx-font-size: 13px;"
+            : "-fx-text-fill: #CC0000; -fx-font-weight: bold; -fx-font-size: 13px;");
         writeResultLabel.setVisible(true);
     }
 
@@ -526,6 +529,60 @@ public class RatingController {
 
     @FXML private void handleLogout() {
         try { AppContext.logout(); HelloApplication.showLoginView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleAuctionList() {
+        try { HelloApplication.showAuctionListView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleLiveAuction() {
+        try { HelloApplication.showLiveAuctionView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleWallet() {
+        try { HelloApplication.showWalletView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleRating() {
+        applyFilters();
+    }
+
+    @FXML private void handleMyProducts() {
+        try { HelloApplication.showMyProductsView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleHelp() {
+        try { HelloApplication.showHelpView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleCategoryDienTu() {
+        try { HelloApplication.showAuctionListByCategory("Điện tử"); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+    @FXML private void handleCategoryMayAnh() {
+        try { HelloApplication.showAuctionListByCategory("Máy ảnh"); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+    @FXML private void handleCategoryLaptop() {
+        try { HelloApplication.showAuctionListByCategory("Laptop"); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+    @FXML private void handleCategoryDienThoai() {
+        try { HelloApplication.showAuctionListByCategory("Điện thoại"); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+    @FXML private void handleCategoryDongHo() {
+        try { HelloApplication.showAuctionListByCategory("Đồng hồ"); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+    @FXML private void handleCategoryXeCo() {
+        try { HelloApplication.showAuctionListByCategory("Xe cộ"); }
         catch (Exception e) { e.printStackTrace(); }
     }
 }

@@ -303,7 +303,7 @@ public class ServerConnection {
                     String status   = extractJson(raw, "status");
                     boolean wonBid  = Boolean.parseBoolean(extractJson(raw, "wonBid"));
                     LocalDateTime time = LocalDateTime.parse(extractJson(raw, "timestamp"), DT);
-                    AppContext.addHistory(username, new AppContext.HistoryRecord(
+                    AppContext.addHistorySilent(username, new AppContext.HistoryRecord(
                         id, itemName, amount, counter, status, wonBid, time));
                     return true;
                 }
@@ -322,7 +322,7 @@ public class ServerConnection {
                     String myRole    = extractJson(raw, "myRole");
                     double myFinalBid= Double.parseDouble(extractJson(raw, "myFinalBid"));
                     boolean iWon     = Boolean.parseBoolean(extractJson(raw, "iWon"));
-                    AppContext.addSessionHistory(username, new AppContext.AuctionSessionRecord(
+                    AppContext.addSessionHistorySilent(username, new AppContext.AuctionSessionRecord(
                         sessionId, itemName, sellerName, startP, finalP,
                         "null".equals(winner) ? null : winner,
                         totalBids, startT, endT, result, myRole, myFinalBid, iWon));

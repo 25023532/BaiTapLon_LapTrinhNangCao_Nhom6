@@ -6,15 +6,54 @@
 
 <BorderPane xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.nhom6.auctionsystem_nhom6.controller.WalletController"
+            stylesheets="@../styles/main.css"
             styleClass="main-root">
+
+    <!-- ══ SIDEBAR ══ -->
+    <left>
+        <VBox styleClass="sidebar" spacing="0">
+            <HBox styleClass="sidebar-logo" spacing="10" alignment="CENTER_LEFT">
+                <padding><Insets top="20" right="16" bottom="20" left="16"/></padding>
+                <Label text="⬡" styleClass="logo-icon"/>
+                <VBox>
+                    <Label text="AuctionSys"       styleClass="logo-name"/>
+                    <Label text="Hệ thống đấu giá" styleClass="logo-sub"/>
+                </VBox>
+            </HBox>
+
+            <VBox styleClass="sidebar-nav" spacing="2">
+                <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
+                <Button text="⊞  Tổng quan"         maxWidth="Infinity" styleClass="nav-btn" onAction="#handleBack"/>
+                <Button text="☰  Danh sách phiên"    maxWidth="Infinity" styleClass="nav-btn" onAction="#handleAuctionList"/>
+                <Button text="⚡  Đấu giá trực tiếp"  maxWidth="Infinity" styleClass="nav-btn" onAction="#handleLiveAuction"/>
+                <Button text="📦  Quản lý sản phẩm"  maxWidth="Infinity" styleClass="nav-btn" onAction="#handleMyProducts"/>
+                <Button text="🛒  Đơn hàng của tôi"  maxWidth="Infinity" styleClass="nav-btn" onAction="#handleHistory"/>
+                <Button text="💳  Ví &amp; Giao dịch" maxWidth="Infinity" styleClass="nav-btn,nav-active" onAction="#handleWallet"/>
+                <Button text="★  Đánh giá"           maxWidth="Infinity" styleClass="nav-btn" onAction="#handleRating"/>
+                <Button text="?  Trợ giúp"            maxWidth="Infinity" styleClass="nav-btn" onAction="#handleHelp"/>
+            </VBox>
+
+            <VBox styleClass="sidebar-cats" spacing="2">
+                <padding><Insets top="8" right="8" bottom="8" left="16"/></padding>
+                <Label text="DANH MỤC" styleClass="cat-title"/>
+                <Button text="🖥️  Điện tử"    maxWidth="Infinity" styleClass="cat-btn" onAction="#handleCategoryDienTu"/>
+                <Button text="📷  Máy ảnh"    maxWidth="Infinity" styleClass="cat-btn" onAction="#handleCategoryMayAnh"/>
+                <Button text="💻  Laptop"     maxWidth="Infinity" styleClass="cat-btn" onAction="#handleCategoryLaptop"/>
+                <Button text="📱  Điện thoại" maxWidth="Infinity" styleClass="cat-btn" onAction="#handleCategoryDienThoai"/>
+                <Button text="⌚  Đồng hồ"   maxWidth="Infinity" styleClass="cat-btn" onAction="#handleCategoryDongHo"/>
+                <Button text="🚗  Xe cộ"     maxWidth="Infinity" styleClass="cat-btn" onAction="#handleCategoryXeCo"/>
+            </VBox>
+
+            <Region VBox.vgrow="ALWAYS"/>
+        </VBox>
+    </left>
 
     <!-- ══ HEADER ══ -->
     <top>
         <HBox styleClass="header" spacing="12" alignment="CENTER_LEFT">
             <padding><Insets top="0" right="20" bottom="0" left="20"/></padding>
             <Button text="← Quay lại" onAction="#handleBack" styleClass="nav-btn"/>
-            <Label text="Ví &amp; Giao dịch"
-                   style="-fx-font-size:16px; -fx-font-weight:bold; -fx-text-fill:#e2e8f0;"/>
+            <Label text="Ví &amp; Giao dịch" styleClass="header-username"/>
             <Region HBox.hgrow="ALWAYS"/>
             <Button text="🔔" styleClass="icon-btn"/>
             <Separator orientation="VERTICAL"/>
@@ -45,25 +84,21 @@
 
     <!-- ══ CONTENT ══ -->
     <center>
-        <ScrollPane fitToWidth="true"
-                    style="-fx-background-color:#0f172a; -fx-background:#0f172a;">
-            <VBox spacing="20" style="-fx-background-color:#0f172a;">
-                <padding><Insets top="24" right="32" bottom="24" left="32"/></padding>
+        <ScrollPane fitToWidth="true" styleClass="wallet-scroll">
+            <VBox spacing="20" styleClass="content-area">
+                <padding><Insets top="24" right="24" bottom="24" left="24"/></padding>
 
-                <!-- ── BALANCE CARD ────────────────────────── -->
+                <!-- BALANCE CARD -->
                 <VBox styleClass="auction-card" alignment="CENTER" spacing="6">
-                    <padding><Insets top="28" right="32" bottom="28" left="32"/></padding>
-                    <Label text="💳  SỐ DƯ VÍ"
-                           style="-fx-text-fill:#94a3b8; -fx-font-size:13px;
-                                  -fx-font-weight:bold; -fx-letter-spacing:1px;"/>
-                    <Label fx:id="balanceLabel"
-                           style="-fx-text-fill:#38bdf8; -fx-font-size:42px;
-                                  -fx-font-weight:bold;"/>
-                    <Label text="Số dư khả dụng trong ví AuctionSys"
-                           style="-fx-text-fill:#475569; -fx-font-size:13px;"/>
+                    <padding><Insets top="32" right="32" bottom="32" left="32"/></padding>
+                    <Label text="💳  SỐ DƯ VÍ" styleClass="wallet-balance-title"/>
+                    <Label fx:id="balanceLabel" styleClass="balance-label"/>
+                    <Label fx:id="balanceSubLabel"
+                           text="Số dư khả dụng trong ví AuctionSys"
+                           styleClass="wallet-balance-sub"/>
                 </VBox>
 
-                <!-- ── TABS ────────────────────────────────── -->
+                <!-- TABS -->
                 <HBox spacing="8">
                     <Button fx:id="tabDepositBtn"
                             text="⬆  Nạp tiền"
@@ -71,7 +106,7 @@
                             styleClass="nav-btn,tab-active"
                             prefWidth="160"/>
                     <Button fx:id="tabPaymentBtn"
-                            text="💳  Thanh toán"
+                            text="⬇  Thanh toán"
                             onAction="#handleTabPayment"
                             styleClass="nav-btn"
                             prefWidth="160"/>
@@ -82,105 +117,81 @@
                             prefWidth="160"/>
                 </HBox>
 
-                <!-- ══════════════════════════════════════════
-                     PANEL: NẠP TIỀN
-                ══════════════════════════════════════════ -->
+                <!-- PANEL: NẠP TIỀN -->
                 <VBox fx:id="depositPanel" styleClass="info-card" spacing="16"
                       visible="true" managed="true">
                     <padding><Insets top="24" right="24" bottom="24" left="24"/></padding>
-
-                    <Label text="Nạp tiền vào ví"
-                           style="-fx-font-size:17px; -fx-font-weight:bold;
-                                  -fx-text-fill:#e2e8f0;"/>
+                    <Label text="Nạp tiền vào ví" styleClass="card-title"/>
                     <Separator/>
-
                     <VBox spacing="6">
-                        <Label text="Số tiền nạp (₫)"
-                               style="-fx-text-fill:#94a3b8; -fx-font-size:13px;"/>
+                        <Label text="Số tiền nạp (₫)" styleClass="form-label"/>
                         <TextField fx:id="depositAmountField"
                                    promptText="Nhập số tiền..."
-                                   styleClass="search-field"
-                                   style="-fx-font-size:16px;"/>
+                                   styleClass="form-field"/>
                     </VBox>
-
                     <VBox spacing="6">
-                        <Label text="Chọn nhanh"
-                               style="-fx-text-fill:#94a3b8; -fx-font-size:13px;"/>
+                        <Label text="Chọn nhanh" styleClass="form-label"/>
                         <HBox spacing="8">
-                            <Button text="100.000 ₫"   onAction="#handleQuickDeposit1" styleClass="nav-btn" prefWidth="120"/>
-                            <Button text="500.000 ₫"   onAction="#handleQuickDeposit2" styleClass="nav-btn" prefWidth="120"/>
-                            <Button text="1.000.000 ₫" onAction="#handleQuickDeposit3" styleClass="nav-btn" prefWidth="130"/>
-                            <Button text="5.000.000 ₫" onAction="#handleQuickDeposit4" styleClass="nav-btn" prefWidth="130"/>
+                            <Button text="100.000 ₫"   onAction="#handleQuickDeposit1" styleClass="btn-quick" prefWidth="120"/>
+                            <Button text="500.000 ₫"   onAction="#handleQuickDeposit2" styleClass="btn-quick" prefWidth="120"/>
+                            <Button text="1.000.000 ₫" onAction="#handleQuickDeposit3" styleClass="btn-quick" prefWidth="130"/>
+                            <Button text="5.000.000 ₫" onAction="#handleQuickDeposit4" styleClass="btn-quick" prefWidth="130"/>
                         </HBox>
                     </VBox>
-
                     <VBox spacing="6">
-                        <Label text="Phương thức thanh toán"
-                               style="-fx-text-fill:#94a3b8; -fx-font-size:13px;"/>
-                        <ComboBox fx:id="depositMethodBox"
-                                  prefWidth="260"
-                                  style="-fx-background-color:#1e293b;
-                                         -fx-text-fill:#e2e8f0;
-                                         -fx-border-color:#334155;
-                                         -fx-border-radius:6;
-                                         -fx-background-radius:6;"/>
+                        <Label text="Phương thức thanh toán" styleClass="form-label"/>
+                        <ComboBox fx:id="depositMethodBox" prefWidth="260" styleClass="filter-combo"/>
                     </VBox>
-
                     <Button text="✅  XÁC NHẬN NẠP TIỀN"
                             onAction="#handleDeposit"
-                            styleClass="btn-bid"
+                            styleClass="btn-primary"
                             prefWidth="260"/>
-
                     <Label fx:id="depositResultLabel" wrapText="true" visible="false"/>
                 </VBox>
 
-                <!-- ══════════════════════════════════════════
-                     PANEL: THANH TOÁN ĐƠN ĐẤU GIÁ
-                ══════════════════════════════════════════ -->
+                <!-- PANEL: THANH TOÁN -->
                 <VBox fx:id="paymentPanel" styleClass="info-card" spacing="16"
                       visible="false" managed="false">
                     <padding><Insets top="24" right="24" bottom="24" left="24"/></padding>
-
-                    <!-- Tiêu đề + số dư -->
-                    <HBox alignment="CENTER_LEFT" spacing="12">
-                        <VBox spacing="4" HBox.hgrow="ALWAYS">
-                            <Label text="Thanh toán đơn đấu giá"
-                                   style="-fx-font-size:17px; -fx-font-weight:bold;
-                                          -fx-text-fill:#e2e8f0;"/>
-                            <Label text="Các sản phẩm bạn đã thắng đấu giá và chưa thanh toán."
-                                   style="-fx-text-fill:#64748b; -fx-font-size:12px;"/>
-                        </VBox>
-                        <VBox alignment="CENTER_RIGHT" spacing="2">
-                            <Label text="Số dư hiện tại"
-                                   style="-fx-text-fill:#94a3b8; -fx-font-size:11px;"/>
-                            <Label fx:id="paymentBalanceLabel"
-                                   style="-fx-text-fill:#38bdf8; -fx-font-size:15px;
-                                          -fx-font-weight:bold;"/>
-                        </VBox>
-                    </HBox>
+                    <Label text="Thanh toán từ ví" styleClass="card-title"/>
                     <Separator/>
-
-                    <!-- Danh sách đơn chờ thanh toán (render động) -->
-                    <VBox fx:id="pendingOrdersBox" spacing="12"/>
-
-                    <!-- Kết quả -->
+                    <Label fx:id="paymentBalanceLabel" styleClass="balance-label-small"/>
+                    <VBox spacing="6">
+                        <Label text="Số tiền thanh toán (₫)" styleClass="form-label"/>
+                        <TextField fx:id="paymentAmountField"
+                                   promptText="Nhập số tiền..."
+                                   styleClass="form-field"/>
+                    </VBox>
+                    <VBox spacing="6">
+                        <Label text="Nội dung thanh toán" styleClass="form-label"/>
+                        <TextField fx:id="paymentDescField"
+                                   promptText="VD: Thanh toán đơn hàng HD001..."
+                                   styleClass="search-field"/>
+                    </VBox>
+                    <HBox spacing="8" alignment="CENTER_LEFT" styleClass="info-box">
+                        <Label text="ℹ️" styleClass="info-icon"/>
+                        <Label text="Tiền sẽ được trừ trực tiếp từ số dư ví. Giao dịch không thể hoàn tác."
+                               styleClass="info-text" wrapText="true"/>
+                    </HBox>
+                    <Button text="💳  XÁC NHẬN THANH TOÁN"
+                            onAction="#handlePayment"
+                            styleClass="btn-primary"
+                            prefWidth="260"/>
                     <Label fx:id="paymentResultLabel" wrapText="true" visible="false"/>
                 </VBox>
 
-                <!-- ══════════════════════════════════════════
-                     PANEL: LỊCH SỬ GIAO DỊCH
-                ══════════════════════════════════════════ -->
+                <!-- PANEL: LỊCH SỬ GIAO DỊCH -->
                 <VBox fx:id="historyPanel" styleClass="info-card" spacing="12"
                       visible="false" managed="false">
                     <padding><Insets top="24" right="24" bottom="24" left="24"/></padding>
-
-                    <Label text="Lịch sử giao dịch"
-                           style="-fx-font-size:17px; -fx-font-weight:bold;
-                                  -fx-text-fill:#e2e8f0;"/>
+                    <Label text="Lịch sử giao dịch" styleClass="card-title"/>
                     <Separator/>
-
                     <VBox fx:id="transactionListBox" spacing="8"/>
                 </VBox>
+
+                <!-- PANEL: ĐƠN CHỜ THANH TOÁN (hidden, dùng bởi controller) -->
+                <VBox fx:id="pendingOrdersBox" spacing="8"
+                      visible="false" managed="false"/>
 
             </VBox>
         </ScrollPane>

@@ -19,59 +19,59 @@ public class HelpController {
     // DATA — Câu hỏi thường gặp
     // =========================================================
     private static final String[][] FAQ = {
-            {
-                    "Làm thế nào để đặt giá?",
-                    "Vào mục \"Đấu giá trực tiếp\", chọn phiên đang chạy và nhấn \"ĐẶT GIÁ NGAY!\". " +
-                            "Hệ thống sẽ tự động tăng theo bước giá tối thiểu. Bạn cần có đủ số dư trong ví."
-            },
-            {
-                    "Tôi bị vượt giá (outbid), phải làm gì?",
-                    "Bạn sẽ nhận thông báo ngay khi bị vượt giá. Vào lại phiên đấu giá và đặt giá " +
-                            "cao hơn trước khi phiên kết thúc."
-            },
-            {
-                    "Làm thế nào để nạp tiền vào ví?",
-                    "Vào \"Ví & Giao dịch\" → tab \"Nạp tiền\", nhập số tiền cần nạp, chọn phương " +
-                            "thức thanh toán (VCB, TCB, MoMo, ZaloPay, VNPay) và nhấn \"XÁC NHẬN NẠP TIỀN\"."
-            },
-            {
-                    "Sau khi thắng đấu giá, tôi cần làm gì?",
-                    "Bạn sẽ nhận thông báo \"Chúc mừng! Bạn đã thắng\". Vào \"Ví & Giao dịch\" → " +
-                            "\"Thanh toán\" để hoàn tất trong vòng 24 giờ. Quá thời hạn có thể bị phạt vi phạm."
-            },
-            {
-                    "Làm thế nào để đăng bán sản phẩm?",
-                    "Vào \"Quản lý sản phẩm\" → nhấn \"+ Thêm sản phẩm\", điền đầy đủ thông tin " +
-                            "(tên, danh mục, giá khởi điểm, bước giá, thời gian). Sản phẩm sẽ ở trạng thái " +
-                            "\"CHỜ DUYỆT\" cho đến khi Admin xét duyệt."
-            },
-            {
-                    "Auto-bid là gì?",
-                    "Auto-bid cho phép hệ thống tự động đặt giá thay bạn khi có người vượt giá, " +
-                            "lên đến mức giới hạn bạn đặt. Tính năng này giúp bạn không bỏ lỡ phiên đấu giá " +
-                            "khi không online."
-            },
-            {
-                    "Tôi có thể hủy phiên đấu giá không?",
-                    "Chỉ Seller mới có thể hủy phiên đấu giá của mình trước khi có lượt bid đầu tiên. " +
-                            "Sau khi đã có người đặt giá, phiên không thể hủy."
-            },
-            {
-                    "Thông báo không hiện lên, phải làm sao?",
-                    "Nhấn vào icon 🔔 ở góc trên phải để xem danh sách thông báo. " +
-                            "Nếu không có thông báo mới, badge số đỏ sẽ không hiển thị. " +
-                            "Kiểm tra kết nối mạng nếu thông báo real-time không hoạt động."
-            },
-            {
-                    "Làm thế nào để xem lịch sử giao dịch?",
-                    "Vào \"Ví & Giao dịch\" → tab \"Lịch sử GD\". Tất cả các lần nạp tiền và " +
-                            "thanh toán đều được lưu tại đây theo thứ tự mới nhất."
-            },
-            {
-                    "Tôi quên mật khẩu, phải làm sao?",
-                    "Hiện tại hệ thống chưa hỗ trợ khôi phục mật khẩu tự động. " +
-                            "Vui lòng liên hệ Admin để được hỗ trợ đặt lại mật khẩu."
-            },
+        {
+            "Làm thế nào để đặt giá?",
+            "Vào mục \"Đấu giá trực tiếp\", chọn phiên đang chạy và nhấn \"ĐẶT GIÁ NGAY!\". " +
+                "Hệ thống sẽ tự động tăng theo bước giá tối thiểu. Bạn cần có đủ số dư trong ví."
+        },
+        {
+            "Tôi bị vượt giá (outbid), phải làm gì?",
+            "Bạn sẽ nhận thông báo ngay khi bị vượt giá. Vào lại phiên đấu giá và đặt giá " +
+                "cao hơn trước khi phiên kết thúc."
+        },
+        {
+            "Làm thế nào để nạp tiền vào ví?",
+            "Vào \"Ví & Giao dịch\" → tab \"Nạp tiền\", nhập số tiền cần nạp, chọn phương " +
+                "thức thanh toán (VCB, TCB, MoMo, ZaloPay, VNPay) và nhấn \"XÁC NHẬN NẠP TIỀN\"."
+        },
+        {
+            "Sau khi thắng đấu giá, tôi cần làm gì?",
+            "Bạn sẽ nhận thông báo \"Chúc mừng! Bạn đã thắng\". Vào \"Ví & Giao dịch\" → " +
+                "\"Thanh toán\" để hoàn tất trong vòng 24 giờ. Quá thời hạn có thể bị phạt vi phạm."
+        },
+        {
+            "Làm thế nào để đăng bán sản phẩm?",
+            "Vào \"Quản lý sản phẩm\" → nhấn \"+ Thêm sản phẩm\", điền đầy đủ thông tin " +
+                "(tên, danh mục, giá khởi điểm, bước giá, thời gian). Sản phẩm sẽ ở trạng thái " +
+                "\"CHỜ DUYỆT\" cho đến khi Admin xét duyệt."
+        },
+        {
+            "Auto-bid là gì?",
+            "Auto-bid cho phép hệ thống tự động đặt giá thay bạn khi có người vượt giá, " +
+                "lên đến mức giới hạn bạn đặt. Tính năng này giúp bạn không bỏ lỡ phiên đấu giá " +
+                "khi không online."
+        },
+        {
+            "Tôi có thể hủy phiên đấu giá không?",
+            "Chỉ Seller mới có thể hủy phiên đấu giá của mình trước khi có lượt bid đầu tiên. " +
+                "Sau khi đã có người đặt giá, phiên không thể hủy."
+        },
+        {
+            "Thông báo không hiện lên, phải làm sao?",
+            "Nhấn vào icon 🔔 ở góc trên phải để xem danh sách thông báo. " +
+                "Nếu không có thông báo mới, badge số đỏ sẽ không hiển thị. " +
+                "Kiểm tra kết nối mạng nếu thông báo real-time không hoạt động."
+        },
+        {
+            "Làm thế nào để xem lịch sử giao dịch?",
+            "Vào \"Ví & Giao dịch\" → tab \"Lịch sử GD\". Tất cả các lần nạp tiền và " +
+                "thanh toán đều được lưu tại đây theo thứ tự mới nhất."
+        },
+        {
+            "Tôi quên mật khẩu, phải làm sao?",
+            "Hiện tại hệ thống chưa hỗ trợ khôi phục mật khẩu tự động. " +
+                "Vui lòng liên hệ Admin để được hỗ trợ đặt lại mật khẩu."
+        },
     };
 
     // =========================================================
@@ -93,9 +93,9 @@ public class HelpController {
             return;
         }
         var filtered = java.util.Arrays.stream(FAQ)
-                .filter(qa -> qa[0].toLowerCase().contains(keyword)
-                        || qa[1].toLowerCase().contains(keyword))
-                .toArray(String[][]::new);
+            .filter(qa -> qa[0].toLowerCase().contains(keyword)
+                || qa[1].toLowerCase().contains(keyword))
+            .toArray(String[][]::new);
         renderFaq(filtered);
     }
 
@@ -108,7 +108,7 @@ public class HelpController {
         if (items.length == 0) {
             Label empty = new Label("Không tìm thấy câu hỏi phù hợp.");
             empty.setStyle("-fx-text-fill: #64748b; -fx-font-size: 14px; "
-                    + "-fx-padding: 24 0 24 0;");
+                + "-fx-padding: 24 0 24 0;");
             faqListBox.getChildren().add(empty);
             return;
         }
@@ -123,7 +123,7 @@ public class HelpController {
         Label answerLabel = new Label(answer);
         answerLabel.setWrapText(true);
         answerLabel.setStyle("""
-                -fx-text-fill: #94a3b8;
+                -fx-text-fill: #444444;
                 -fx-font-size: 13px;
                 -fx-padding: 0 16 14  40;
                 -fx-line-spacing: 3;
@@ -133,16 +133,18 @@ public class HelpController {
 
         // Arrow icon
         Label arrow = new Label("▶");
-        arrow.setStyle("-fx-text-fill: #475569; -fx-font-size: 11px;");
+        arrow.setStyle("-fx-text-fill: #999999; -fx-font-size: 11px;");
 
         // Number badge
         Label numBadge = new Label(String.valueOf(index + 1));
         numBadge.setStyle("""
-                -fx-background-color: #1e3a5f;
-                -fx-text-fill: #38bdf8;
+                -fx-background-color: #1F0C40;
+                -fx-text-fill: #FFFFFF;
                 -fx-font-size: 11px;
                 -fx-font-weight: bold;
-                -fx-background-radius: 50%;
+                -fx-background-radius: 0;
+                -fx-border-color: #1A1A1A;
+                -fx-border-width: 2;
                 -fx-min-width: 24px;
                 -fx-min-height: 24px;
                 -fx-max-width: 24px;
@@ -152,8 +154,8 @@ public class HelpController {
 
         // Question row
         Label questionLabel = new Label(question);
-        questionLabel.setStyle("-fx-text-fill: #e2e8f0; -fx-font-size: 14px; "
-                + "-fx-font-weight: bold;");
+        questionLabel.setStyle("-fx-text-fill: #1F0C40; -fx-font-size: 14px; "
+            + "-fx-font-weight: bold;");
         questionLabel.setWrapText(true);
         HBox.setHgrow(questionLabel, Priority.ALWAYS);
 
@@ -165,11 +167,12 @@ public class HelpController {
         // Container
         VBox item = new VBox(0, questionRow, answerLabel);
         item.setStyle("""
-                -fx-background-color: #1e293b;
-                -fx-background-radius: 10;
-                -fx-border-color: #334155;
-                -fx-border-radius: 10;
-                -fx-border-width: 1;
+                -fx-background-color: #FFFFFF;
+                -fx-background-radius: 0;
+                -fx-border-color: #1A1A1A;
+                -fx-border-radius: 0;
+                -fx-border-width: 3;
+                -fx-effect: dropshadow(gaussian, #1A1A1A, 4, 0, 0, 0);
                 """);
 
         // Toggle on click
@@ -179,25 +182,24 @@ public class HelpController {
             answerLabel.setManaged(!showing);
             arrow.setText(showing ? "▶" : "▼");
             arrow.setStyle("-fx-text-fill: "
-                    + (showing ? "#475569" : "#2563eb")
-                    + "; -fx-font-size: 11px;");
+                + (showing ? "#999999" : "#FF6B35")
+                + "; -fx-font-size: 11px;");
             item.setStyle("""
-                    -fx-background-color: #1e293b;
-                    -fx-background-radius: 10;
-                    -fx-border-color: """ + (showing ? "#334155" : "#2563eb") + """
+                    -fx-background-color: #FFFFFF;
+                    -fx-background-radius: 0;
+                    -fx-border-color: """ + (showing ? "#1A1A1A" : "#FF6B35") + """
                     ;
-                    -fx-border-radius: 10;
-                    -fx-border-width: 1;
+                    -fx-border-radius: 0;
+                    -fx-border-width: 3;
                     """);
         });
 
         // Hover
         questionRow.setOnMouseEntered(e ->
-                questionRow.setStyle("-fx-cursor: hand; "
-                        + "-fx-background-color: rgba(255,255,255,0.03); "
-                        + "-fx-background-radius: 10 10 0 0;"));
+            questionRow.setStyle("-fx-cursor: hand; "
+                + "-fx-background-color: #FFF8F0; "));
         questionRow.setOnMouseExited(e ->
-                questionRow.setStyle("-fx-cursor: hand;"));
+            questionRow.setStyle("-fx-cursor: hand;"));
 
         return item;
     }
@@ -252,6 +254,36 @@ public class HelpController {
 
     @FXML private void handleRating() {
         try { HelloApplication.showRatingView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleMyProducts() {
+        try { HelloApplication.showMyProductsView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleCategoryDienTu() {
+        try { HelloApplication.showAuctionListByCategory("Điện tử"); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+    @FXML private void handleCategoryMayAnh() {
+        try { HelloApplication.showAuctionListByCategory("Máy ảnh"); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+    @FXML private void handleCategoryLaptop() {
+        try { HelloApplication.showAuctionListByCategory("Laptop"); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+    @FXML private void handleCategoryDienThoai() {
+        try { HelloApplication.showAuctionListByCategory("Điện thoại"); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+    @FXML private void handleCategoryDongHo() {
+        try { HelloApplication.showAuctionListByCategory("Đồng hồ"); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+    @FXML private void handleCategoryXeCo() {
+        try { HelloApplication.showAuctionListByCategory("Xe cộ"); }
         catch (Exception e) { e.printStackTrace(); }
     }
 }

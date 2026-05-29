@@ -5,6 +5,7 @@
 
 <BorderPane xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.nhom6.auctionsystem_nhom6.controller.MyProductsController"
+            stylesheets="@../styles/main.css"
             styleClass="main-root">
 
     <!-- ══ HEADER ══ -->
@@ -21,12 +22,14 @@
                        onKeyReleased="#handleSearch"/>
             <Button text="＋  Đăng bán mới" onAction="#handleAddProduct"
                     styleClass="btn-primary"/>
+            <Button text="⚡  Bắt đầu tất cả" onAction="#handleStartAll"
+                    styleClass="btn-primary"/>
         </HBox>
     </top>
 
     <!-- ══ CONTENT ══ -->
     <center>
-        <VBox style="-fx-background-color: #0f172a;" spacing="16">
+        <VBox styleClass="content-area" spacing="16">
             <padding><Insets top="24" right="24" bottom="24" left="24"/></padding>
 
             <!-- Thống kê -->

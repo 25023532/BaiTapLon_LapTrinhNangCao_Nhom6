@@ -336,9 +336,14 @@ public class AppContext {
         return historyMap.computeIfAbsent(u, k -> new ArrayList<>());
     }
     public static void addHistory(String u, HistoryRecord r) {
+        if (getHistory(u).stream().anyMatch(h -> h.id().equals(r.id()))) return;
         getHistory(u).add(r);
         ServerConnection conn = ServerConnection.getInstance();
         if (conn.isConnected()) conn.sendAddHistory(u, r);
+    }
+    public static void addHistorySilent(String u, HistoryRecord r) {
+        if (getHistory(u).stream().anyMatch(h -> h.id().equals(r.id()))) return;
+        getHistory(u).add(r);
     }
 
     // =========================================================
@@ -630,11 +635,17 @@ public class AppContext {
             String result, String myRole, double myFinalBid, boolean iWon) {}
 
     public static void addSessionHistory(String u, AuctionSessionRecord r) {
-        sessionHistoryMap
-                .computeIfAbsent(u, k -> new CopyOnWriteArrayList<>())
-                .add(r);
+        var list = sessionHistoryMap.computeIfAbsent(u, k -> new CopyOnWriteArrayList<>());
+        if (list.stream().anyMatch(h -> h.sessionId().equals(r.sessionId()) && h.myRole().equals(r.myRole()))) return;
+        list.add(r);
         ServerConnection conn = ServerConnection.getInstance();
         if (conn.isConnected()) conn.sendAddSessionHistory(u, r);
+    }
+
+    public static void addSessionHistorySilent(String u, AuctionSessionRecord r) {
+        var list = sessionHistoryMap.computeIfAbsent(u, k -> new CopyOnWriteArrayList<>());
+        if (list.stream().anyMatch(h -> h.sessionId().equals(r.sessionId()) && h.myRole().equals(r.myRole()))) return;
+        list.add(r);
     }
 
     public static List<AuctionSessionRecord> getSessionHistory(String username) {

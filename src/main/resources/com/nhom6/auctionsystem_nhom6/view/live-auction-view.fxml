@@ -2,9 +2,11 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.*?>
 
 <BorderPane xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.nhom6.auctionsystem_nhom6.controller.LiveAuctionController"
+            stylesheets="@../styles/main.css"
             styleClass="main-root">
 
     <top>
@@ -20,7 +22,7 @@
     </top>
 
     <center>
-        <HBox spacing="16" style="-fx-background-color: #0f172a;">
+        <HBox spacing="16" styleClass="content-area">
             <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
 
             <!-- LEFT: Danh sách phiên -->
@@ -113,7 +115,7 @@
                                 <HBox spacing="8" alignment="CENTER_LEFT">
                                     <TextField fx:id="customBidField"
                                                promptText="Nhập giá muốn đặt..."
-                                               prefWidth="200" styleClass="chat-input"/>
+                                               prefWidth="200" styleClass="form-field"/>
                                     <Button text="ĐẶT GIÁ" onAction="#handleCustomBid"
                                             styleClass="btn-bid"/>
                                 </HBox>
@@ -131,26 +133,34 @@
                             </VBox>
                         </HBox>
 
-                        <!-- ══ Anti-sniping notice ══════════════════════ -->
+                        <!-- Anti-sniping notice -->
                         <Label fx:id="extensionNoticeLabel"
                                text=""
                                visible="false"
                                managed="false"
                                wrapText="true"
                                maxWidth="Infinity"
-                               style="-fx-text-fill: #fbbf24;
-                                      -fx-font-size: 13px;
-                                      -fx-font-weight: bold;
-                                      -fx-background-color: #1c2a1e;
-                                      -fx-background-radius: 6;
-                                      -fx-padding: 8 14 8 14;
-                                      -fx-border-color: #fbbf24;
-                                      -fx-border-radius: 6;
-                                      -fx-border-width: 1;"/>
+                               styleClass="extension-notice"/>
                         <!-- ════════════════════════════════════════════ -->
 
                     </VBox>
                 </HBox>
+
+                <!-- Bid price chart -->
+                <VBox styleClass="info-card" spacing="8">
+                    <padding><Insets top="14" right="14" bottom="14" left="14"/></padding>
+                    <Label text="📈 Biểu đồ giá realtime" styleClass="card-title"/>
+                    <Separator/>
+                    <LineChart fx:id="bidPriceChart" prefHeight="180" legendVisible="false"
+                               animated="false" createSymbols="true">
+                        <xAxis>
+                            <CategoryAxis label="Lượt đặt giá" tickLabelsVisible="false"/>
+                        </xAxis>
+                        <yAxis>
+                            <NumberAxis label="Giá (₫)" side="LEFT"/>
+                        </yAxis>
+                    </LineChart>
+                </VBox>
 
                 <!-- Bid history + Chat -->
                 <HBox spacing="12" VBox.vgrow="ALWAYS">

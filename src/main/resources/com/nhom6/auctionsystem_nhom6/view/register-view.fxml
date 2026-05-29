@@ -5,60 +5,101 @@
 
 <BorderPane xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.nhom6.auctionsystem_nhom6.controller.RegisterController"
-            styleClass="login-root">
+            stylesheets="@../styles/main.css"
+            styleClass="neo-register-root">
     <center>
-        <VBox alignment="CENTER" spacing="16" maxWidth="420">
-            <padding><Insets top="40" right="40" bottom="40" left="40"/></padding>
+        <ScrollPane fitToWidth="true" styleClass="neo-scroll" hbarPolicy="NEVER">
+            <content>
+                <VBox alignment="CENTER" spacing="0">
+                    <padding><Insets top="36" right="0" bottom="36" left="0"/></padding>
 
-            <Label text="AuctionSys" styleClass="login-logo"/>
-            <Label text="Tạo tài khoản mới" styleClass="login-subtitle"/>
+                    <!-- Header Banner -->
+                    <VBox styleClass="neo-register-banner" alignment="CENTER" spacing="4">
+                        <padding><Insets top="14" right="24" bottom="14" left="24"/></padding>
+                        <Label text="✦ AUCTION SYS ✦" styleClass="neo-brand-tag"/>
+                        <Label text="TẠO TÀI KHOẢN" styleClass="neo-register-hero"/>
+                        <Label text="Tham gia đấu giá ngay hôm nay!" styleClass="neo-register-tagline"/>
+                    </VBox>
 
-            <VBox spacing="10" styleClass="login-card">
-                <padding><Insets top="28" right="28" bottom="28" left="28"/></padding>
+                    <!-- Main Card -->
+                    <VBox fx:id="registerCard" spacing="0" styleClass="neo-register-card"
+                          maxWidth="440" minWidth="340">
+                        <padding><Insets top="0" right="0" bottom="0" left="0"/></padding>
 
-                <Label text="Đăng ký" styleClass="login-title"/>
+                        <!-- Card Header Strip -->
+                        <HBox styleClass="neo-card-header-strip" alignment="CENTER_LEFT" spacing="10">
+                            <padding><Insets top="14" right="24" bottom="14" left="24"/></padding>
+                            <Label text="📋" styleClass="neo-card-icon"/>
+                            <Label text="ĐĂNG KÝ TÀI KHOẢN" styleClass="neo-card-title"/>
+                        </HBox>
 
-                <!-- Username -->
-                <Label text="* Tên đăng nhập" styleClass="field-label"/>
-                <TextField fx:id="usernameField" promptText="Tối thiểu 4 ký tự..."
-                           styleClass="login-input"/>
+                        <!-- Form Body -->
+                        <VBox spacing="10" styleClass="neo-form-body">
+                            <padding><Insets top="22" right="28" bottom="22" left="28"/></padding>
 
-                <!-- Full Name -->
-                <Label text="Họ và tên" styleClass="field-label"/>
-                <TextField fx:id="fullNameField" promptText="Nguyễn Văn A..."
-                           styleClass="login-input"/>
+                            <!-- Username -->
+                            <Label text="* TÊN ĐĂNG NHẬP" styleClass="neo-field-label"/>
+                            <TextField fx:id="usernameField" promptText="Tối thiểu 4 ký tự..."
+                                       styleClass="neo-input"/>
 
-                <!-- Email -->
-                <Label text="Email" styleClass="field-label"/>
-                <TextField fx:id="emailField" promptText="example@email.com"
-                           styleClass="login-input"/>
+                            <!-- Full Name -->
+                            <Label text="HỌ VÀ TÊN" styleClass="neo-field-label"/>
+                            <TextField fx:id="fullNameField" promptText="Nguyễn Văn A..."
+                                       styleClass="neo-input"/>
 
-                <!-- Role -->
-                <Label text="* Vai trò" styleClass="field-label"/>
-                <ComboBox fx:id="roleBox" maxWidth="Infinity" styleClass="login-input"/>
+                            <!-- Email -->
+                            <Label text="EMAIL" styleClass="neo-field-label"/>
+                            <TextField fx:id="emailField" promptText="example@email.com"
+                                       styleClass="neo-input"/>
 
-                <!-- Password -->
-                <Label text="* Mật khẩu" styleClass="field-label"/>
-                <PasswordField fx:id="passwordField" promptText="Tối thiểu 6 ký tự..."
-                               styleClass="login-input"/>
+                            <!-- Role -->
+                            <Label text="* VAI TRÒ" styleClass="neo-field-label"/>
+                            <ComboBox fx:id="roleBox" maxWidth="Infinity" styleClass="neo-input"/>
 
-                <!-- Confirm -->
-                <Label text="* Xác nhận mật khẩu" styleClass="field-label"/>
-                <PasswordField fx:id="confirmField" promptText="Nhập lại mật khẩu..."
-                               styleClass="login-input"/>
+                            <!-- Password row -->
+                            <HBox spacing="12">
+                                <VBox spacing="6" HBox.hgrow="ALWAYS">
+                                    <Label text="* MẬT KHẨU" styleClass="neo-field-label"/>
+                                    <PasswordField fx:id="passwordField" promptText="Tối thiểu 6 ký tự..."
+                                                   styleClass="neo-input"/>
+                                </VBox>
+                                <VBox spacing="6" HBox.hgrow="ALWAYS">
+                                    <Label text="* XÁC NHẬN" styleClass="neo-field-label"/>
+                                    <PasswordField fx:id="confirmField" promptText="Nhập lại..."
+                                                   styleClass="neo-input"/>
+                                </VBox>
+                            </HBox>
 
-                <!-- Messages -->
-                <Label fx:id="errorLabel"   styleClass="login-error"   wrapText="true" visible="false"/>
-                <Label fx:id="successLabel" styleClass="login-success" wrapText="true" visible="false"/>
+                            <!-- Error / Success -->
+                            <Label fx:id="errorLabel"   styleClass="neo-error-label"   wrapText="true" visible="false"/>
+                            <Label fx:id="successLabel" styleClass="neo-success-label" wrapText="true" visible="false"/>
 
-                <!-- Buttons -->
-                <Button text="Tạo tài khoản" onAction="#handleRegister"
-                        maxWidth="Infinity" styleClass="btn-primary"/>
-                <Button text="← Quay lại đăng nhập" onAction="#handleBackToLogin"
-                        maxWidth="Infinity" styleClass="btn-secondary"/>
+                            <!-- PRIMARY ACTION BUTTON -->
+                            <Button text="✦ TẠO TÀI KHOẢN NGAY ✦"
+                                    onAction="#handleRegister"
+                                    maxWidth="Infinity"
+                                    styleClass="neo-btn-register"/>
 
-                <Label text="* Bắt buộc điền" styleClass="login-hint"/>
-            </VBox>
-        </VBox>
+                            <!-- Divider -->
+                            <HBox alignment="CENTER" spacing="10">
+                                <padding><Insets top="4" bottom="4"/></padding>
+                                <Region HBox.hgrow="ALWAYS" styleClass="neo-divider-line"/>
+                                <Label text="HOẶC" styleClass="neo-divider-text"/>
+                                <Region HBox.hgrow="ALWAYS" styleClass="neo-divider-line"/>
+                            </HBox>
+
+                            <!-- Back button -->
+                            <Button text="← Quay lại đăng nhập"
+                                    onAction="#handleBackToLogin"
+                                    maxWidth="Infinity"
+                                    styleClass="neo-btn-back"/>
+
+                            <Label text="★ Các trường có dấu * là bắt buộc" styleClass="neo-hint-label"/>
+                        </VBox>
+                    </VBox>
+
+                </VBox>
+            </content>
+        </ScrollPane>
     </center>
 </BorderPane>

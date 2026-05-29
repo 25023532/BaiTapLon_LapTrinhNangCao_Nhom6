@@ -399,6 +399,77 @@ public class AuctionListController {
         catch (Exception e) { e.printStackTrace(); }
     }
 
+    @FXML private void handleAuctionList() {
+        loadSessions();
+        refreshStats();
+        applyFilters();
+    }
+
+    @FXML private void handleLiveAuction() {
+        try { HelloApplication.showLiveAuctionView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleWallet() {
+        try { HelloApplication.showWalletView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleRating() {
+        try { HelloApplication.showRatingView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleHelp() {
+        try { HelloApplication.showHelpView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleProfile() {
+        try { HelloApplication.showProfileView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleHistory() {
+        try { HelloApplication.showHistoryView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleLogout() {
+        try { AppContext.logout(); HelloApplication.showLoginView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleMyProducts() {
+        try { HelloApplication.showMyProductsView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleCategoryDienTu() {
+        categoryFilter.setValue("Điện tử");
+        applyFilters();
+    }
+    @FXML private void handleCategoryMayAnh() {
+        categoryFilter.setValue("Máy ảnh");
+        applyFilters();
+    }
+    @FXML private void handleCategoryLaptop() {
+        categoryFilter.setValue("Laptop");
+        applyFilters();
+    }
+    @FXML private void handleCategoryDienThoai() {
+        categoryFilter.setValue("Điện thoại");
+        applyFilters();
+    }
+    @FXML private void handleCategoryDongHo() {
+        categoryFilter.setValue("Đồng hồ");
+        applyFilters();
+    }
+    @FXML private void handleCategoryXeCo() {
+        categoryFilter.setValue("Xe cộ");
+        applyFilters();
+    }
+
     // =========================================================
     // HELPERS
     // =========================================================
