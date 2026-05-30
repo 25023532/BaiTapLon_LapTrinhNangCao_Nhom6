@@ -188,6 +188,25 @@ public class LiveAuctionController {
                                 }
                             }
 
+                            // Global Notification logic
+                            if (me != null && !bidder.equals(me.getUsername())) {
+                                AuctionSession target = AppContext.getGlobalSessions().stream()
+                                    .filter(s -> s.getSessionId().equals(sessionId))
+                                    .findFirst().orElse(null);
+                                if (target != null) {
+                                    boolean iBidBefore = target.getBidHistory().stream()
+                                        .anyMatch(b -> b.getBidderId().equals(me.getUsername()));
+                                    if (iBidBefore) {
+                                        com.nhom6.auctionsystem_nhom6.NotificationManager.getInstance().add(new com.nhom6.auctionsystem_nhom6.NotificationManager.NotifItem(
+                                            com.nhom6.auctionsystem_nhom6.NotificationManager.NotifType.OUTBID,
+                                            "⚠️ BỊ VƯỢT GIÁ!",
+                                            "Ai đó vừa đặt giá cao hơn bạn tại '" + target.getItemName() + "'. Giá mới: " + formatVND(amt),
+                                            LocalDateTime.now()
+                                        ));
+                                    }
+                                }
+                            }
+
                             loadLiveSessionList();
 
                         } catch (NumberFormatException ignored) {}
@@ -204,12 +223,45 @@ public class LiveAuctionController {
                     });
                 }
 
-                case "NOTIFY_BIDDER_SESSION_END" -> {
+                case "NOTIFY_BIDDER_SESSION_END", "SESSION_END" -> {
                     String sessionId = extractJson(raw, "sessionId");
                     String itemName  = extractJson(raw, "itemName");
+                    String winner    = extractJson(raw, "winner");
+                    String priceStr  = extractJson(raw, "finalPrice");
+                    User me = AppContext.getCurrentUser();
+
                     Platform.runLater(() -> {
                         addChatMsg("System",
                             "🔴 Phiên kết thúc: " + itemName, false);
+
+                        // Global Notification logic
+                        if (me != null) {
+                            try {
+                                double finalPrice = priceStr.isEmpty() ? 0 : Double.parseDouble(priceStr);
+                                if (me.getUsername().equals(winner)) {
+                                    com.nhom6.auctionsystem_nhom6.NotificationManager.getInstance().add(new com.nhom6.auctionsystem_nhom6.NotificationManager.NotifItem(
+                                        com.nhom6.auctionsystem_nhom6.NotificationManager.NotifType.BID_WON,
+                                        "🏆 CHÚC MỪNG!",
+                                        "Bạn đã thắng phiên '" + itemName + "' với giá " + formatVND(finalPrice),
+                                        LocalDateTime.now()
+                                    ));
+                                } else {
+                                    AuctionSession target = AppContext.getGlobalSessions().stream()
+                                        .filter(s -> s.getSessionId().equals(sessionId))
+                                        .findFirst().orElse(null);
+                                    boolean iParticipated = target != null && target.getBidHistory().stream()
+                                        .anyMatch(b -> b.getBidderId().equals(me.getUsername()));
+                                    if (iParticipated) {
+                                        com.nhom6.auctionsystem_nhom6.NotificationManager.getInstance().add(new com.nhom6.auctionsystem_nhom6.NotificationManager.NotifItem(
+                                            com.nhom6.auctionsystem_nhom6.NotificationManager.NotifType.BID_LOST,
+                                            "😞 KẾT THÚC",
+                                            "Phiên '" + itemName + "' đã kết thúc. Rất tiếc bạn không thắng lần này.",
+                                            LocalDateTime.now()
+                                        ));
+                                    }
+                                }
+                            } catch (Exception ignored) {}
+                        }
 
                         if (currentSession != null
                             && currentSession.getSessionId().equals(sessionId)) {

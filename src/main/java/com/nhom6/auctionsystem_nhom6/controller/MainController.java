@@ -75,7 +75,7 @@ public class MainController {
     private boolean        auctionEnded = false;
 
     private Timeline onlineRefreshTimer;
-    private final NotificationManager notifManager = new NotificationManager();
+    private final NotificationManager notifManager = NotificationManager.getInstance();
     private       Popup               notifPopup;
 
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm:ss");
@@ -100,6 +100,7 @@ public class MainController {
         updateBadge();
         setOnlineCount(AppContext.getOnlineUserCount());
         connectToServer(user);
+        notifManager.addListener(this::updateBadge);
     }
 
     private void applyRoleMenu(User user) {
@@ -187,11 +188,68 @@ public class MainController {
                     double a = Double.parseDouble(extractJson(raw, "amount"));
                     String sid = extractJson(raw, "sessionId");
                     Platform.runLater(() -> {
+                        // 1. Cập nhật UI nếu đang xem phiên này
                         if (session != null && sid.equals(session.getSessionId())) {
                             currentPriceLabel.setText(formatVND(session.getCurrentPrice()));
                             refreshBidHistory();
                         }
+
+                        // 2. Thông báo OUTBID toàn cục (Global Notification)
+                        if (me != null && !b.equals(me.getUsername())) {
+                            // Tìm phiên này trong danh sách toàn cục để kiểm tra lịch sử
+                            AuctionSession target = AppContext.getGlobalSessions().stream()
+                                    .filter(s -> s.getSessionId().equals(sid))
+                                    .findFirst().orElse(null);
+
+                            if (target != null) {
+                                boolean iBidBefore = target.getBidHistory().stream()
+                                        .anyMatch(bid -> bid.getBidderId().equals(me.getUsername()));
+                                if (iBidBefore) {
+                                    pushNotification(NotificationManager.NotifType.OUTBID,
+                                        "⚠️ BỊ VƯỢT GIÁ!",
+                                        "Ai đó vừa đặt giá cao hơn bạn tại '" + target.getItemName() + "'. Giá mới: " + formatVND(a));
+                                }
+                            }
+                        }
                         addChatMessage("System", b + " đặt giá " + formatVND(a), false);
+                    });
+                }
+                case "SESSION_END", "NOTIFY_BIDDER_SESSION_END" -> {
+                    String sid = extractJson(raw, "sessionId");
+                    String winner = extractJson(raw, "winner");
+                    double fpVal = 0;
+                    try {
+                        String fpStr = extractJson(raw, "finalPrice");
+                        if (fpStr != null && !fpStr.isEmpty()) fpVal = Double.parseDouble(fpStr);
+                    } catch (Exception ignored) {}
+                    final double finalPrice = fpVal;
+                    String itemName = extractJson(raw, "itemName");
+
+                    Platform.runLater(() -> {
+                        if (me != null) {
+                            if (me.getUsername().equals(winner)) {
+                                pushNotification(NotificationManager.NotifType.BID_WON,
+                                    "🏆 CHÚC MỪNG!",
+                                    "Bạn đã thắng phiên '" + itemName + "' với giá " + formatVND(finalPrice));
+                            } else {
+                                // Tìm phiên để kiểm tra xem mình có tham gia không
+                                AuctionSession target = AppContext.getGlobalSessions().stream()
+                                        .filter(s -> s.getSessionId().equals(sid))
+                                        .findFirst().orElse(null);
+
+                                boolean iParticipated = target != null && target.getBidHistory().stream()
+                                        .anyMatch(bid -> bid.getBidderId().equals(me.getUsername()));
+
+                                if (iParticipated) {
+                                    pushNotification(NotificationManager.NotifType.BID_LOST,
+                                        "😞 KẾT THÚC",
+                                        "Phiên '" + itemName + "' đã kết thúc. Rất tiếc bạn không thắng lần này.");
+                                }
+                            }
+                        }
+                        if (session != null && sid.equals(session.getSessionId())) {
+                            refreshSessions();
+                        }
                     });
                 }
                 case "NOTIFY_BIDDER_SESSION_START" -> Platform.runLater(this::refreshSessions);
@@ -337,6 +395,7 @@ public class MainController {
     @FXML private void handleHelp() { try { HelloApplication.showHelpView(); } catch (Exception e) {} }
     @FXML private void handleLogout() {
         if (countdownTimer != null) countdownTimer.stop(); stopOnlineRefreshTimer();
+        notifManager.removeListener(this::updateBadge);
         User u = AppContext.getCurrentUser();
         if (u != null) AppContext.markUserOffline(u.getUsername());
         ServerConnection.getInstance().disconnect(); AppContext.logout();

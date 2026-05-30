@@ -4,12 +4,24 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Quản lý danh sách thông báo trong phiên hiện tại.
- * Lưu trong RAM (tối đa 50 items).
+ * Quản lý danh sách thông báo trong phiên hiện tại (Singleton).
+ * Cho phép các controller khác nhau cùng truy cập và nhận thông báo.
  */
 public class NotificationManager {
+
+    private static NotificationManager instance;
+    public static synchronized NotificationManager getInstance() {
+        if (instance == null) instance = new NotificationManager();
+        return instance;
+    }
+
+    private final List<Runnable> listeners = new CopyOnWriteArrayList<>();
+    public void addListener(Runnable l) { listeners.add(l); }
+    public void removeListener(Runnable l) { listeners.remove(l); }
+    private void notifyListeners() { listeners.forEach(l -> { try { l.run(); } catch(Exception e) {} }); }
 
     // ─── Loại thông báo ──────────────────────────────────────
     public enum NotifType {
@@ -51,6 +63,7 @@ public class NotificationManager {
         if (items.size() > MAX_SIZE) {
             items.remove(items.size() - 1);
         }
+        notifyListeners();
     }
 
     /** Lấy toàn bộ danh sách (bất biến). */
@@ -66,10 +79,12 @@ public class NotificationManager {
     /** Đánh dấu tất cả là đã đọc. */
     public synchronized void markAllRead() {
         items.forEach(i -> i.read = true);
+        notifyListeners();
     }
 
     /** Xóa toàn bộ. */
     public synchronized void clear() {
         items.clear();
+        notifyListeners();
     }
 }
