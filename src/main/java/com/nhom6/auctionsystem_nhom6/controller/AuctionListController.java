@@ -327,11 +327,23 @@ public class AuctionListController {
         pane.setStyle("-fx-background-color: #1e3a5f; -fx-background-radius: 8;");
 
         File imgF = null;
+        // 1. Kiểm tra trong imageMap
         String path = ProductManagementController.imageMap.get(productId);
         if (path != null) imgF = new File(path);
+
+        // 2. Kiểm tra relative
         if (imgF == null || !imgF.exists()) {
             for (String ext : new String[]{".jpg",".png",".jpeg",".webp",".gif"}) {
                 File f = new File("product_images/" + productId + ext);
+                if (f.exists()) { imgF = f; break; }
+            }
+        }
+
+        // 3. Kiểm tra absolute fallback
+        if (imgF == null || !imgF.exists()) {
+            String absDir = "D:/123/product_images/";
+            for (String ext : new String[]{".jpg",".png",".jpeg",".webp",".gif"}) {
+                File f = new File(absDir + productId + ext);
                 if (f.exists()) { imgF = f; break; }
             }
         }

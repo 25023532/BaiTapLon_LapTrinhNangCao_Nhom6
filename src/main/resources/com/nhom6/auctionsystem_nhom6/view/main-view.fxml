@@ -15,10 +15,12 @@
     <left>
         <VBox styleClass="sidebar" spacing="0">
 
-            <HBox styleClass="sidebar-logo" spacing="10" alignment="CENTER_LEFT">
-                <padding><Insets top="20" right="16" bottom="20" left="16"/></padding>
-                <Label text="⬡" styleClass="logo-icon"/>
-                <VBox>
+            <HBox styleClass="sidebar-logo" spacing="15" alignment="CENTER_LEFT">
+                <padding><Insets top="25" right="16" bottom="25" left="16"/></padding>
+                <ImageView fitWidth="55" fitHeight="55" preserveRatio="true" smooth="true">
+                    <image><Image url="@../images/logo.png"/></image>
+                </ImageView>
+                <VBox alignment="CENTER_LEFT" spacing="2">
                     <Label text="AuctionSys"       styleClass="logo-name"/>
                     <Label text="Hệ thống đấu giá" styleClass="logo-sub"/>
                 </VBox>

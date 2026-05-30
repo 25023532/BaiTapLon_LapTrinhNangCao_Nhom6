@@ -9,9 +9,8 @@
            fx:controller="com.nhom6.auctionsystem_nhom6.controller.LoginController"
            fx:id="rootPane"
            stylesheets="@../styles/main.css"
-           styleClass="login-root,starfield-bg">
+           styleClass="login-root">
 
-    <!-- Starfield background is built programmatically in LoginController -->
 
     <BorderPane fx:id="loginRoot" styleClass="stack-pane" pickOnBounds="false">
         <center>
@@ -19,44 +18,65 @@
                 <padding><Insets top="60" right="40" bottom="60" left="40"/></padding>
 
                 <!-- Logo -->
-                <ImageView fitWidth="80" fitHeight="80" preserveRatio="true">
+                <ImageView fitWidth="240" fitHeight="240" preserveRatio="true" styleClass="login-logo-img">
                     <image>
-                        <Image url="@images/logo.png"/>
+                        <Image url="@../images/logo.png"/>
                     </image>
                 </ImageView>
 
                 <Label text="AuctionSys" styleClass="login-logo"/>
                 <Label text="Hệ thống Đấu giá Trực tuyến" styleClass="login-subtitle"/>
 
-                <!-- Form Card -->
-                <VBox fx:id="loginCard" spacing="10" styleClass="login-card-glass">
-                    <padding><Insets top="32" right="32" bottom="32" left="32"/></padding>
+                <!-- Form Card with side decorations -->
+                <StackPane>
+                    <!-- Left decoration -->
+                    <VBox alignment="CENTER" spacing="12" StackPane.alignment="CENTER_LEFT"
+                          translateX="-60" opacity="0.35">
+                        <Label text="🏷️" style="-fx-font-size:28px;"/>
+                        <Label text="⚡" style="-fx-font-size:22px;"/>
+                        <Label text="🏆" style="-fx-font-size:26px;"/>
+                        <Label text="💎" style="-fx-font-size:20px;"/>
+                        <Label text="🔔" style="-fx-font-size:24px;"/>
+                    </VBox>
+                    <!-- Right decoration -->
+                    <VBox alignment="CENTER" spacing="12" StackPane.alignment="CENTER_RIGHT"
+                          translateX="60" opacity="0.35">
+                        <Label text="💰" style="-fx-font-size:26px;"/>
+                        <Label text="🎯" style="-fx-font-size:22px;"/>
+                        <Label text="📦" style="-fx-font-size:24px;"/>
+                        <Label text="✨" style="-fx-font-size:20px;"/>
+                        <Label text="🥇" style="-fx-font-size:28px;"/>
+                    </VBox>
 
-                    <Label text="Đăng nhập" styleClass="login-title"/>
+                    <VBox fx:id="loginCard" spacing="10" styleClass="login-card-glass">
+                        <padding><Insets top="32" right="32" bottom="32" left="32"/></padding>
 
-                    <Label text="Tên đăng nhập"/>
-                    <TextField fx:id="usernameField" promptText="Nhập tên đăng nhập..."
-                               styleClass="login-input"/>
+                        <Label text="Đăng nhập" styleClass="login-title"/>
 
-                    <Label text="Mật khẩu"/>
-                    <PasswordField fx:id="passwordField" promptText="Nhập mật khẩu..."
+                        <Label text="Tên đăng nhập"/>
+                        <TextField fx:id="usernameField" promptText="Nhập tên đăng nhập..."
                                    styleClass="login-input"/>
 
-                    <Label fx:id="errorLabel" styleClass="login-error" visible="false"
-                           wrapText="true"/>
+                        <Label text="Mật khẩu"/>
+                        <PasswordField fx:id="passwordField" promptText="Nhập mật khẩu..."
+                                       styleClass="login-input"/>
 
-                    <Button text="Đăng nhập" onAction="#handleLogin"
-                            maxWidth="Infinity" styleClass="btn-primary"/>
+                        <Label fx:id="errorLabel" styleClass="login-error" visible="false"
+                               wrapText="true"/>
 
-                    <Separator/>
+                        <Button text="Đăng nhập" onAction="#handleLogin"
+                                maxWidth="Infinity" styleClass="btn-primary"/>
 
-                    <Button text="Tạo tài khoản mới" onAction="#handleRegister"
-                            maxWidth="Infinity" styleClass="btn-secondary"/>
+                        <Separator/>
 
-                    <!-- Hint tài khoản mẫu -->
-                    <Label text="Demo: admin/admin123 · bidder07/bidder123"
-                           styleClass="login-hint" wrapText="true"/>
-                </VBox>
+                        <Button text="Tạo tài khoản mới" onAction="#handleRegister"
+                                maxWidth="Infinity" styleClass="btn-secondary"/>
+
+                        <!-- Hint tài khoản mẫu -->
+                        <Label text="Demo: admin/admin123 · bidder07/bidder123"
+                               styleClass="login-hint" wrapText="true"/>
+                    </VBox>
+                </StackPane>
             </VBox>
         </center>
     </BorderPane>

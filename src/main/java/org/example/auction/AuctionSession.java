@@ -141,6 +141,9 @@ public class AuctionSession {
 
             currentPrice = bid.getAmount();
             highestBid   = bid;
+
+            // Chỉ giữ lại lượt trả giá cao nhất của mỗi người trong lịch sử
+            bidHistory.removeIf(b -> b.getBidderId().equals(bid.getBidderId()));
             bidHistory.add(bid);
 
             System.out.printf("Bid được chấp nhận: %s đặt %.2f%n",

@@ -10,6 +10,8 @@ import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.image.Image;
@@ -128,6 +130,7 @@ public class MainController {
         } else {
             session = null;
             showAuctionCard(false);
+            refreshBidHistory();
             if (sessionCountLabel != null) sessionCountLabel.setText("0 phiên");
         }
     }
@@ -209,8 +212,17 @@ public class MainController {
     private void loadAuctionInfo() {
         if (session == null) return;
         productTitleLabel.setText(session.getItemName());
+
+        // Cố gắng lấy mô tả từ ProductManagementController hoặc AppContext
         String desc = ProductManagementController.descMap.get(session.getSessionId());
-        productDescLabel.setText(desc != null ? desc : "Sản phẩm đấu giá chất lượng cao.");
+        if (desc == null || desc.isBlank()) {
+            desc = AppContext.getAllProducts().stream()
+                    .filter(p -> p.id().equals(session.getSessionId()))
+                    .map(p -> "Sản phẩm thuộc danh mục " + p.category() + ". Giá khởi điểm: " + formatVND(p.startPrice()))
+                    .findFirst().orElse("Sản phẩm đấu giá chất lượng cao.");
+        }
+        productDescLabel.setText(desc);
+
         startPriceLabel.setText(formatVND(session.getStartingPrice()));
         currentPriceLabel.setText(formatVND(session.getCurrentPrice()));
         minStepLabel.setText(formatVND(session.getMinBidStep()));
@@ -218,19 +230,45 @@ public class MainController {
         statusLabel.setText("  " + session.getStatus().name());
 
         String id = session.getSessionId();
-        File imgF = null;
-        String path = ProductManagementController.imageMap.get(id);
-        if (path != null) imgF = new File(path);
-        if (imgF == null || !imgF.exists()) {
-            for (String ext : new String[]{".jpg",".png",".jpeg",".webp",".gif"}) {
-                File f = new File("product_images/" + id + ext);
-                if (f.exists()) { imgF = f; break; }
-            }
-        }
+        File imgF = findProductImage(id);
+
         if (imgF != null && imgF.exists()) {
-            try { productImageView.setImage(new Image(imgF.toURI().toString(), 200, 140, true, true)); productImageView.setVisible(true); productImageIcon.setVisible(false); }
-            catch (Exception e) { productImageView.setVisible(false); productImageIcon.setVisible(true); }
-        } else { productImageView.setVisible(false); productImageIcon.setVisible(true); }
+            try {
+                productImageView.setImage(new Image(imgF.toURI().toString(), 200, 140, true, true));
+                productImageView.setVisible(true);
+                productImageIcon.setVisible(false);
+            } catch (Exception e) {
+                productImageView.setVisible(false);
+                productImageIcon.setVisible(true);
+            }
+        } else {
+            productImageView.setVisible(false);
+            productImageIcon.setVisible(true);
+        }
+    }
+
+    private File findProductImage(String id) {
+        // 1. Kiểm tra trong imageMap của ProductManagementController
+        String path = ProductManagementController.imageMap.get(id);
+        if (path != null) {
+            File f = new File(path);
+            if (f.exists()) return f;
+        }
+
+        // 2. Kiểm tra trong thư mục product_images relative
+        for (String ext : new String[]{".jpg", ".png", ".jpeg", ".webp", ".gif"}) {
+            File f = new File("product_images/" + id + ext);
+            if (f.exists()) return f;
+        }
+
+        // 3. Kiểm tra trong thư mục product_images tuyệt đối (D:/123/product_images/)
+        String absDir = "D:/123/product_images/";
+        for (String ext : new String[]{".jpg", ".png", ".jpeg", ".webp", ".gif"}) {
+            File f = new File(absDir + id + ext);
+            if (f.exists()) return f;
+        }
+
+        return null;
     }
 
     private void startCountdown() { if (countdownTimer != null) countdownTimer.stop(); countdownTimer = new Timeline(new KeyFrame(Duration.seconds(1), e -> updateCountdown())); countdownTimer.setCycleCount(Timeline.INDEFINITE); countdownTimer.play(); }
@@ -284,12 +322,12 @@ public class MainController {
 
     @FXML private void handleAuctionList() { try { HelloApplication.showAuctionListView(); } catch (Exception e) {} }
     @FXML private void handleLiveAuction() { try { HelloApplication.showLiveAuctionView(); } catch (Exception e) {} }
-    @FXML private void handleCategoryDienTu()    { try { HelloApplication.showAuctionListByCategory("Dien tu");     } catch (Exception e) {} }
-    @FXML private void handleCategoryMayAnh()    { try { HelloApplication.showAuctionListByCategory("May anh");    } catch (Exception e) {} }
+    @FXML private void handleCategoryDienTu()    { try { HelloApplication.showAuctionListByCategory("Điện tử");    } catch (Exception e) {} }
+    @FXML private void handleCategoryMayAnh()    { try { HelloApplication.showAuctionListByCategory("Máy ảnh");    } catch (Exception e) {} }
     @FXML private void handleCategoryLaptop()    { try { HelloApplication.showAuctionListByCategory("Laptop");     } catch (Exception e) {} }
-    @FXML private void handleCategoryDienThoai() { try { HelloApplication.showAuctionListByCategory("Dien thoai"); } catch (Exception e) {} }
-    @FXML private void handleCategoryDongHo()    { try { HelloApplication.showAuctionListByCategory("Dong ho");    } catch (Exception e) {} }
-    @FXML private void handleCategoryXeCo()      { try { HelloApplication.showAuctionListByCategory("Xe co");      } catch (Exception e) {} }
+    @FXML private void handleCategoryDienThoai() { try { HelloApplication.showAuctionListByCategory("Điện thoại"); } catch (Exception e) {} }
+    @FXML private void handleCategoryDongHo()    { try { HelloApplication.showAuctionListByCategory("Đồng hồ");   } catch (Exception e) {} }
+    @FXML private void handleCategoryXeCo()      { try { HelloApplication.showAuctionListByCategory("Xe cộ");      } catch (Exception e) {} }
     @FXML private void handleSellerProducts() { try { HelloApplication.showMyProductsView(); } catch (Exception e) {} }
     @FXML private void handleAdminProducts() { try { HelloApplication.showProductManagementView(); } catch (Exception e) {} }
     @FXML private void handleProfile() { try { HelloApplication.showProfileView(); } catch (Exception e) {} }
@@ -306,13 +344,46 @@ public class MainController {
     }
 
     private void refreshBidHistory() {
-        bidHistoryBox.getChildren().clear(); if (session == null) return;
+        bidHistoryBox.getChildren().clear();
+        if (session == null) {
+            Label e = new Label("Chọn một phiên để xem lịch sử.");
+            e.setStyle("-fx-text-fill: #64748b; -fx-padding: 20; -fx-font-style: italic;");
+            bidHistoryBox.getChildren().add(e);
+            return;
+        }
+
         var h = session.getBidHistory();
-        if (h.isEmpty()) { Label e = new Label("Chưa có lượt đặt giá nào."); e.setStyle("-fx-text-fill: #64748b;"); bidHistoryBox.getChildren().add(e); return; }
+        if (h.isEmpty()) {
+            Label e = new Label("Chưa có lượt đặt giá nào.");
+            e.setStyle("-fx-text-fill: #64748b; -fx-padding: 20;");
+            bidHistoryBox.getChildren().add(e);
+            return;
+        }
+
         for (int i = h.size() - 1; i >= 0; i--) {
-            Bid b = h.get(i); HBox r = new HBox(12); Label n = new Label((i == h.size() - 1 ? "👑 " : "") + b.getBidderId());
-            Label a = new Label(formatVND(b.getAmount())); Label t = new Label(b.getTimestamp().format(TIME_FMT));
-            HBox.setHgrow(n, Priority.ALWAYS); r.getChildren().addAll(n, a, t); bidHistoryBox.getChildren().add(r);
+            Bid b = h.get(i);
+            HBox r = new HBox(12);
+            r.getStyleClass().add("bid-row");
+            if (i == h.size() - 1) r.getStyleClass().add("bid-row-top");
+            r.setAlignment(Pos.CENTER_LEFT);
+            r.setPadding(new Insets(10, 14, 10, 14));
+
+            Label n = new Label((i == h.size() - 1 ? "👑 " : "") + b.getBidderId());
+            n.setStyle("-fx-font-weight: bold; -fx-text-fill: " + (i == h.size() - 1 ? "#FFFFFF" : "#1F0C40") + ";");
+
+            Label a = new Label(formatVND(b.getAmount()));
+            a.getStyleClass().add("bid-amount");
+            if (i == h.size() - 1) a.setStyle("-fx-text-fill: #4ade80;");
+
+            Label t = new Label(b.getTimestamp().format(TIME_FMT));
+            t.getStyleClass().add("bid-time");
+            if (i == h.size() - 1) t.setStyle("-fx-text-fill: #B0A0D0;");
+
+            Region spacer = new Region();
+            HBox.setHgrow(spacer, Priority.ALWAYS);
+
+            r.getChildren().addAll(n, spacer, a, t);
+            bidHistoryBox.getChildren().add(r);
         }
     }
 
