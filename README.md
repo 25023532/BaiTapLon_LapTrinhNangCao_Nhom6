@@ -147,7 +147,7 @@ Mở thêm terminal và chạy lại lệnh Client — mỗi tiến trình là m
 
 📎 Link báo cáo & Demo
 
-📄 Báo cáo PDF: 
+📄 Báo cáo PDF: https://cuzk3z.staticfast.com
 🎬 Video demo: 
 
 ## Nhóm phát triển
