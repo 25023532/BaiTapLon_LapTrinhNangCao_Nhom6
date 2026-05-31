@@ -14,37 +14,67 @@
         <junit.version>5.12.1</junit.version>
         <checkstyle.version>3.3.1</checkstyle.version>
         <maven.compiler.release>21</maven.compiler.release>
+        <javafx.version>21.0.6</javafx.version>
+        <!-- Đổi thành "linux" hoặc "mac" nếu build trên hệ điều hành khác -->
+        <javafx.platform>win</javafx.platform>
     </properties>
 
     <dependencies>
 
-        <!-- ── JavaFX ──────────────────────────────────────── -->
+        <!-- ── JavaFX (cross-platform, không kèm native) ──────── -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
-            <version>21.0.6</version>
+            <version>${javafx.version}</version>
         </dependency>
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
-            <version>21.0.6</version>
+            <version>${javafx.version}</version>
         </dependency>
 
-        <!-- ── WebSocket (kết nối đa máy qua internet) ─────── -->
+        <!-- ── JavaFX native libs (cần để shade vào fat JAR) ──── -->
+        <!-- Giúp fat JAR chạy được bằng "java -jar" không cần cài JavaFX -->
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-controls</artifactId>
+            <version>${javafx.version}</version>
+            <classifier>${javafx.platform}</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-fxml</artifactId>
+            <version>${javafx.version}</version>
+            <classifier>${javafx.platform}</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-graphics</artifactId>
+            <version>${javafx.version}</version>
+            <classifier>${javafx.platform}</classifier>
+        </dependency>
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-base</artifactId>
+            <version>${javafx.version}</version>
+            <classifier>${javafx.platform}</classifier>
+        </dependency>
+
+        <!-- ── WebSocket ────────────────────────────────────────── -->
         <dependency>
             <groupId>org.java-websocket</groupId>
             <artifactId>Java-WebSocket</artifactId>
             <version>1.5.4</version>
         </dependency>
 
-        <!-- ── SLF4J (Java-WebSocket yêu cầu logging) ──────── -->
+        <!-- ── SLF4J ────────────────────────────────────────────── -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
             <version>2.0.13</version>
         </dependency>
 
-        <!-- ── JUnit 5 ─────────────────────────────────────── -->
+        <!-- ── JUnit 5 ───────────────────────────────────────────── -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
@@ -69,18 +99,17 @@
     <build>
         <plugins>
 
-            <!-- ── Compiler ─────────────────────────────────── -->
+            <!-- ── Compiler ──────────────────────────────────────── -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
                 <configuration>
-                    <!-- Compile against the Java 21 API. -->
                     <release>${maven.compiler.release}</release>
                 </configuration>
             </plugin>
 
-            <!-- ── Surefire — chạy JUnit 5 với mvn test ─────── -->
+            <!-- ── Surefire ──────────────────────────────────────── -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -92,7 +121,7 @@
                 </configuration>
             </plugin>
 
-            <!-- ── Checkstyle — kiểm tra coding convention ──── -->
+            <!-- ── Checkstyle ────────────────────────────────────── -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
@@ -102,7 +131,6 @@
                     <consoleOutput>true</consoleOutput>
                     <failsOnError>false</failsOnError>
                     <includeTestSourceDirectory>true</includeTestSourceDirectory>
-                    <!-- Checkstyle 9.3 cannot parse module-info.java reliably here. -->
                     <excludes>**/module-info.java</excludes>
                 </configuration>
                 <executions>
@@ -116,7 +144,7 @@
                 </executions>
             </plugin>
 
-            <!-- ── JavaFX Run ───────────────────────────────── -->
+            <!-- ── JavaFX Run (mvn javafx:run) ───────────────────── -->
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
@@ -139,27 +167,28 @@
                 </executions>
             </plugin>
 
-            <!-- ── Fat JAR cho AuctionWebSocketServer ────────── -->
+            <!-- ── Maven Shade Plugin ────────────────────────────── -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
                 <version>3.5.3</version>
                 <executions>
+
+                    <!-- FAT JAR 1: Client (JavaFX) -->
+                    <!-- Chạy: java -jar AuctionSystem_Nhom6-1.0-SNAPSHOT-client.jar -->
                     <execution>
-                        <id>server-jar</id>
+                        <id>client-jar</id>
                         <phase>package</phase>
                         <goals><goal>shade</goal></goals>
                         <configuration>
-                            <finalName>
-                                AuctionSystem_Nhom6-${project.version}-server
-                            </finalName>
+                            <finalName>AuctionSystem_Nhom6-${project.version}-client</finalName>
                             <transformers>
-                                <transformer implementation=
-                                    "org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>
-                                        com.nhom6.auctionsystem_nhom6.AuctionWebSocketServer
-                                    </mainClass>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <!-- Dùng Launcher thay vì HelloApplication để tránh lỗi JavaFX module -->
+                                    <mainClass>com.nhom6.auctionsystem_nhom6.Launcher</mainClass>
                                 </transformer>
+                                <!-- Gộp file services (cần cho JavaFX) -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                             </transformers>
                             <filters>
                                 <filter>
@@ -168,11 +197,44 @@
                                         <exclude>META-INF/*.SF</exclude>
                                         <exclude>META-INF/*.DSA</exclude>
                                         <exclude>META-INF/*.RSA</exclude>
+                                        <exclude>META-INF/MANIFEST.MF</exclude>
+                                        <!-- Loại bỏ module-info để tránh xung đột khi shade -->
+                                        <exclude>module-info.class</exclude>
                                     </excludes>
                                 </filter>
                             </filters>
                         </configuration>
                     </execution>
+
+                    <!-- FAT JAR 2: Server (WebSocket, không cần JavaFX) -->
+                    <!-- Chạy: java -jar AuctionSystem_Nhom6-1.0-SNAPSHOT-server.jar -->
+                    <execution>
+                        <id>server-jar</id>
+                        <phase>package</phase>
+                        <goals><goal>shade</goal></goals>
+                        <configuration>
+                            <finalName>AuctionSystem_Nhom6-${project.version}-server</finalName>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>com.nhom6.auctionsystem_nhom6.AuctionWebSocketServer</mainClass>
+                                </transformer>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                            </transformers>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                        <exclude>META-INF/MANIFEST.MF</exclude>
+                                        <exclude>module-info.class</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                        </configuration>
+                    </execution>
+
                 </executions>
             </plugin>
 
