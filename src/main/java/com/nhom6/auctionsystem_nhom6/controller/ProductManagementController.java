@@ -83,12 +83,18 @@ public class ProductManagementController {
         LocalDateTime auctionEnd
     ) {}
 
+    @FXML private Button btnSellerProducts;
+    @FXML private Button btnAdminProducts;
+
     // =========================================================
     // INITIALIZE
     // =========================================================
     @FXML
     public void initialize() {
         User user = AppContext.getCurrentUser();
+        if (user != null) {
+            applyRoleMenu(user);
+        }
         username  = user.getUsername();
         isAdmin   = "ADMIN".equalsIgnoreCase(user.getRole());
 
@@ -109,6 +115,34 @@ public class ProductManagementController {
 
         refreshStats();
         renderList(managedList);
+    }
+
+    private void applyRoleMenu(User user) {
+        String role = user.getRole() == null ? "" : user.getRole().toUpperCase();
+        boolean isSeller = "SELLER".equals(role);
+        boolean isAdmin  = "ADMIN".equals(role);
+        if (btnSellerProducts != null) { btnSellerProducts.setVisible(isSeller); btnSellerProducts.setManaged(isSeller); }
+        if (btnAdminProducts != null) { btnAdminProducts.setVisible(isAdmin); btnAdminProducts.setManaged(isAdmin); }
+    }
+
+    @FXML private void handleAuctionList() { try { HelloApplication.showAuctionListView(); } catch (Exception e) {} }
+    @FXML private void handleLiveAuction() { try { HelloApplication.showLiveAuctionView(); } catch (Exception e) {} }
+    @FXML private void handleSellerProducts() { try { HelloApplication.showMyProductsView(); } catch (Exception e) {} }
+    @FXML private void handleAdminProducts() { /* Already here */ }
+    @FXML private void handleWallet() { try { HelloApplication.showWalletView(); } catch (Exception e) {} }
+    @FXML private void handleRating() { try { HelloApplication.showRatingView(); } catch (Exception e) {} }
+    @FXML private void handleHelp() { try { HelloApplication.showHelpView(); } catch (Exception e) {} }
+    @FXML private void handleCategoryDienTu()    { try { HelloApplication.showAuctionListByCategory("Điện tử");    } catch (Exception e) {} }
+    @FXML private void handleCategoryMayAnh()    { try { HelloApplication.showAuctionListByCategory("Máy ảnh");    } catch (Exception e) {} }
+    @FXML private void handleCategoryLaptop()    { try { HelloApplication.showAuctionListByCategory("Laptop");     } catch (Exception e) {} }
+    @FXML private void handleCategoryDienThoai() { try { HelloApplication.showAuctionListByCategory("Điện thoại"); } catch (Exception e) {} }
+    @FXML private void handleCategoryDongHo()    { try { HelloApplication.showAuctionListByCategory("Đồng hồ");   } catch (Exception e) {} }
+    @FXML private void handleCategoryXeCo()      { try { HelloApplication.showAuctionListByCategory("Xe cộ");      } catch (Exception e) {} }
+    @FXML private void handleHistory()           { try { HelloApplication.showHistoryView(); } catch (Exception e) {} }
+    @FXML private void handleProfile()           { try { HelloApplication.showProfileView(); } catch (Exception e) {} }
+    @FXML private void handleLogout() {
+        AppContext.logout();
+        try { HelloApplication.showLoginView(); } catch (Exception e) {}
     }
 
     private void syncFromAppContext(User user) {

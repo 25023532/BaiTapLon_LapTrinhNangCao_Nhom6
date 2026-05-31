@@ -9,6 +9,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import org.example.user.User;
 
 public class HelpController {
 
@@ -74,12 +75,43 @@ public class HelpController {
         },
     };
 
+    @FXML private Button btnSellerProducts;
+    @FXML private Button btnAdminProducts;
+
+    @FXML private Label userAvatarLabel;
+    @FXML private Label userNameLabel;
+    @FXML private Label userRoleLabel;
+
     // =========================================================
     // INITIALIZE
     // =========================================================
     @FXML
     public void initialize() {
+        User user = AppContext.getCurrentUser();
+        if (user != null) {
+            applyRoleMenu(user);
+            setupHeader(user);
+        }
         renderFaq(FAQ);
+    }
+
+    private void setupHeader(User user) {
+        if (userNameLabel != null) userNameLabel.setText(user.getUsername());
+        if (userRoleLabel != null) userRoleLabel.setText(user.getRole());
+        if (userAvatarLabel != null) {
+            String av = user.getUsername().length() >= 2
+                    ? user.getUsername().substring(0, 2).toUpperCase()
+                    : user.getUsername().toUpperCase();
+            userAvatarLabel.setText(av);
+        }
+    }
+
+    private void applyRoleMenu(User user) {
+        String role = user.getRole() == null ? "" : user.getRole().toUpperCase();
+        boolean isSeller = "SELLER".equals(role);
+        boolean isAdmin  = "ADMIN".equals(role);
+        if (btnSellerProducts != null) { btnSellerProducts.setVisible(isSeller); btnSellerProducts.setManaged(isSeller); }
+        if (btnAdminProducts != null) { btnAdminProducts.setVisible(isAdmin); btnAdminProducts.setManaged(isAdmin); }
     }
 
     // =========================================================
@@ -227,13 +259,18 @@ public class HelpController {
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    @FXML private void handleWallet() {
-        try { HelloApplication.showWalletView(); }
+    @FXML private void handleSellerProducts() {
+        try { HelloApplication.showMyProductsView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    @FXML private void handleSessionHistory() {
-        try { HelloApplication.showAuctionSessionHistoryView(); }
+    @FXML private void handleAdminProducts() {
+        try { HelloApplication.showProductManagementView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleWallet() {
+        try { HelloApplication.showWalletView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
 
@@ -257,9 +294,8 @@ public class HelpController {
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    @FXML private void handleMyProducts() {
-        try { HelloApplication.showMyProductsView(); }
-        catch (Exception e) { e.printStackTrace(); }
+    @FXML private void handleHelp() {
+        /* Already here */
     }
 
     @FXML private void handleCategoryDienTu() {

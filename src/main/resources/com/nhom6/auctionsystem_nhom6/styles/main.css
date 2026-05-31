@@ -45,52 +45,54 @@
 
 /* ── Sidebar ────────────────────────────────────────────────── */
 .sidebar {
-    -fx-background-color: #1F0C40;
-    -fx-min-width: 240px;
-    -fx-max-width: 240px;
-    -fx-pref-width: 240px;
+    -fx-background-color: linear-gradient(to bottom, #1F0C40, #15082E);
+    -fx-min-width: 250px;
+    -fx-max-width: 250px;
+    -fx-pref-width: 250px;
     -fx-border-color: #1A1A1A;
-    -fx-border-width: 0 3 0 0;
+    -fx-border-width: 0 4 0 0;
 }
 .sidebar-logo {
-    -fx-background-color: transparent;
+    -fx-background-color: rgba(0,0,0,0.1);
     -fx-border-color: transparent transparent #1A1A1A transparent;
-    -fx-border-width: 0 0 3 0;
-    -fx-padding: 0 0 12 0;
+    -fx-border-width: 0 0 4 0;
+    -fx-padding: 25 16 25 16;
 }
 .logo-icon { -fx-font-size: 30px; -fx-text-fill: #FFFFFF; }
-.logo-name { -fx-font-size: 22px; -fx-font-weight: 900; -fx-text-fill: #FFFFFF; -fx-letter-spacing: 1px; }
-.logo-sub  { -fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #FF6B35; }
+.logo-name { -fx-font-size: 24px; -fx-font-weight: 900; -fx-text-fill: #FFFFFF; -fx-letter-spacing: 1.5px; }
+.logo-sub  { -fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #FF6B35; -fx-letter-spacing: 0.5px; }
 
 .nav-btn, .cat-btn {
     -fx-background-color: transparent;
     -fx-text-fill: #B0A0D0;
     -fx-alignment: CENTER_LEFT;
-    -fx-padding: 10 16 10 16;
-    -fx-font-size: 13px;
+    -fx-padding: 12 20 12 20;
+    -fx-font-size: 14px;
     -fx-font-weight: bold;
     -fx-cursor: hand;
     -fx-background-radius: 0;
     -fx-border-radius: 0;
+    -fx-transition: all 0.2s ease;
 }
 .nav-btn:hover, .cat-btn:hover {
-    -fx-background-color: #3A1A6A;
-    -fx-text-fill: #FFFFFF;
-    -fx-translate-x: 4;
+    -fx-background-color: #2A1256;
+    -fx-text-fill: #FF6B35;
+    -fx-translate-x: 6;
 }
 .nav-active {
     -fx-background-color: #FF6B35 !important;
     -fx-text-fill: #FFFFFF !important;
     -fx-border-color: #1A1A1A !important;
-    -fx-border-width: 0 0 0 6 !important;
-    -fx-font-weight: bold;
+    -fx-border-width: 0 0 0 8 !important;
+    -fx-font-weight: 900;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 8, 0, 0, 0);
 }
 .cat-title {
-    -fx-text-fill: #B0A0D0;
-    -fx-font-size: 10px;
-    -fx-font-weight: bold;
-    -fx-padding: 14 0 6 0;
-    -fx-letter-spacing: 1.5px;
+    -fx-text-fill: #6E5E90;
+    -fx-font-size: 11px;
+    -fx-font-weight: 900;
+    -fx-padding: 20 0 8 20;
+    -fx-letter-spacing: 2px;
 }
 
 /* ── Header ─────────────────────────────────────────────────── */

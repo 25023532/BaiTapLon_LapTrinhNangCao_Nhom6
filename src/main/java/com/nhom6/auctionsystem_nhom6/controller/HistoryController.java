@@ -39,9 +39,14 @@ public class HistoryController {
     private static final DateTimeFormatter DT_FMT =
             DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy");
 
+    @FXML private Button btnSellerProducts;
+    @FXML private Button btnAdminProducts;
+
     @FXML
     public void initialize() {
         User user = AppContext.getCurrentUser();
+        if (user == null) return;
+        applyRoleMenu(user);
         isSeller  = "SELLER".equalsIgnoreCase(user.getRole());
 
         // ── Tiêu đề & nhãn theo role ──────────────────────────
@@ -69,6 +74,33 @@ public class HistoryController {
 
         refreshStats();
         renderList(allRecords);
+    }
+
+    private void applyRoleMenu(User user) {
+        String role = user.getRole() == null ? "" : user.getRole().toUpperCase();
+        boolean isSeller = "SELLER".equals(role);
+        boolean isAdmin  = "ADMIN".equals(role);
+        if (btnSellerProducts != null) { btnSellerProducts.setVisible(isSeller); btnSellerProducts.setManaged(isSeller); }
+        if (btnAdminProducts != null) { btnAdminProducts.setVisible(isAdmin); btnAdminProducts.setManaged(isAdmin); }
+    }
+
+    @FXML private void handleAuctionList() { try { HelloApplication.showAuctionListView(); } catch (Exception e) {} }
+    @FXML private void handleLiveAuction() { try { HelloApplication.showLiveAuctionView(); } catch (Exception e) {} }
+    @FXML private void handleSellerProducts() { try { HelloApplication.showMyProductsView(); } catch (Exception e) {} }
+    @FXML private void handleAdminProducts() { try { HelloApplication.showProductManagementView(); } catch (Exception e) {} }
+    @FXML private void handleWallet() { try { HelloApplication.showWalletView(); } catch (Exception e) {} }
+    @FXML private void handleRating() { try { HelloApplication.showRatingView(); } catch (Exception e) {} }
+    @FXML private void handleHelp() { try { HelloApplication.showHelpView(); } catch (Exception e) {} }
+    @FXML private void handleCategoryDienTu()    { try { HelloApplication.showAuctionListByCategory("Điện tử");    } catch (Exception e) {} }
+    @FXML private void handleCategoryMayAnh()    { try { HelloApplication.showAuctionListByCategory("Máy ảnh");    } catch (Exception e) {} }
+    @FXML private void handleCategoryLaptop()    { try { HelloApplication.showAuctionListByCategory("Laptop");     } catch (Exception e) {} }
+    @FXML private void handleCategoryDienThoai() { try { HelloApplication.showAuctionListByCategory("Điện thoại"); } catch (Exception e) {} }
+    @FXML private void handleCategoryDongHo()    { try { HelloApplication.showAuctionListByCategory("Đồng hồ");   } catch (Exception e) {} }
+    @FXML private void handleCategoryXeCo()      { try { HelloApplication.showAuctionListByCategory("Xe cộ");      } catch (Exception e) {} }
+    @FXML private void handleProfile()           { try { HelloApplication.showProfileView(); } catch (Exception e) {} }
+    @FXML private void handleLogout() {
+        AppContext.logout();
+        try { HelloApplication.showLoginView(); } catch (Exception e) {}
     }
 
     // ── Thống kê ──────────────────────────────────────────────

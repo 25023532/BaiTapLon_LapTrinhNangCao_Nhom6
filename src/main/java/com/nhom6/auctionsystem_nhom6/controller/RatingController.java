@@ -77,6 +77,9 @@ public class RatingController {
     @FXML private VBox  reviewListBox;
     @FXML private Label reviewCountLabel;
 
+    @FXML private Button btnSellerProducts;
+    @FXML private Button btnAdminProducts;
+
     // =========================================================
     // DATA — dùng AppContext thay vì static list
     // =========================================================
@@ -114,6 +117,7 @@ public class RatingController {
     public void initialize() {
         User user = AppContext.getCurrentUser();
         if (user == null) return;
+        applyRoleMenu(user);
 
         username = user.getUsername();
         userNameLabel.setText(username);
@@ -509,6 +513,14 @@ public class RatingController {
         writeResultLabel.setVisible(true);
     }
 
+    private void applyRoleMenu(User user) {
+        String role = user.getRole() == null ? "" : user.getRole().toUpperCase();
+        boolean isSeller = "SELLER".equals(role);
+        boolean isAdmin  = "ADMIN".equals(role);
+        if (btnSellerProducts != null) { btnSellerProducts.setVisible(isSeller); btnSellerProducts.setManaged(isSeller); }
+        if (btnAdminProducts != null) { btnAdminProducts.setVisible(isAdmin); btnAdminProducts.setManaged(isAdmin); }
+    }
+
     // =========================================================
     // NAVIGATION
     // =========================================================
@@ -542,6 +554,16 @@ public class RatingController {
         catch (Exception e) { e.printStackTrace(); }
     }
 
+    @FXML private void handleSellerProducts() {
+        try { HelloApplication.showMyProductsView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleAdminProducts() {
+        try { HelloApplication.showProductManagementView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
     @FXML private void handleWallet() {
         try { HelloApplication.showWalletView(); }
         catch (Exception e) { e.printStackTrace(); }
@@ -549,11 +571,6 @@ public class RatingController {
 
     @FXML private void handleRating() {
         applyFilters();
-    }
-
-    @FXML private void handleMyProducts() {
-        try { HelloApplication.showMyProductsView(); }
-        catch (Exception e) { e.printStackTrace(); }
     }
 
     @FXML private void handleHelp() {

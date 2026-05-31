@@ -86,11 +86,19 @@ public class LiveAuctionController {
     private static final DateTimeFormatter TIME_FMT =
         DateTimeFormatter.ofPattern("HH:mm:ss");
 
+    @FXML private Button     btnSellerProducts;
+    @FXML private Button     btnAdminProducts;
+
     // =========================================================
     // INITIALIZE
     // =========================================================
     @FXML
     public void initialize() {
+        User user = AppContext.getCurrentUser();
+        if (user != null) {
+            applyRoleMenu(user);
+        }
+
         if (extensionNoticeLabel != null) {
             extensionNoticeLabel.setVisible(false);
             extensionNoticeLabel.setManaged(false);
@@ -114,6 +122,14 @@ public class LiveAuctionController {
         if (active != null) {
             selectSession(active);
         }
+    }
+
+    private void applyRoleMenu(User user) {
+        String role = user.getRole() == null ? "" : user.getRole().toUpperCase();
+        boolean isSeller = "SELLER".equals(role);
+        boolean isAdmin  = "ADMIN".equals(role);
+        if (btnSellerProducts != null) { btnSellerProducts.setVisible(isSeller); btnSellerProducts.setManaged(isSeller); }
+        if (btnAdminProducts != null) { btnAdminProducts.setVisible(isAdmin); btnAdminProducts.setManaged(isAdmin); }
     }
 
     // =========================================================
@@ -847,6 +863,20 @@ public class LiveAuctionController {
             liveLeaderLabel.setText("Chưa có ai đặt giá");
         }
     }
+
+    @FXML private void handleAuctionList() { try { HelloApplication.showAuctionListView(); } catch (Exception e) {} }
+    @FXML private void handleLiveAuction() { /* Already here */ }
+    @FXML private void handleSellerProducts() { try { HelloApplication.showMyProductsView(); } catch (Exception e) {} }
+    @FXML private void handleAdminProducts() { try { HelloApplication.showProductManagementView(); } catch (Exception e) {} }
+    @FXML private void handleWallet() { try { HelloApplication.showWalletView(); } catch (Exception e) {} }
+    @FXML private void handleRating() { try { HelloApplication.showRatingView(); } catch (Exception e) {} }
+    @FXML private void handleHelp() { try { HelloApplication.showHelpView(); } catch (Exception e) {} }
+    @FXML private void handleCategoryDienTu()    { try { HelloApplication.showAuctionListByCategory("Điện tử");    } catch (Exception e) {} }
+    @FXML private void handleCategoryMayAnh()    { try { HelloApplication.showAuctionListByCategory("Máy ảnh");    } catch (Exception e) {} }
+    @FXML private void handleCategoryLaptop()    { try { HelloApplication.showAuctionListByCategory("Laptop");     } catch (Exception e) {} }
+    @FXML private void handleCategoryDienThoai() { try { HelloApplication.showAuctionListByCategory("Điện thoại"); } catch (Exception e) {} }
+    @FXML private void handleCategoryDongHo()    { try { HelloApplication.showAuctionListByCategory("Đồng hồ");   } catch (Exception e) {} }
+    @FXML private void handleCategoryXeCo()      { try { HelloApplication.showAuctionListByCategory("Xe cộ");      } catch (Exception e) {} }
 
     private String formatVND(double v) {
         return String.format("₫ %,.0f", v);

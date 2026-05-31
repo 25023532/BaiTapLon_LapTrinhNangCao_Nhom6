@@ -69,12 +69,12 @@
             <VBox styleClass="sidebar-cats" spacing="2">
                 <padding><Insets top="8" right="8" bottom="8" left="16"/></padding>
                 <Label text="DANH MỤC" styleClass="cat-title"/>
-                <Button fx:id="catElectronics" text="🖥️  Điện tử"    maxWidth="Infinity" styleClass="cat-btn" onAction="#handleCategoryDienTu"/>
-                <Button fx:id="catCamera"     text="📷  Máy ảnh"    maxWidth="Infinity" styleClass="cat-btn" onAction="#handleCategoryMayAnh"/>
-                <Button fx:id="catLaptop"     text="💻  Laptop"     maxWidth="Infinity" styleClass="cat-btn" onAction="#handleCategoryLaptop"/>
-                <Button fx:id="catPhone"      text="📱  Điện thoại" maxWidth="Infinity" styleClass="cat-btn" onAction="#handleCategoryDienThoai"/>
-                <Button fx:id="catWatch"      text="⌚  Đồng hồ"   maxWidth="Infinity" styleClass="cat-btn" onAction="#handleCategoryDongHo"/>
-                <Button fx:id="catVehicle"    text="🚗  Xe cộ"     maxWidth="Infinity" styleClass="cat-btn" onAction="#handleCategoryXeCo"/>
+                <Button text="🖥️  Điện tử"    maxWidth="Infinity" styleClass="cat-btn" onAction="#handleCategoryDienTu"/>
+                <Button text="📷  Máy ảnh"    maxWidth="Infinity" styleClass="cat-btn" onAction="#handleCategoryMayAnh"/>
+                <Button text="💻  Laptop"     maxWidth="Infinity" styleClass="cat-btn" onAction="#handleCategoryLaptop"/>
+                <Button text="📱  Điện thoại" maxWidth="Infinity" styleClass="cat-btn" onAction="#handleCategoryDienThoai"/>
+                <Button text="⌚  Đồng hồ"   maxWidth="Infinity" styleClass="cat-btn" onAction="#handleCategoryDongHo"/>
+                <Button text="🚗  Xe cộ"     maxWidth="Infinity" styleClass="cat-btn" onAction="#handleCategoryXeCo"/>
             </VBox>
 
             <Region VBox.vgrow="ALWAYS"/>

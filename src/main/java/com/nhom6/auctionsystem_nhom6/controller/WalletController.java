@@ -8,6 +8,7 @@ import javafx.fxml.FXML;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import org.example.user.User;
 
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -57,6 +58,9 @@ public class WalletController {
     // ── Lịch sử ──────────────────────────────────────────────
     @FXML private VBox               transactionListBox;
 
+    @FXML private Button             btnSellerProducts;
+    @FXML private Button             btnAdminProducts;
+
     // =========================================================
     // DATA
     // =========================================================
@@ -72,6 +76,7 @@ public class WalletController {
     public void initialize() {
         var user = AppContext.getCurrentUser();
         if (user == null) return;
+        applyRoleMenu(user);
 
         username = user.getUsername();
 
@@ -494,6 +499,14 @@ public class WalletController {
         }
     }
 
+    private void applyRoleMenu(User user) {
+        String role = user.getRole() == null ? "" : user.getRole().toUpperCase();
+        boolean isSeller = "SELLER".equals(role);
+        boolean isAdmin  = "ADMIN".equals(role);
+        if (btnSellerProducts != null) { btnSellerProducts.setVisible(isSeller); btnSellerProducts.setManaged(isSeller); }
+        if (btnAdminProducts != null) { btnAdminProducts.setVisible(isAdmin); btnAdminProducts.setManaged(isAdmin); }
+    }
+
     // =========================================================
     // NAVIGATION
     // =========================================================
@@ -512,8 +525,13 @@ public class WalletController {
         catch (Exception e) { e.printStackTrace(); }
     }
 
-    @FXML private void handleMyProducts() {
+    @FXML private void handleSellerProducts() {
         try { HelloApplication.showMyProductsView(); }
+        catch (Exception e) { e.printStackTrace(); }
+    }
+
+    @FXML private void handleAdminProducts() {
+        try { HelloApplication.showProductManagementView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
 

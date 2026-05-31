@@ -3,6 +3,8 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.SeparatorMenuItem?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.image.Image?>
 
 <BorderPane xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.nhom6.auctionsystem_nhom6.controller.RatingController"
@@ -11,11 +13,12 @@
     <!-- ══ SIDEBAR ══ -->
     <left>
         <VBox styleClass="sidebar" spacing="0">
-
-            <HBox styleClass="sidebar-logo" spacing="10" alignment="CENTER_LEFT">
-                <padding><Insets top="20" right="16" bottom="20" left="16"/></padding>
-                <Label text="⬡" styleClass="logo-icon"/>
-                <VBox>
+            <HBox styleClass="sidebar-logo" spacing="15" alignment="CENTER_LEFT">
+                <padding><Insets top="25" right="16" bottom="25" left="16"/></padding>
+                <ImageView fitWidth="55" fitHeight="55" preserveRatio="true" smooth="true">
+                    <image><Image url="@../images/logo.png"/></image>
+                </ImageView>
+                <VBox alignment="CENTER_LEFT" spacing="2">
                     <Label text="AuctionSys"       styleClass="logo-name"/>
                     <Label text="Hệ thống đấu giá" styleClass="logo-sub"/>
                 </VBox>
@@ -23,13 +26,13 @@
 
             <VBox styleClass="sidebar-nav" spacing="2">
                 <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
-                <Button text="⊞  Tổng quan"          maxWidth="Infinity" styleClass="nav-btn" onAction="#handleBack"/>
-                <Button text="☰  Danh sách phiên"     maxWidth="Infinity" styleClass="nav-btn" onAction="#handleAuctionList"/>
+                <Button text="⊞  Tổng quan"         maxWidth="Infinity" styleClass="nav-btn" onAction="#handleBack"/>
+                <Button text="☰  Danh sách phiên"    maxWidth="Infinity" styleClass="nav-btn" onAction="#handleAuctionList"/>
                 <Button text="⚡  Đấu giá trực tiếp"  maxWidth="Infinity" styleClass="nav-btn" onAction="#handleLiveAuction"/>
-                <Button text="📦  Quản lý sản phẩm"  maxWidth="Infinity" styleClass="nav-btn" onAction="#handleMyProducts"/>
-                <Button text="🛒  Đơn hàng của tôi"  maxWidth="Infinity" styleClass="nav-btn" onAction="#handleHistory"/>
+                <Button fx:id="btnSellerProducts"   text="📦  Sản phẩm của tôi" maxWidth="Infinity" styleClass="nav-btn" onAction="#handleSellerProducts" visible="false" managed="false"/>
+                <Button fx:id="btnAdminProducts"    text="🛠  Quản lý sản phẩm" maxWidth="Infinity" styleClass="nav-btn" onAction="#handleAdminProducts" visible="false" managed="false"/>
                 <Button text="💳  Ví &amp; Giao dịch" maxWidth="Infinity" styleClass="nav-btn" onAction="#handleWallet"/>
-                <Button text="★  Đánh giá"            maxWidth="Infinity" styleClass="nav-btn,nav-active" onAction="#handleRating"/>
+                <Button text="★  Đánh giá"           maxWidth="Infinity" styleClass="nav-btn,nav-active" onAction="#handleRating"/>
                 <Button text="?  Trợ giúp"            maxWidth="Infinity" styleClass="nav-btn" onAction="#handleHelp"/>
             </VBox>
 
@@ -43,7 +46,6 @@
                 <Button text="⌚  Đồng hồ"   maxWidth="Infinity" styleClass="cat-btn" onAction="#handleCategoryDongHo"/>
                 <Button text="🚗  Xe cộ"     maxWidth="Infinity" styleClass="cat-btn" onAction="#handleCategoryXeCo"/>
             </VBox>
-
             <Region VBox.vgrow="ALWAYS"/>
         </VBox>
     </left>

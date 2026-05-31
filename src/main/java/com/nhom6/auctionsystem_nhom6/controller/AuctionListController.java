@@ -55,11 +55,18 @@ public class AuctionListController {
 
     private List<SessionRecord> allSessions = new ArrayList<>();
 
+    @FXML private Button btnSellerProducts;
+    @FXML private Button btnAdminProducts;
+
     // =========================================================
     // INITIALIZE
     // =========================================================
     @FXML
     public void initialize() {
+        User user = AppContext.getCurrentUser();
+        if (user != null) {
+            applyRoleMenu(user);
+        }
         statusFilter.getItems().addAll(
                 "Tất cả", "RUNNING", "UPCOMING", "ENDED");
         categoryFilter.getItems().addAll(
@@ -447,6 +454,17 @@ public class AuctionListController {
         try { HelloApplication.showLiveAuctionView(); }
         catch (Exception e) { e.printStackTrace(); }
     }
+
+    private void applyRoleMenu(User user) {
+        String role = user.getRole() == null ? "" : user.getRole().toUpperCase();
+        boolean isSeller = "SELLER".equals(role);
+        boolean isAdmin  = "ADMIN".equals(role);
+        if (btnSellerProducts != null) { btnSellerProducts.setVisible(isSeller); btnSellerProducts.setManaged(isSeller); }
+        if (btnAdminProducts != null) { btnAdminProducts.setVisible(isAdmin); btnAdminProducts.setManaged(isAdmin); }
+    }
+
+    @FXML private void handleSellerProducts() { try { HelloApplication.showMyProductsView(); } catch (Exception e) {} }
+    @FXML private void handleAdminProducts() { try { HelloApplication.showProductManagementView(); } catch (Exception e) {} }
 
     @FXML private void handleBack() {
         try { HelloApplication.showMainView(); }
