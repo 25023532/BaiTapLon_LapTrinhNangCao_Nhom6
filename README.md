@@ -93,9 +93,19 @@ Sau khi build, các file JAR nằm tại:
 
 ```
 target/
-├── auctionsystem-nhom6-1.0-SNAPSHOT.jar          # JAR gốc (không đủ deps)
-└── auctionsystem-nhom6-1.0-SNAPSHOT-shaded.jar   # ✅ Fat JAR – dùng để chạy
+├── AuctionSystem_Nhom6-1.0-SNAPSHOT.jar          # JAR gốc (không đủ deps)
+├── AuctionSystem_Nhom6-1.0-SNAPSHOT-server.jar   # ✅ Fat JAR – chạy Server
+└── AuctionSystem_Nhom6-1.0-SNAPSHOT-client.jar   # ✅ Fat JAR – chạy Client
 ```
+🔨 Hướng dẫn Build
+# Bước 1: Clone repo
+git clone <link-github-repo>
+cd AuctionSystem_Nhom6
+
+# Bước 2: Build fat JAR (bỏ qua test để build nhanh hơn)
+mvn clean package -DskipTests
+
+# Sau khi build xong, file JAR xuất hiện tại target/
 
 ---
 
