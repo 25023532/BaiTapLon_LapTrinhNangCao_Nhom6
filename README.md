@@ -109,29 +109,33 @@ mvn clean package -DskipTests
 
 ---
 
-## 🚀 Hướng dẫn chạy Server và Client
+## 📦 Vị trí file `.jar`
 
-### Bước 1 – Chạy Server (WebSocket)
+Sau khi build, các file JAR nằm tại:
+target/
+├── AuctionSystem_Nhom6-1.0-SNAPSHOT.jar
+├── AuctionSystem_Nhom6-1.0-SNAPSHOT-server.jar   ✅ Fat JAR – chạy Server
+└── AuctionSystem_Nhom6-1.0-SNAPSHOT-client.jar   ✅ Fat JAR – chạy Client
 
-Server cần chạy trước để Client kết nối được.
+## 🔨 Hướng dẫn Build
 
-```bash
-java -jar target/<ten-file>-shaded.jar server
-```
+**Bước 1: Clone repo**
+git clone https://github.com/25023532/BaiTapLon_LapTrinhNangCao_Nhom6.git
+cd BaiTapLon_LapTrinhNangCao_Nhom6
 
-Hoặc nếu server được đóng gói riêng:
+**Bước 2: Build**
+mvnw.cmd clean package -DskipTests
 
-```bash
-java -jar auction-server.jar [PORT]
-```
+## 🚀 Hướng dẫn chạy
 
-> Mặc định server chạy tại port **1234** (TCP) / port do biến môi trường `PORT` chỉ định (WebSocket cloud).  
-> Console sẽ in: `[Server] Đang chạy trên port 1234`
+> ⚠️ Chạy Server trước, sau đó mới chạy Client
 
-### Bước 2 – Chạy Client (Giao diện đồ họa)
+**Bước 1 – Chạy Server** (terminal 1)
+java -jar target/AuctionSystem_Nhom6-1.0-SNAPSHOT-server.jar
 
-```bash
-java -jar target/<ten-file>-shaded.jar
+**Bước 2 – Chạy Client** (terminal mới)
+java -jar target/AuctionSystem_Nhom6-1.0-SNAPSHOT-client.jar
+
 ```
 
 - Lần đầu khởi động, ứng dụng sẽ tự động hỏi địa chỉ IP/URL của Server.
