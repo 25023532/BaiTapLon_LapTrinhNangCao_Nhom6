@@ -189,8 +189,8 @@ Giao diện đăng nhập sẽ hiện ra. Dùng tài khoản demo để đăng n
 
 ## 📎 Link báo cáo & Demo
 
-- 📄 **Báo cáo PDF:** [Chèn link tại đây]
-- 🎬 **Video demo:** [Chèn link tại đây]
+- 📄 **Báo cáo PDF:** [Xem tại đây](https://drive.google.com/file/d/1MuT2j-BFa23wtpbcyPpOiQvgWeaj7DkJ/view?usp=sharing)
+- 🎬 **Video demo:** [Xem tại đây](https://drive.google.com/file/d/1wKUdmXX_Pb3Q6_gbgqEgr2Bnvhx9yPul/view?usp=sharing)
 
 ---
 ## 👥 Nhóm phát triển
